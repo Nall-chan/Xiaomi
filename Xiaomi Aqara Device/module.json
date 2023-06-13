@@ -1,0 +1,12 @@
+{
+    "id": "{CA32672C-DDD2-57A8-45A1-7B96FED33FA5}",
+    "name": "Xiaomi Aqara Device",
+    "type": 3,
+    "vendor": "Xiaomi",
+    "aliases": [],
+    "parentRequirements": [],
+    "childRequirements": [],
+    "implemented": [],
+    "prefix": "XIAOMI",
+    "url": "https://github.com/Nall-chan/Xiaomi"
+}

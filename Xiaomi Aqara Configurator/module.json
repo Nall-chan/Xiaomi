@@ -1,0 +1,16 @@
+{
+    "id": "{5FE9C0C3-0021-F8BB-9489-2AE17E8DA67A}",
+    "name": "Xiaomi Aqara Configurator",
+    "type": 4,
+    "vendor": "Xiaomi",
+    "aliases": [],
+    "parentRequirements": [
+        "{2BAF4D89-F591-AFF9-FDE8-3EE862D9F2C2}"
+    ],
+    "childRequirements": [],
+    "implemented": [
+        "{C12FA8FE-6934-EF85-A0AA-4F9BC0016826}"
+    ],
+    "prefix": "XIAOMI",
+    "url": "https://github.com/Nall-chan/Xiaomi"
+}

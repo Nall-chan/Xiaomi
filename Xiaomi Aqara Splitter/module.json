@@ -1,0 +1,19 @@
+{
+    "id": "{EF61BE0A-5178-25F3-AB78-F75148F3B50A}",
+    "name": "Xiaomi Aqara Splitter",
+    "type": 2,
+    "vendor": "Xiaomi",
+    "aliases": [],
+    "parentRequirements": [
+        "{C8792760-65CF-4C53-B5C7-A30FCC84FEFE}"
+    ],
+    "childRequirements": [
+        "{C12FA8FE-6934-EF85-A0AA-4F9BC0016826}"
+    ],
+    "implemented": [
+        "{2BAF4D89-F591-AFF9-FDE8-3EE862D9F2C2}",
+        "{7A1272A4-CBDB-46EF-BFC6-DCF4A53D2FC7}"
+    ],
+    "prefix": "XIAOMI",
+    "url": "https://github.com/Nall-chan/Xiaomi"
+}
