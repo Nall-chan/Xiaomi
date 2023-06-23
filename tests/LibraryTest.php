@@ -10,112 +10,28 @@ class LibraryTest extends TestCaseSymconValidation
     {
         $this->validateLibrary(__DIR__ . '/..');
     }
-    public function testValidateDiscovery(): void
+    public function testValidateCloudIO(): void
     {
-        $this->validateModule(__DIR__ . '/../FritzBox Discovery');
-    }
-    public function testValidateIO(): void
-    {
-        $this->validateModule(__DIR__ . '/../FritzBox IO');
+        $this->validateModule(__DIR__ . '/../Xiaomi Cloud IO');
     }
     public function testValidateConfigurator(): void
     {
-        $this->validateModule(__DIR__ . '/../FritzBox Configurator');
+        $this->validateModule(__DIR__ . '/../Xiaomi Configurator');
     }
-    public function testValidateCallMonitor(): void
+    public function testValidateMiDevice(): void
     {
-        $this->validateModule(__DIR__ . '/../FritzBox Callmonitor');
+        $this->validateModule(__DIR__ . '/../Xiaomi Mi Device');
     }
-    public function testValidateDeviceInfo(): void
+    public function testValidateAqaraSplitter(): void
     {
-        $this->validateModule(__DIR__ . '/../FritzBox Device Info');
+        $this->validateModule(__DIR__ . '/../Xiaomi Aqara Splitter');
     }
-    public function testValidateDHCPServer(): void
+    public function testValidateAqaraConfigurator(): void
     {
-        $this->validateModule(__DIR__ . '/../FritzBox DHCP Server');
+        $this->validateModule(__DIR__ . '/../Xiaomi Aqara Configurator');
     }
-    public function testValidateDVBC(): void
+    public function testValidateAqaraDevice(): void
     {
-        $this->validateModule(__DIR__ . '/../FritzBox DVBC');
-    }
-    public function testValidateDynDNS(): void
-    {
-        $this->validateModule(__DIR__ . '/../FritzBox DynDNS');
-    }
-    public function testValidateFileShare(): void
-    {
-        $this->validateModule(__DIR__ . '/../FritzBox File Share');
-    }
-    public function testValidateFirmwareInfo(): void
-    {
-        $this->validateModule(__DIR__ . '/../FritzBox Firmware Info');
-    }
-    public function testValidateHomeautomation(): void
-    {
-        $this->validateModule(__DIR__ . '/../FritzBox Homeautomation');
-    }
-    public function testValidateHomeautomationConfigurator(): void
-    {
-        $this->validateModule(__DIR__ . '/../FritzBox Homeautomation Configurator');
-    }
-    public function testValidateHostFilter(): void
-    {
-        $this->validateModule(__DIR__ . '/../FritzBox Host Filter');
-    }
-    public function testValidateHosts(): void
-    {
-        $this->validateModule(__DIR__ . '/../FritzBox Hosts');
-    }
-    public function testValidateMyFritz(): void
-    {
-        $this->validateModule(__DIR__ . '/../FritzBox MyFritz');
-    }
-    public function testValidateNASStorage(): void
-    {
-        $this->validateModule(__DIR__ . '/../FritzBox NAS Storage');
-    }
-    public function testValidatePowerline(): void
-    {
-        $this->validateModule(__DIR__ . '/../FritzBox Powerline');
-    }
-    public function testValidateTelephony(): void
-    {
-        $this->validateModule(__DIR__ . '/../FritzBox Telephony');
-    }
-    public function testValidateTime(): void
-    {
-        $this->validateModule(__DIR__ . '/../FritzBox Time');
-    }
-    public function testValidateUPnPMediaServer(): void
-    {
-        $this->validateModule(__DIR__ . '/../FritzBox UPnP MediaServer');
-    }
-    public function testValidateWANCommonInterface(): void
-    {
-        $this->validateModule(__DIR__ . '/../FritzBox WAN Common Interface');
-    }
-    public function testValidateWANDSLLink(): void
-    {
-        $this->validateModule(__DIR__ . '/../FritzBox WAN DSL Link');
-    }
-    public function testValidateWANIPConnection(): void
-    {
-        $this->validateModule(__DIR__ . '/../FritzBox WAN IP Connection');
-    }
-    public function testValidateWANPhysicalInterface(): void
-    {
-        $this->validateModule(__DIR__ . '/../FritzBox WAN Physical Interface');
-    }
-    public function testValidateWANPortMapping(): void
-    {
-        $this->validateModule(__DIR__ . '/../FritzBox WAN PortMapping');
-    }
-    public function testValidateWebDavStorage(): void
-    {
-        $this->validateModule(__DIR__ . '/../FritzBox WebDav Storage');
-    }
-    public function testValidateWLAN(): void
-    {
-        $this->validateModule(__DIR__ . '/../FritzBox WLAN');
+        $this->validateModule(__DIR__ . '/../Xiaomi Aqara Device');
     }
 }

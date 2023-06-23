@@ -1,0 +1,16 @@
+{
+    "id": "{DF2248D9-FC17-4609-840D-BA52DBF9CEB6}",
+    "name": "Xiaomi Cloud IO",
+    "type": 5,
+    "vendor": "Xiaomi",
+    "aliases": [],
+    "parentRequirements": [],
+    "childRequirements": [
+        "{5F3A76AF-D01E-42A3-93A3-D4E5E9267E32}"
+    ],
+    "implemented": [
+        "{76F2BB7B-F2B9-47EA-88F7-FD357D2E49E1}"
+    ],
+    "prefix": "XIAOMI",
+    "url": "https://github.com/Nall-chan/Xiaomi"
+}

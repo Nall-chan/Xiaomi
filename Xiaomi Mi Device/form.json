@@ -1,5 +1,35 @@
 {
-    "elements": [],
+    "elements": [
+        {
+            "name": "Host",
+            "type": "ValidationTextBox",
+            "validate": "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))$|^$",
+            "caption": "Host"
+        },
+        {
+            "name": "DeviceId",
+            "type": "ValidationTextBox",
+            "validate": "^[0-9]{1,9}$",
+            "caption": "Device ID"
+        },
+        {
+            "name": "Token",
+            "type": "ValidationTextBox",
+            "validate": "^[0-9a-fA-F]{32}$",
+            "caption": "Token"
+        }
+    ],
     "actions": [],
-    "status": []
+    "status": [
+        {
+            "code": 201,
+            "icon": "error",
+            "caption": "Device Id oder Token is missing"
+        },
+        {
+            "code": 202,
+            "icon": "error",
+            "caption": "Error in handshake. Device offline?"
+        }
+    ]
 }
