@@ -10,14 +10,71 @@ namespace Xiaomi{
         const ReceiveFromCloud = '{5F3A76AF-D01E-42A3-93A3-D4E5E9267E32}';
         const SendToCloud = '{76F2BB7B-F2B9-47EA-88F7-FD357D2E49E1}';
     }
+    class Convert
+    {
+        public static function ToIPSVar(string $Format): int
+        {
+            switch ($Format) {
+                case 'bool':
+                    return VARIABLETYPE_BOOLEAN;
+                case 'uint8':
+                case 'uint16':
+                case 'uint32':
+                    return VARIABLETYPE_INTEGER;
+                case 'float':
+                case 'double':
+                    return VARIABLETYPE_FLOAT;
+            }
+            return VARIABLETYPE_STRING;
+        }
+        public static function getProfileName(string $Urn, string $Name): string
+        {
+            return 'XIAOMI.' . (explode(':', substr($Urn, strpos($Urn, ':' . $Name . ':') + strlen($Name) + 2))[0]);
+        }
+    }
 }
 
 namespace Xiaomi\Device{
     class Property
     {
         const Host = 'Host';
-        const DeviceId = 'DeviceId';
+        const Model = 'Model';
         const Token = 'Token';
+    }
+    class Attribute
+    {
+        const DeviceId = 'DeviceId';
+        const Specs = 'Specs';
+        const ModelName = 'ModelName';
+    }
+    class InstanceStatus
+    {
+        const ConfigError = IS_EBASE + 1;
+        const HandshakeError = IS_EBASE + 2;
+        const ModelUnknown = IS_EBASE + 3;
+    }
+    class ApiMethod
+    {
+        const Info = 'miIO.info';
+        const GetProps = 'get_properties';
+        const SetProps = 'set_properties';
+    }
+    class ApiError
+    {
+        public static $CodeToText = [
+            -4001  => 'Unreadable attribute',
+            -4002  => 'Attribute is not writable',
+            -4003  => 'Properties, methods, events do not exist',
+            -4004  => 'Other internal errors',
+            -4005  => 'Attribute value error',
+            -4006  => 'Method in parameter error',
+            -4007  => 'did error',
+            -9999  => 'user ack timeout'
+        ];
+    }
+    class SpecUrls
+    {
+        const Device = 'https://home.miot-spec.com/spec/';
     }
 }
 
@@ -161,8 +218,7 @@ namespace Xiaomi\Cloud{
         public static function FromJson(string $JSONString): array
         {
             $Data = json_decode($JSONString, true);
-            unset($Data[self::GUID]);
-            return $Data;
+            return [$Data[self::Uri], $Data[self::Params]];
         }
     }
 }

@@ -7,10 +7,9 @@
             "caption": "Host"
         },
         {
-            "name": "DeviceId",
+            "name": "Model",
             "type": "ValidationTextBox",
-            "validate": "^[0-9]{1,9}$",
-            "caption": "Device ID"
+            "caption": "Model"
         },
         {
             "name": "Token",
@@ -19,17 +18,31 @@
             "caption": "Token"
         }
     ],
-    "actions": [],
+    "actions": [
+        {
+            "onClick": "XIAOMI_RequestState($id);",
+            "type": "Button",
+            "caption": "Request state"
+        },
+        {
+            "type": "TestCenter"
+        }
+    ],
     "status": [
         {
             "code": 201,
             "icon": "error",
-            "caption": "Device Id oder Token is missing"
+            "caption": "model or token is missing"
         },
         {
             "code": 202,
             "icon": "error",
             "caption": "Error in handshake. Device offline?"
+        },
+        {
+            "code": 203,
+            "icon": "error",
+            "caption": "Devicemodel unknown"
         }
     ]
 }

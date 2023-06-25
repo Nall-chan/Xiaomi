@@ -1,38 +1,6 @@
 {
     "actions": [
         {
-            "type": "ExpansionPanel",
-            "caption": "Credentials",
-            "expanded": true,
-            "items": [
-                {
-                    "type": "RowLayout",
-                    "items": [
-                        {
-                            "name": "Username",
-                            "type": "ValidationTextBox",
-                            "caption": "Username"
-                        },
-                        {
-                            "name": "Password",
-                            "type": "PasswordTextBox",
-                            "caption": "Password"
-                        },
-                        {
-                            "name": "Country",
-                            "type": "ValidationTextBox",
-                            "caption": "Country"
-                        },
-                        {
-                            "onClick": "IPS_RequestAction($id,'Save',urlencode($Username).':'.urlencode($Password).':'.urlencode($Country));",
-                            "type": "Button",
-                            "caption": "Save & Reload"
-                        }
-                    ]
-                }
-            ]
-        },
-        {
             "type": "Configurator",
             "name": "Devices",
             "discoveryInterval": 900,

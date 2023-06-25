@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 eval('declare(strict_types=1);namespace XiaomiCloudIO {?>' . file_get_contents(__DIR__ . '/../libs/helper/DebugHelper.php') . '}');
 eval('declare(strict_types=1);namespace XiaomiCloudIO {?>' . file_get_contents(__DIR__ . '/../libs/helper/BufferHelper.php') . '}');
-require_once dirname(__DIR__) . '/libs/XiaomiConsts.php.php';
+require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
 /**
  * @method bool SendDebug(string $Message, mixed $Data, int $Format)
  * @property string $SSecurity
@@ -217,7 +217,7 @@ class XiaomiCloudIO extends IPSModule
 
     private function UpdateServiceToken(): bool
     {
-        if ($this->ReadPropertyString(\Xiaomi\Cloud\Property::Username) !== '') {
+        if ($this->ReadPropertyString(\Xiaomi\Cloud\Property::Username) == '') {
             $this->SetStatus(IS_INACTIVE);
             return false;
         }
@@ -341,7 +341,7 @@ class XiaomiCloudIO extends IPSModule
             return false;
         }
         $this->SSecurity = $Data['ssecurity'];
-        $this->UserId = $Data['userId'];
+        $this->UserId = (string) $Data['userId'];
         $this->Location = $Data['location'];
         return true;
     }

@@ -4,9 +4,13 @@
     "type": 4,
     "vendor": "Xiaomi",
     "aliases": [],
-    "parentRequirements": [],
+    "parentRequirements": [
+        "{76F2BB7B-F2B9-47EA-88F7-FD357D2E49E1}"
+    ],
     "childRequirements": [],
-    "implemented": [],
+    "implemented": [
+        "{5F3A76AF-D01E-42A3-93A3-D4E5E9267E32}"
+    ],
     "prefix": "XIAOMI",
     "url": "https://github.com/Nall-chan/Xiaomi"
 }
