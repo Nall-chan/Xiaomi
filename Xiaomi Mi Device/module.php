@@ -356,7 +356,7 @@ class XiaomiMiDevice extends IPSModule
         // Fähigkeiten neu laden
         // result:"model": "dmaker.fan.p18"
         // laden Von https://home.miot-spec.com/spec/
-        $Data = Sys_GetURLContent(\Xiaomi\Device\SpecUrls::Device . $Result['model']);
+        $Data = @Sys_GetURLContentEx(\Xiaomi\Device\SpecUrls::Device . $Result['model'], ['Timeout'=>15000]);
         if (!$Data) {
             $this->SendDebug('ERROR load SpecsDom', \Xiaomi\Device\SpecUrls::Device . $Result['model'], 0);
             return false;
