@@ -141,8 +141,9 @@ class XiaomiCloudIO extends IPSModule
         $Result = $this->Request($Uri, $Params);
         return is_null($Result) ? '' : $Result;
     }
-    public function Request(string $Path, array $Params): ?string
+    public function Request(string $Path, string $ParamsString): ?string
     {
+        $Params['data'] = $ParamsString;
         $Url = \Xiaomi\Cloud\ApiUrl::GetApiUrl($this->ReadPropertyString(\Xiaomi\Cloud\Property::Country), $Path);
         $Nonce = $this->GenerateNonce();
         $SignedNonce = $this->SignedNonce($Nonce);

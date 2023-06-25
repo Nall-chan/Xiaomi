@@ -206,7 +206,7 @@ namespace Xiaomi\Cloud{
         const Uri = 'Uri';
         const Params = 'Params';
 
-        public static function ToJson(string $Uri, array $Params = []): string
+        public static function ToJson(string $Uri, string $Params = ''): string
         {
             return json_encode(
                 [

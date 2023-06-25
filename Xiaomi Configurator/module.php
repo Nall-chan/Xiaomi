@@ -101,7 +101,7 @@ class XiaomiConfigurator extends IPSModule
     public function GetDevices(): array
     {
         $this->SendDebug(__FUNCTION__, \Xiaomi\Cloud\ApiUrl::Device_List, 0);
-        $Request['data'] = json_encode([
+        $Request= json_encode([
             'getVirtualModel'   => true,
             'getHuamiDevices'   => 1,
             'get_split_device'  => true,
@@ -120,7 +120,7 @@ class XiaomiConfigurator extends IPSModule
         $item1 = IPS_GetProperty($InstanceID, $ConfigParam);
     }
 
-    private function Request(string $Uri, array $Params): ?string
+    private function Request(string $Uri, string $Params): ?string
     {
         $Result = $this->SendDataToParent(\Xiaomi\Cloud\ForwardData::ToJson($Uri, $Params));
         return ($Result == '') ? null : $Result;

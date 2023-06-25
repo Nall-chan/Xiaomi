@@ -16,6 +16,13 @@
             "type": "ValidationTextBox",
             "validate": "^[0-9a-fA-F]{32}$",
             "caption": "Token"
+        },
+        {
+            "name": "RefreshInterval",
+            "type": "NumberSpinner",
+            "caption": "Refresh Interval",
+            "suffix": "seconds",
+            "minimum": 0
         }
     ],
     "actions": [

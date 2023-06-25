@@ -49,6 +49,8 @@ class XiaomiMiDevice extends IPSModule
         $this->RegisterAttributeString(\Xiaomi\Device\Attribute::DeviceId, '');
         $this->RegisterAttributeString(\Xiaomi\Device\Attribute::Specs, '');
         $this->RegisterAttributeArray(\Xiaomi\Device\Attribute::ModelName, '');
+        $this->RegisterPropertyInteger('RefreshInterval', 60);
+        $this->RegisterTimer('RefreshState', 0, 'IPS_RequestAction(' . $this->InstanceID . ',"RefreshState",true);');
     }
 
     public function Destroy()
@@ -59,6 +61,7 @@ class XiaomiMiDevice extends IPSModule
 
     public function ApplyChanges()
     {
+        $this->SetTimerInterval('RefreshState', 0);
         $this->TokenKey = '';
         $this->TokenIV = '';
         $this->ServerStamp = 0;
@@ -98,6 +101,7 @@ class XiaomiMiDevice extends IPSModule
         $this->CreateStateVariables();
         $this->SetStatus(IS_ACTIVE);
         $this->RequestState();
+        $this->SetTimerInterval('RefreshState', $this->ReadPropertyInteger('RefreshInterval') * 1000);
     }
 
     public function Send(string $Method, array $Prams = []): ?array
@@ -133,7 +137,19 @@ class XiaomiMiDevice extends IPSModule
     }*/
     public function RequestAction($Ident, $Value)
     {
-        $this->WriteValue($Ident, $Value);
+        switch ($Ident) {
+            case 'RefreshState':
+                $this->RequestState();
+                return;
+            default:
+            //todo prüfen ob in Specs
+            if (true) {
+                $this->WriteValue($Ident, $Value);
+                return;
+            }
+            break;
+        }
+        trigger_error('invalid Ident', E_USER_NOTICE);
     }
     public function RequestState(): bool
     {
@@ -144,6 +160,7 @@ class XiaomiMiDevice extends IPSModule
             return false;
         }
         foreach ($Result as $Value) {
+            $this->SendDebug((string) $Value['siid'] . '_' . (string) $Value['piid'], $Value['value'], 0);
             $this->SetValue((string) $Value['siid'] . '_' . (string) $Value['piid'], $Value['value']);
         }
         return true;
@@ -331,8 +348,12 @@ class XiaomiMiDevice extends IPSModule
                 return [];
             }
             $this->SendDebug('Receive', $JSONResult, 0);
-            //todo check for error
-            return json_decode(trim($JSONResult), true)['result'];
+            $Result = json_decode(trim($JSONResult), true);
+            if (array_key_exists('error', $Result)) {
+                trigger_error('Error: '.$Result['error']['code'].PHP_EOL.$Result['error']['message'], E_USER_NOTICE);
+                return null;
+            }
+            return $Result['result'];
         }
         $this->SendDebug('Receive Timeout', '', 0);
         return null;
