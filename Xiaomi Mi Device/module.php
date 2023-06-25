@@ -103,12 +103,12 @@ class XiaomiMiDevice extends IPSModule
     public function Send(string $Method, array $Prams = []): ?array
     {
         $Payload = json_encode(
-             [
-                 'id'    => time(),
-                 'method'=> $Method,
-                 'params'=> $Prams
-             ]
-         );
+            [
+                'id'    => time(),
+                'method'=> $Method,
+                'params'=> $Prams
+            ]
+        );
         $this->SendDebug('Send', $Payload, 0);
         $Data = $this->EncryptMessage($Payload);
         return $this->SocketSend($Data);
@@ -137,8 +137,10 @@ class XiaomiMiDevice extends IPSModule
     }
     public function RequestState(): bool
     {
-        $Result = $this->Send(\Xiaomi\Device\ApiMethod::GetProps, $this->GetPropParams());
+        $Result = $this->Send(\Xiaomi\Device\ApiMethod::GetProperties, $this->GetPropertiesParams());
         if (is_null($Result)) {
+            //$Result = $this->Send(\Xiaomi\Device\ApiMethod::GetProps, $this->GetPropsParams());
+
             return false;
         }
         foreach ($Result as $Value) {
@@ -172,7 +174,7 @@ class XiaomiMiDevice extends IPSModule
             'piid' => (int) $Piid,
             'value'=> $Value
         ];
-        $Result = $this->Send(\Xiaomi\Device\ApiMethod::SetProps, $Params);
+        $Result = $this->Send(\Xiaomi\Device\ApiMethod::SetProperties, $Params);
         if (is_null($Result)) {
             return false;
         }
@@ -183,7 +185,27 @@ class XiaomiMiDevice extends IPSModule
         $this->SetValue($Ident, $Value);
         return true;
     }
-    private function GetPropParams()
+    private function GetPropsParams()
+    {
+        $PropList = [];
+        $Specs = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::Specs);
+        foreach ($Specs['services'] as $Service) {
+            if ($Service['type'] != 'service') {
+                continue;
+            }
+            if (!array_key_exists('properties', $Service)) {
+                continue;
+            }
+            foreach ($Service['properties'] as $Property) {
+                if (!in_array('read', $Property['access'])) {
+                    continue;
+                }
+                $PropList[] = $Property['prop'];
+            }
+        }
+        return $PropList;
+    }
+    private function GetPropertiesParams()
     {
         $PropList = [];
         $Specs = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::Specs);
@@ -435,11 +457,11 @@ class XiaomiMiDevice extends IPSModule
             return '';
         }
         $calcChecksum = md5(
-             substr($msg, 0, 16) .
+            substr($msg, 0, 16) .
             hex2bin($this->ReadPropertyString(\Xiaomi\Device\Property::Token)) .
             $encryptedMsg,
-             true
-         );
+            true
+        );
 
         if ($calcChecksum != $recvChecksum) {
             $this->SendDebug('Error in checksum', 'Received: ' . bin2hex($recvChecksum) . ' Calc: ' . bin2hex($calcChecksum), 0);

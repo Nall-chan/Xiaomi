@@ -29,7 +29,7 @@ namespace Xiaomi{
         }
         public static function getProfileName(string $Urn, string $Name): string
         {
-            return 'XIAOMI.' . (explode(':', substr($Urn, strpos($Urn, ':' . $Name . ':') + strlen($Name) + 2))[0]);
+            return 'XIAOMI.' . $Name . '.' . (explode(':', substr($Urn, strpos($Urn, ':' . $Name . ':') + strlen($Name) + 2))[0]);
         }
     }
 }
@@ -56,8 +56,9 @@ namespace Xiaomi\Device{
     class ApiMethod
     {
         const Info = 'miIO.info';
-        const GetProps = 'get_properties';
-        const SetProps = 'set_properties';
+        const GetProperties = 'get_properties';
+        const GetProps = 'get_prop';
+        const SetProperties = 'set_properties';
     }
     class ApiError
     {
