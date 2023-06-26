@@ -44,11 +44,12 @@ class XiaomiMiDevice extends IPSModule
         parent::Create();
 
         $this->RegisterPropertyString(\Xiaomi\Device\Property::Host, '');
-        $this->RegisterAttributeString(\Xiaomi\Device\Attribute::Model, '');
         $this->RegisterAttributeString(\Xiaomi\Device\Attribute::Token, '');
         $this->RegisterAttributeString(\Xiaomi\Device\Attribute::DeviceId, '');
         $this->RegisterAttributeArray(\Xiaomi\Device\Attribute::Specs, []);
-        $this->RegisterAttributeString(\Xiaomi\Device\Attribute::ModelName, '');
+        $this->RegisterAttributeString(\Xiaomi\Device\Attribute::ProductName, '');
+        $this->RegisterAttributeArray(\Xiaomi\Device\Attribute::Info, []);
+        $this->RegisterAttributeString(\Xiaomi\Device\Attribute::Icon, '');
         $this->RegisterAttributeArray(\Xiaomi\Device\Attribute::Locales, []);
         $this->RegisterAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, false);
         $this->RegisterPropertyInteger('RefreshInterval', 60);
@@ -181,6 +182,9 @@ class XiaomiMiDevice extends IPSModule
             return false;
         }
         foreach ($Result as $Value) {
+            if (!array_key_exists('value', $Value)) {
+                continue;
+            }
             $this->SendDebug((string) $Value['siid'] . '_' . (string) $Value['piid'], $Value['value'], 0);
             $this->SetValue(\Xiaomi\IdentPrefix::Property . '_' . (string) $Value['siid'] . '_' . (string) $Value['piid'], $Value['value']);
         }
@@ -201,6 +205,57 @@ class XiaomiMiDevice extends IPSModule
     public function WriteValueString(string $Ident, string $Value): bool
     {
         return $this->WriteValue($Ident, $Value);
+    }
+    public function GetConfigurationForm()
+    {
+        $Form = json_decode(file_get_contents(__DIR__ . '/form.json'), true);
+        if ($this->GetStatus() == IS_CREATING) {
+            return json_encode($Form);
+        }
+        $Icon = $this->ReadAttributeString(\Xiaomi\Device\Attribute::Icon);
+        if ($Icon) {
+            $Icon = 'data:image/png;base64, ' . $Icon;
+        }
+        $Form['elements'][0]['items'][1]['image'] = $Icon;
+        $Info = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::Info);
+        $Form['actions'][0]['items'][1]['items'] = [
+            [
+                'width'     => '400px',
+                'type'      => 'Label',
+                'caption'   => 'Names: ' . $this->ReadAttributeString(\Xiaomi\Device\Attribute::ProductName)
+            ],
+            [
+                'type'      => 'Label',
+                'link'=>false,
+                'caption'   => 'Model: ' . $Info['model']
+            ],
+            [
+                'type'      => 'Label',
+                'caption'   => 'Token: ' . $this->ReadAttributeString(\Xiaomi\Device\Attribute::Token)
+            ],
+            [
+                'type'      => 'Label',
+                'caption'   => 'miio version: ' . (isset($Info['miio_ver']) ? $Info['miio_ver'] :'')
+            ],            [
+                'type'      => 'Label',
+                'caption'   => 'Firmware: ' . (isset($Info['fw_ver'])?$Info['fw_ver']:'')
+            ],
+            [
+                'type'      => 'Label',
+                'caption'   => 'Hardware: ' . (isset($Info['hw_ver'])? $Info['hw_ver']:'')
+            ],
+            [
+                'type'      => 'Label',
+                'caption'   => 'MAC: ' . (isset($Info['mac'])? $Info['mac']:'')
+            ],
+            [
+                'type'      => 'Label',
+                'caption'   => 'Infosite: ' . \Xiaomi\Device\SpecUrls::Device . $Info['model']
+            ]
+        ];
+        $this->SendDebug('FORM', json_encode($Form), 0);
+        $this->SendDebug('FORM', json_last_error_msg(), 0);
+        return json_encode($Form);
     }
     private function SendCloud(string $Uri, string $Params): ?array
     {
@@ -433,6 +488,10 @@ class XiaomiMiDevice extends IPSModule
                 }
                 return null;
             }
+            if (array_key_exists('params', $Result)) {
+                $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, true);
+                return null;
+            }
             return $Result['result'];
         }
         $this->SendDebug('Receive Timeout', '', 0);
@@ -452,6 +511,7 @@ class XiaomiMiDevice extends IPSModule
             $this->SendDebug('Error get model', '', 0);
             return false;
         }
+        $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Info, $Result);
         $this->SendDebug('Model loaded', $Result['model'], 0);
         // Wenn model nicht geändert alles okay
 
@@ -479,9 +539,18 @@ class XiaomiMiDevice extends IPSModule
         $JsonSpecs = $AppDataNodes->item(0)->attributes->getNamedItem('data-page')->nodeValue;
         $Specs = json_decode($JsonSpecs, true);
         // services/property in AttributeArray schreiben
+        $IconURLs = array_intersect_key($Specs['props']['product'], array_flip(['icon_real', 'icon_on', 'icon_off']));
+        foreach ($IconURLs as $IconURL) {
+            if ($IconURL) {
+                $IconRaw = @Sys_GetURLContentEx($IconURL, ['Timeout'=>5000]);
+                $this->WriteAttributeString(\Xiaomi\Device\Attribute::Icon, base64_encode($IconRaw));
+                break;
+            }
+        }
+
         $this->SendDebug('Model name', $Specs['props']['product']['name'], 0);
         $this->SendDebug('Model specs', $Specs['props']['spec'], 0);
-        $this->WriteAttributeString(\Xiaomi\Device\Attribute::ModelName, $Specs['props']['product']['name']);
+        $this->WriteAttributeString(\Xiaomi\Device\Attribute::ProductName, implode("\r\n", $Specs['props']['product']['names']));
         $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Specs, $Specs['props']['spec']);
         $this->loadLocale($Specs['props']['spec']['urn']);
         $this->Model = $Result['model'];
@@ -503,16 +572,20 @@ class XiaomiMiDevice extends IPSModule
     }
     private function loadLocale(string $Urn)
     {
+        $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Locales, []);
         $locale = explode('_', IPS_GetSystemLanguage())[0];
+        $this->SendDebug(__FUNCTION__, \Xiaomi\Device\SpecUrls::Locales . $Urn, 0);
         $Data = @Sys_GetURLContent(\Xiaomi\Device\SpecUrls::Locales . $Urn);
         if (!$Data) {
             return false;
         }
         $Data = json_decode($Data, true)['data'];
+        if (!count($Data)) { //empty
+            return false;
+        }
         if (!array_key_exists($locale, $Data)) {
             $locale = 'en';
         }
-        $Data[$locale];
         $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Locales, $Data[$locale]);
         return true;
     }

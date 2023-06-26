@@ -90,11 +90,12 @@ namespace Xiaomi\Device{
     {
         const DeviceId = 'DeviceId';
         const Specs = 'Specs';
-        const ModelName = 'ModelName';
+        const ProductName = 'ModelName';
         const Locales = 'Locales';
         const useCloud = 'useCloud';
-        const Model = 'Model';
+        const Info = 'Info';
         const Token = 'Token';
+        const Icon = 'Icon';
     }
     class InstanceStatus
     {

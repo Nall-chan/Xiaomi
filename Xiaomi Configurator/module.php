@@ -49,7 +49,7 @@ class XiaomiConfigurator extends IPSModule
             }
             //todo -> for now we skip all Gateways...
             if (strpos($Device['spec_type'], 'urn:miot-spec-v2:device:gateway') === 0) {
-                continue;
+                //continue;
             }
             //todo -> Checkbox in Actions für on/offline
             if (!$Device['isOnline']) {

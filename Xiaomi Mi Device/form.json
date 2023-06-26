@@ -1,32 +1,71 @@
 {
     "elements": [
         {
-            "name": "Host",
-            "type": "ValidationTextBox",
-            "validate": "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))$|^$",
-            "caption": "Host"
-        },
-        {
-            "name": "RefreshInterval",
-            "type": "NumberSpinner",
-            "caption": "Refresh Interval",
-            "suffix": "seconds",
-            "minimum": 0
+            "type": "RowLayout",
+            "items": [
+                {
+                    "type": "ColumnLayout",
+                    "items": [
+                        {
+                            "name": "Host",
+                            "type": "ValidationTextBox",
+                            "validate": "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))$|^$",
+                            "caption": "Host"
+                        },
+                        {
+                            "name": "RefreshInterval",
+                            "type": "NumberSpinner",
+                            "caption": "Refresh Interval",
+                            "suffix": "seconds",
+                            "minimum": 0
+                        }
+                    ]
+                },
+                {
+                    "type": "Image",
+                    "image": ""
+                }
+            ]
         }
     ],
     "actions": [
         {
-            "onClick": "XIAOMI_RequestState($id);",
-            "type": "Button",
-            "caption": "Request state"
+            "type": "RowLayout",
+            "items": [
+                {
+                    "type": "ColumnLayout",
+                    "items": [
+                        {
+                            "onClick": "XIAOMI_RequestState($id);",
+                            "type": "Button",
+                            "caption": "Request state"
+                        },
+                        {
+                            "onClick": "IPS_RequestAction($id, 'ForceReloadModel', true);",
+                            "type": "Button",
+                            "caption": "Reload Devicedata"
+                        }
+                    ]
+                },
+                {
+                    "type": "ExpansionPanel",
+                    "name": "DeviceInfo",
+                    "expanded": true,
+                    "caption": "Device information",
+                    "items": []
+                }
+            ]
         },
         {
-            "onClick": "IPS_RequestAction($id, 'ForceReloadModel', true);",
-            "type": "Button",
-            "caption": "Reload Devicedata"
-        },
-        {
-            "type": "TestCenter"
+            "type": "ExpansionPanel",
+            "name": "TestCenter",
+            "expanded": true,
+            "caption": "TestCenter",
+            "items": [
+                {
+                    "type": "TestCenter"
+                }
+            ]
         }
     ],
     "status": [
