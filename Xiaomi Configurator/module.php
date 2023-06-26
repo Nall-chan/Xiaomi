@@ -74,9 +74,7 @@ class XiaomiConfigurator extends IPSModule
                 'moduleID'      => \Xiaomi\GUID::MiDevice,
                 'location'      => [$this->Translate('Mi Home Devices')],
                 'configuration' => [
-                    \Xiaomi\Device\Property::Host     => $Device['localip'],
-                    \Xiaomi\Device\Property::Model    => $Device['model'],
-                    \Xiaomi\Device\Property::Token    => $Device['token'],
+                    \Xiaomi\Device\Property::Host     => $Device['localip']
                 ]
 
             ];
@@ -101,7 +99,7 @@ class XiaomiConfigurator extends IPSModule
     public function GetDevices(): array
     {
         $this->SendDebug(__FUNCTION__, \Xiaomi\Cloud\ApiUrl::Device_List, 0);
-        $Request= json_encode([
+        $Request = json_encode([
             'getVirtualModel'   => true,
             'getHuamiDevices'   => 1,
             'get_split_device'  => true,

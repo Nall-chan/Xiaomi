@@ -20,7 +20,10 @@ namespace Xiaomi{
                 case 'uint8':
                 case 'uint16':
                 case 'uint32':
-                    return VARIABLETYPE_INTEGER;
+                case 'int8':
+                case 'int16':
+                case 'int32':
+                            return VARIABLETYPE_INTEGER;
                 case 'float':
                 case 'double':
                     return VARIABLETYPE_FLOAT;
@@ -29,8 +32,52 @@ namespace Xiaomi{
         }
         public static function getProfileName(string $Urn, string $Name): string
         {
-            return 'XIAOMI.' . $Name . '.' . (explode(':', substr($Urn, strpos($Urn, ':' . $Name . ':') + strlen($Name) + 2))[0]);
+            $Parts = explode(':', substr($Urn, strpos($Urn, ':' . $Name . ':') + strlen($Name) + 2));
+            return 'XIAOMI.' . $Name . '.' . $Parts[0] . '.' . $Parts[1];
         }
+    }
+    class Translate
+    {
+        public static function getLocaleName(string $Name): string
+        {
+            $Locale = explode('_', IPS_GetSystemLanguage())[0];
+            $Names = json_decode(file_get_contents(__DIR__ . '/card_default.json'), true)['names'];
+            if (array_key_exists($Name, $Names)) {
+                if (array_key_exists($Locale, $Names[$Name])) {
+                    return $Names[$Name][$Locale];
+                }
+            }
+            $Columns = array_column($Names, $Locale, 'en');
+            //echo  $Name;
+            //var_dump($Key);
+            if (array_key_exists($Name, $Columns)) {
+                return $Columns[$Name];
+            }
+            return $Name;
+        }
+        public static function getLocaleUnit(string $Unit): string
+        {
+            $Locale = explode('_', IPS_GetSystemLanguage())[0];
+            $All = json_decode(file_get_contents(__DIR__ . '/card_default.json'), true);
+            $ComplexUnits = array_column($All['complex_units'], 'name', 'key');
+            if (array_key_exists($Unit, $ComplexUnits)) {
+                if (array_key_exists($Locale, $ComplexUnits[$Unit])) {
+                    return $ComplexUnits[$Unit][$Unit][$Locale];
+                }
+            }
+            if (array_key_exists($Unit, $All['units'])) {
+                if (array_key_exists($Locale, $All['units'][$Unit]['name'])) {
+                    return $All['units'][$Unit]['name'][$Locale];
+                }
+            }
+            return $Unit;
+        }
+    }
+    class IdentPrefix
+    {
+        const Property = 'P';
+        const Event = 'E';
+        const Action = 'A';
     }
 }
 
@@ -38,14 +85,16 @@ namespace Xiaomi\Device{
     class Property
     {
         const Host = 'Host';
-        const Model = 'Model';
-        const Token = 'Token';
     }
     class Attribute
     {
         const DeviceId = 'DeviceId';
         const Specs = 'Specs';
         const ModelName = 'ModelName';
+        const Locales = 'Locales';
+        const useCloud = 'useCloud';
+        const Model = 'Model';
+        const Token = 'Token';
     }
     class InstanceStatus
     {
@@ -76,6 +125,7 @@ namespace Xiaomi\Device{
     class SpecUrls
     {
         const Device = 'https://home.miot-spec.com/spec/';
+        const Locales = 'https://miot-spec.org/instance/v2/multiLanguage?urn=';
     }
 }
 
@@ -98,10 +148,19 @@ namespace Xiaomi\Cloud{
         const Login = 'https://account.xiaomi.com/pass/serviceLoginAuth2';
         const Domain = 'api.io.mi.com/app';
         const Device_List = '/v2/home/device_list_page';
+        const GetProperties = '/miotspec/prop/get';
+        const SetProperties = '/miotspec/prop/set';
+
         public static function GetApiUrl(string $Country, string $Path): string
         {
             return 'https://' . (($Country === 'cn') ? '' : $Country . '.') . self::Domain . $Path;
         }
+    }
+    class ApiError
+    {
+        public static $CodeToText = [
+            -4  => 'Device offline'
+        ];
     }
     class ApiHeader
     {

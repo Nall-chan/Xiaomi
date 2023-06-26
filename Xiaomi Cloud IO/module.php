@@ -162,12 +162,12 @@ class XiaomiCloudIO extends IPSModule
             $this->UserId,
             $this->ServiceToken
         );
-
+        $this->SendDebug('Cloud Cookie', $Cookie, 0);
         $Headers = \Xiaomi\Cloud\ApiHeader::getApiHeader(
             $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::AgentID),
             $Cookie
         );
-
+        $this->SendDebug('Cloud Headers', implode('|', $Headers), 0);
         $ch = curl_init($Url);
         curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
         curl_setopt($ch, CURLOPT_POST, true);
