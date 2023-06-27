@@ -75,38 +75,32 @@ class XiaomiMiDevice extends IPSModule
         parent::ApplyChanges();
         // Anzeige IP in der INFO Spalte
         $this->SetSummary($this->ReadPropertyString(\Xiaomi\Device\Property::Host));
+        // Noch keine Events, somit kein Filter
+        //$this->SetReceiveDataFilter('.*"ClientIP":"".*');
         if (IPS_GetKernelRunlevel() != KR_READY) {
             return;
         }
-        if (!$this->ReadPropertyBoolean(\Xiaomi\Device\Property::Active)) {
+        if ((!$this->ReadPropertyBoolean(\Xiaomi\Device\Property::Active)) || (!$this->ReadPropertyString(\Xiaomi\Device\Property::Host))) {
             $this->SetStatus(IS_INACTIVE);
             return;
         }
+        if (!$this->ReadPropertyString(\Xiaomi\Device\Property::DeviceId)) {
+            $this->SetStatus(\Xiaomi\Device\InstanceStatus::ConfigError);
+            return;
+        }
+        //$isOnlineInCloud=false;
         if (!$this->ReadAttributeString(\Xiaomi\Device\Attribute::Token)) {
-            $this->ConnectParent(\Xiaomi\GUID::CloudIO);
+            // Kein Token -> Token aus Cloud holen.
             if (!$this->GetToken()) {
-                // Noch keine Events, somit kein Filter
-                //$this->SetReceiveDataFilter('.*"ClientIP":"".*');
-                $this->SetStatus(\Xiaomi\Device\InstanceStatus::ConfigError);
+                $this->SetStatus(\Xiaomi\Device\InstanceStatus::GetTokenFailed);
                 return;
             }
-            if (!$this->SendHandshake()) { //online in cloud aber handshake fehlt oder did falsch
-                $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, true);
-                //$this->SetStatus(\Xiaomi\Device\InstanceStatus::HandshakeError);
-                //return;
-            }
-        } else {
-            // Noch keine Events, somit kein Filter
-            //$this->SetReceiveDataFilter('.*"ClientIP":"' . $this->ReadPropertyString(\Xiaomi\Device\Property::Host) . '".*');
-            //$this->WriteAttributeString(\Xiaomi\Device\Attribute::DeviceId, '');
-            if (!$this->SendHandshake()) { //token bekannt, aber lokal nicht erreichbar  oder did falsch
-                if ($this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud)) { // und gerät auch in der Cloud offline
-                    $this->SetStatus(\Xiaomi\Device\InstanceStatus::HandshakeError);
-                    return;
-                }
-            }
         }
-
+        if (!$this->SendHandshake()) {
+            return;
+        }
+        // Noch keine Events, somit kein Filter
+        //$this->SetReceiveDataFilter('.*"ClientIP":"' . $this->ReadPropertyString(\Xiaomi\Device\Property::Host) . '".*');
         $token = hex2bin($this->ReadAttributeString(\Xiaomi\Device\Attribute::Token));
         $this->TokenKey = md5($token, true);
         $this->TokenIV = md5($this->TokenKey . $token, true);
@@ -115,7 +109,7 @@ class XiaomiMiDevice extends IPSModule
         $this->SendDebug('IV', $this->TokenIV, 1);
         // Info Paket abholen mit model
         if (!$this->GetModelData()) {
-            $this->SetStatus(\Xiaomi\Device\InstanceStatus::ModelUnknown);
+            $this->SetStatus(\Xiaomi\Device\InstanceStatus::GetSpecsFailed);
             return;
         }
         $this->CreateStateVariables();
@@ -302,7 +296,7 @@ class XiaomiMiDevice extends IPSModule
         }
         return $Result['result'];
     }
-    private function WriteValue(string $Ident, mixed $Value): bool
+    private function WriteValue(string $Ident, $Value): bool
     {
         list($Type, $Siid, $Piid) = explode('_', $Ident);
         if ($Type != \Xiaomi\IdentPrefix::Property) {
@@ -338,6 +332,7 @@ class XiaomiMiDevice extends IPSModule
     }
     private function GetToken(): bool
     {
+        $this->ConnectParent(\Xiaomi\GUID::CloudIO);
         $this->SendDebug(__FUNCTION__, '', 0);
         $Params = json_encode(
             [
@@ -476,7 +471,7 @@ class XiaomiMiDevice extends IPSModule
             }
         }
     }
-    private function SocketSend(string $Data): ?array
+    private function SocketSend(string $Data, int &$State = IS_ACTIVE): ?array
     {
         if ($this->Socket) {
             $this->SendDebug('Socket', 'already created', 0);
@@ -487,12 +482,14 @@ class XiaomiMiDevice extends IPSModule
                 $ErrorCode = socket_last_error();
                 $ErrorMsg = socket_strerror($ErrorCode);
                 $this->SendDebug('Socket Error', $ErrorCode . ' message: ' . $ErrorMsg, 0);
+                $State = \Xiaomi\Device\InstanceStatus::TimeoutError;
                 return null;
             }
             $this->SendDebug('Socket', 'created', 0);
         }
-        socket_set_option($this->Socket, SOL_SOCKET, SO_RCVTIMEO, ['sec' => 5, 'usec' => 0]);
+        socket_set_option($this->Socket, SOL_SOCKET, SO_RCVTIMEO, ['sec' => 7, 'usec' => 0]);
         if (!(@socket_sendto($this->Socket, $Data, strlen($Data), 0, $this->ReadPropertyString(\Xiaomi\Device\Property::Host), self::PORT_UDP))) {
+            $State = \Xiaomi\Device\InstanceStatus::TimeoutError;
             return null;
         }
         $Response = '';
@@ -500,8 +497,12 @@ class XiaomiMiDevice extends IPSModule
         $RemotePort = 0;
         if (($bytes = @socket_recvfrom($this->Socket, $Response, 4096, 0, $RemoteIp, $RemotePort)) !== false) {
             $this->SendDebug('Receive [' . $RemoteIp . ':' . (string) $RemotePort . ']', $Response, 1);
-            $JSONResult = $this->DecryptMessage($Response);
+            $DecodeError = 0;
+            $JSONResult = $this->DecryptMessage($Response, $DecodeError);
             if (is_null($JSONResult)) {
+                if ($DecodeError == \Xiaomi\Device\InstanceStatus::DidNotMatch) {
+                    $State = $DecodeError;
+                }
                 return null;
             }
             if ($JSONResult === '') { //handshake
@@ -515,6 +516,8 @@ class XiaomiMiDevice extends IPSModule
                     $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, true);
                 } else {
                     trigger_error('Error: ' . $Result['error']['code'] . PHP_EOL . $Result['error']['message'], E_USER_NOTICE);
+                    $this->$this->SetStatus(\Xiaomi\Device\InstanceStatus::ApiError);
+                    $State = \Xiaomi\Device\InstanceStatus::ApiError;
                 }
                 return null;
             }
@@ -525,6 +528,7 @@ class XiaomiMiDevice extends IPSModule
             return $Result['result'];
         }
         $this->SendDebug('Receive Timeout', '', 0);
+        $State = \Xiaomi\Device\InstanceStatus::TimeoutError;
         return null;
     }
     private function GetModelData(): bool
@@ -623,8 +627,17 @@ class XiaomiMiDevice extends IPSModule
     {
         $Data = hex2bin('21310020ffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
         $this->SendDebug('Send Handshake', $Data, 1);
-        $Result = $this->SocketSend($Data);
-        return is_array($Result);
+        $State = IS_ACTIVE;
+        $Result = $this->SocketSend($Data, $State);
+        if (is_null($Result)) {
+            if ($State == \Xiaomi\Device\InstanceStatus::DidNotMatch) {
+                $this->SetStatus(\Xiaomi\Device\InstanceStatus::DidNotMatch);
+            } else {
+                $this->SetStatus(\Xiaomi\Device\InstanceStatus::TimeoutError);
+            }
+            return false;
+        }
+        return true;
     }
 
     private function EncryptMessage(string $data): string
@@ -658,20 +671,23 @@ class XiaomiMiDevice extends IPSModule
         return $Payload;
     }
 
-    private function DecryptMessage(string $msg): ?string
+    private function DecryptMessage(string $msg, int &$DecodeError = 0): ?string
     {
         $Data = str_split($msg, 4);
         if (substr($Data[0], 0, 2) != "\x21\x31") {
             $this->SendDebug('Error on decrypt', 'header wrong', 0);
+            $DecodeError = \Xiaomi\Device\ApiError::PaketError;
             return null;
         }
         $len = unpack('n', $Data[0], 2)[1];
         if (strlen($msg) != $len) {
             $this->SendDebug('Error on decrypt', 'Paket should ' . $len . ' bytes', 0);
+            $DecodeError = \Xiaomi\Device\ApiError::PaketError;
             return null;
         }
         if (count($Data) < 8) {
             $this->SendDebug('Error on decrypt', 'Paket to short', 0);
+            $DecodeError = \Xiaomi\Device\ApiError::PaketError;
             return null;
         }
         $DeviceId = unpack('N', $Data[2])[1];
@@ -689,9 +705,10 @@ class XiaomiMiDevice extends IPSModule
 
         if (strlen($encryptedMsg) === 0) {           // handshake
 
-            if ($this->ReadPropertyString(\Xiaomi\Device\Property::DeviceId) == $DeviceId) {
+            if ($this->ReadPropertyString(\Xiaomi\Device\Property::DeviceId) == (string) $DeviceId) {
                 return '';
             }
+            $DecodeError = \Xiaomi\Device\InstanceStatus::DidNotMatch;
             return null;
         }
         $calcChecksum = md5(
@@ -703,6 +720,7 @@ class XiaomiMiDevice extends IPSModule
 
         if ($calcChecksum != $recvChecksum) {
             $this->SendDebug('Error in checksum', 'Received: ' . bin2hex($recvChecksum) . ' Calc: ' . bin2hex($calcChecksum), 0);
+            $DecodeError = \Xiaomi\Device\ApiError::ChecksumError;
             return null;
         }
         //Received: 5d62e8b9 Calc: 5d62e8b9f45fa97dbf53a654f13dc6a6

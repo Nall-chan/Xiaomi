@@ -87,17 +87,32 @@
         {
             "code": 201,
             "icon": "error",
-            "caption": "model or token is missing"
+            "caption": "Device ID is missing"
         },
         {
             "code": 202,
             "icon": "error",
-            "caption": "Error in handshake. Device offline?"
+            "caption": "Cloud not get token from cloud. Device online?"
         },
         {
             "code": 203,
             "icon": "error",
-            "caption": "Devicemodel unknown"
+            "caption": "API error, check log file for more information"
+        },
+        {
+            "code": 204,
+            "icon": "error",
+            "caption": "Error load device specs from cloud."
+        },
+        {
+            "code": 205,
+            "icon": "error",
+            "caption": "Device response with wrong ID."
+        },
+        {
+            "code": 206,
+            "icon": "error",
+            "caption": "Timeout or socket error, Device offline?"
         }
     ]
 }

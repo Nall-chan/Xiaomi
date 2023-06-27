@@ -101,8 +101,11 @@ namespace Xiaomi\Device{
     class InstanceStatus
     {
         const ConfigError = IS_EBASE + 1;
-        const HandshakeError = IS_EBASE + 2;
-        const ModelUnknown = IS_EBASE + 3;
+        const GetTokenFailed = IS_EBASE + 2;
+        const ApiError = IS_EBASE + 3;
+        const GetSpecsFailed = IS_EBASE + 4;
+        const DidNotMatch = IS_EBASE + 5;
+        const TimeoutError = IS_EBASE + 6;
     }
     class ApiMethod
     {
@@ -113,6 +116,8 @@ namespace Xiaomi\Device{
     }
     class ApiError
     {
+        const PaketError = 300;
+        const ChecksumError = 301;
         public static $CodeToText = [
             -4001  => 'Unreadable attribute',
             -4002  => 'Attribute is not writable',
