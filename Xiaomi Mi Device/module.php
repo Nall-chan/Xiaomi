@@ -82,6 +82,7 @@ class XiaomiMiDevice extends IPSModule
             $this->SetStatus(IS_INACTIVE);
         }
         if (!$this->ReadAttributeString(\Xiaomi\Device\Attribute::Token)) {
+            $this->ConnectParent(\Xiaomi\GUID::CloudIO);
             if (!$this->GetToken()) {
                 // Noch keine Events, somit kein Filter
                 //$this->SetReceiveDataFilter('.*"ClientIP":"".*');
@@ -90,7 +91,6 @@ class XiaomiMiDevice extends IPSModule
             }
             if (!$this->SendHandshake()) { //online in cloud aber handshake fehlt oder did falsch
                 $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, true);
-                $this->ConnectParent(\Xiaomi\GUID::CloudIO);
                 //$this->SetStatus(\Xiaomi\Device\InstanceStatus::HandshakeError);
                 //return;
             }
@@ -265,7 +265,7 @@ class XiaomiMiDevice extends IPSModule
             ],
             [
                 'type'      => 'Label',
-                'caption'   => 'Infosite: ' . \Xiaomi\Device\SpecUrls::Device . $Info['model']
+                'caption'   => 'Infosite: ' . (isset($Info['model']) ? \Xiaomi\Device\SpecUrls::Device . $Info['model'] : '')
             ],
             [
                 'type'      => 'Label',
