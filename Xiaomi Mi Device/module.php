@@ -80,6 +80,7 @@ class XiaomiMiDevice extends IPSModule
         }
         if (!$this->ReadPropertyBoolean(\Xiaomi\Device\Property::Active)) {
             $this->SetStatus(IS_INACTIVE);
+            return;
         }
         if (!$this->ReadAttributeString(\Xiaomi\Device\Attribute::Token)) {
             $this->ConnectParent(\Xiaomi\GUID::CloudIO);
@@ -168,6 +169,12 @@ class XiaomiMiDevice extends IPSModule
                 return;
             case 'ForceReloadModel':
                 $this->Model = '';
+                $this->WriteAttributeString(\Xiaomi\Device\Attribute::Token, '');
+                $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Specs, []);
+                $this->WriteAttributeString(\Xiaomi\Device\Attribute::ProductName, '');
+                $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Info, []);
+                $this->WriteAttributeString(\Xiaomi\Device\Attribute::Icon, '');
+                $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Locales, []);
                 $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, false);
                 IPS_RunScriptText('IPS_Applychanges(' . $this->InstanceID . ');');
                 return;
