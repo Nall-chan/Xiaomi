@@ -176,7 +176,7 @@ class XiaomiMiDevice extends IPSModule
                 $this->WriteAttributeString(\Xiaomi\Device\Attribute::Icon, '');
                 $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Locales, []);
                 $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, false);
-                IPS_RunScriptText('IPS_Applychanges(' . $this->InstanceID . ');');
+                IPS_RunScriptTextWait('IPS_Applychanges(' . $this->InstanceID . ');');
                 return;
             default:
             //todo prüfen ob in Specs
