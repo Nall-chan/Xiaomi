@@ -43,9 +43,10 @@ class XiaomiMiDevice extends IPSModule
         //Never delete this line!
         parent::Create();
 
+        $this->RegisterPropertyBoolean(\Xiaomi\Device\Property::Active, false);
         $this->RegisterPropertyString(\Xiaomi\Device\Property::Host, '');
+        $this->RegisterPropertyString(\Xiaomi\Device\Property::DeviceId, '');
         $this->RegisterAttributeString(\Xiaomi\Device\Attribute::Token, '');
-        $this->RegisterAttributeString(\Xiaomi\Device\Attribute::DeviceId, '');
         $this->RegisterAttributeArray(\Xiaomi\Device\Attribute::Specs, []);
         $this->RegisterAttributeString(\Xiaomi\Device\Attribute::ProductName, '');
         $this->RegisterAttributeArray(\Xiaomi\Device\Attribute::Info, []);
@@ -77,20 +78,33 @@ class XiaomiMiDevice extends IPSModule
         if (IPS_GetKernelRunlevel() != KR_READY) {
             return;
         }
-        $this->WriteAttributeString(\Xiaomi\Device\Attribute::DeviceId, '');
-        if (!$this->SendHandshake()) {
-            $this->SetStatus(\Xiaomi\Device\InstanceStatus::HandshakeError);
-            return;
+        if (!$this->ReadPropertyBoolean(\Xiaomi\Device\Property::Active)) {
+            $this->SetStatus(IS_INACTIVE);
         }
         if (!$this->ReadAttributeString(\Xiaomi\Device\Attribute::Token)) {
             if (!$this->GetToken()) {
-                $this->SetReceiveDataFilter('.*"ClientIP":"".*');
+                // Noch keine Events, somit kein Filter
+                //$this->SetReceiveDataFilter('.*"ClientIP":"".*');
                 $this->SetStatus(\Xiaomi\Device\InstanceStatus::ConfigError);
                 return;
             }
+            if (!$this->SendHandshake()) { //online in cloud aber handshake fehlt oder did falsch
+                $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, true);
+                //$this->SetStatus(\Xiaomi\Device\InstanceStatus::HandshakeError);
+                //return;
+            }
         } else {
-            $this->SetReceiveDataFilter('.*"ClientIP":"' . $this->ReadPropertyString(\Xiaomi\Device\Property::Host) . '".*');
+            // Noch keine Events, somit kein Filter
+            //$this->SetReceiveDataFilter('.*"ClientIP":"' . $this->ReadPropertyString(\Xiaomi\Device\Property::Host) . '".*');
+            //$this->WriteAttributeString(\Xiaomi\Device\Attribute::DeviceId, '');
+            if (!$this->SendHandshake()) { //token bekannt, aber lokal nicht erreichbar  oder did falsch
+                if ($this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud)) { // und gerät auch in der Cloud offline
+                    $this->SetStatus(\Xiaomi\Device\InstanceStatus::HandshakeError);
+                    return;
+                }
+            }
         }
+
         $token = hex2bin($this->ReadAttributeString(\Xiaomi\Device\Attribute::Token));
         $this->TokenKey = md5($token, true);
         $this->TokenIV = md5($this->TokenKey . $token, true);
@@ -216,7 +230,7 @@ class XiaomiMiDevice extends IPSModule
         if ($Icon) {
             $Icon = 'data:image/png;base64, ' . $Icon;
         }
-        $Form['elements'][0]['items'][1]['image'] = $Icon;
+        $Form['elements'][1]['items'][1]['image'] = $Icon;
         $Info = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::Info);
         $Form['actions'][0]['items'][1]['items'] = [
             [
@@ -226,8 +240,8 @@ class XiaomiMiDevice extends IPSModule
             ],
             [
                 'type'      => 'Label',
-                'link'=>false,
-                'caption'   => 'Model: ' . $Info['model']
+                'link'      => false,
+                'caption'   => 'Model: ' . (isset($Info['model']) ? $Info['model'] : '')
             ],
             [
                 'type'      => 'Label',
@@ -235,22 +249,28 @@ class XiaomiMiDevice extends IPSModule
             ],
             [
                 'type'      => 'Label',
-                'caption'   => 'miio version: ' . (isset($Info['miio_ver']) ? $Info['miio_ver'] :'')
+                'caption'   => 'miio version: ' . (isset($Info['miio_ver']) ? $Info['miio_ver'] : '')
             ],            [
                 'type'      => 'Label',
-                'caption'   => 'Firmware: ' . (isset($Info['fw_ver'])?$Info['fw_ver']:'')
+                'caption'   => 'Firmware: ' . (isset($Info['fw_ver']) ? $Info['fw_ver'] : '')
             ],
             [
                 'type'      => 'Label',
-                'caption'   => 'Hardware: ' . (isset($Info['hw_ver'])? $Info['hw_ver']:'')
+                'caption'   => 'Hardware: ' . (isset($Info['hw_ver']) ? $Info['hw_ver'] : '')
             ],
             [
                 'type'      => 'Label',
-                'caption'   => 'MAC: ' . (isset($Info['mac'])? $Info['mac']:'')
+                'caption'   => 'MAC: ' . (isset($Info['mac']) ? $Info['mac'] : '')
             ],
             [
                 'type'      => 'Label',
                 'caption'   => 'Infosite: ' . \Xiaomi\Device\SpecUrls::Device . $Info['model']
+            ],
+            [
+                'type'      => 'Label',
+                'bold'      => $this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud),
+                'color'     => ($this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud) ? '#0080C0' : ''),
+                'caption'   => 'Connection: ' . ($this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud) ? 'Cloud' : 'local')
             ]
         ];
         $this->SendDebug('FORM', json_encode($Form), 0);
@@ -286,7 +306,7 @@ class XiaomiMiDevice extends IPSModule
         }
         $Params = [];
         $Params[] = [
-            'did'  => $this->ReadAttributeString(\Xiaomi\Device\Attribute::DeviceId),
+            'did'  => $this->ReadPropertyString(\Xiaomi\Device\Property::DeviceId),
             'siid' => (int) $Siid,
             'piid' => (int) $Piid,
             'value'=> $Value
@@ -313,7 +333,7 @@ class XiaomiMiDevice extends IPSModule
         $Params = json_encode(
             [
                 'dids' => [
-                    $this->ReadAttributeString(\Xiaomi\Device\Attribute::DeviceId)
+                    $this->ReadPropertyString(\Xiaomi\Device\Property::DeviceId)
                 ]
             ]
         );
@@ -350,7 +370,7 @@ class XiaomiMiDevice extends IPSModule
                 }
                 $Piid = $Property['iid'];
                 $PropList[] = [
-                    'did' => $this->ReadAttributeString(\Xiaomi\Device\Attribute::DeviceId),
+                    'did' => $this->ReadPropertyString(\Xiaomi\Device\Property::DeviceId),
                     'siid'=> $Siid,
                     'piid'=> $Piid,
                     //'prop'=> $Property['prop']
@@ -463,7 +483,7 @@ class XiaomiMiDevice extends IPSModule
             $this->SendDebug('Socket', 'created', 0);
         }
         socket_set_option($this->Socket, SOL_SOCKET, SO_RCVTIMEO, ['sec' => 5, 'usec' => 0]);
-        if (!(socket_sendto($this->Socket, $Data, strlen($Data), 0, $this->ReadPropertyString(\Xiaomi\Device\Property::Host), self::PORT_UDP))) {
+        if (!(@socket_sendto($this->Socket, $Data, strlen($Data), 0, $this->ReadPropertyString(\Xiaomi\Device\Property::Host), self::PORT_UDP))) {
             return null;
         }
         $Response = '';
@@ -609,7 +629,7 @@ class XiaomiMiDevice extends IPSModule
         // Unknown
         $Payload .= "\x00\x00\x00\x00";
         // Device ID
-        $Payload .= pack('N', (int) $this->ReadAttributeString(\Xiaomi\Device\Attribute::DeviceId));
+        $Payload .= pack('N', (int) $this->ReadPropertyString(\Xiaomi\Device\Property::DeviceId));
         // Stamp
         if ($this->ServerStampTime) {
             $SecondsPassed = time() - $this->ServerStampTime;
@@ -659,10 +679,10 @@ class XiaomiMiDevice extends IPSModule
 
         if (strlen($encryptedMsg) === 0) {           // handshake
 
-            if ($this->ReadAttributeString(\Xiaomi\Device\Attribute::DeviceId) == '') {
-                $this->WriteAttributeString(\Xiaomi\Device\Attribute::DeviceId, $DeviceId);
+            if ($this->ReadPropertyString(\Xiaomi\Device\Property::DeviceId) == $DeviceId) {
+                return '';
             }
-            return '';
+            return null;
         }
         $calcChecksum = md5(
             substr($msg, 0, 16) .

@@ -53,7 +53,7 @@ class XiaomiConfigurator extends IPSModule
             }
             //todo -> Checkbox in Actions für on/offline
             if (!$Device['isOnline']) {
-                continue;
+                //continue;
             }
             $AddDevice = [
                 'IPAddress'              => $Device['localip'],
@@ -70,11 +70,12 @@ class XiaomiConfigurator extends IPSModule
             }
 
             $AddDevice['create'] = [
-
                 'moduleID'      => \Xiaomi\GUID::MiDevice,
                 'location'      => [$this->Translate('Mi Home Devices')],
                 'configuration' => [
-                    \Xiaomi\Device\Property::Host     => $Device['localip']
+                    \Xiaomi\Device\Property::Active         => $Device['isOnline'],
+                    \Xiaomi\Device\Property::Host           => $Device['localip'],
+                    \Xiaomi\Device\Property::DeviceId       => $Device['did']
                 ]
 
             ];

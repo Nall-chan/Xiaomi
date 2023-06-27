@@ -84,11 +84,12 @@ namespace Xiaomi{
 namespace Xiaomi\Device{
     class Property
     {
+        const Active = 'Open';
         const Host = 'Host';
+        const DeviceId = 'DeviceId';
     }
     class Attribute
     {
-        const DeviceId = 'DeviceId';
         const Specs = 'Specs';
         const ProductName = 'ModelName';
         const Locales = 'Locales';
