@@ -119,6 +119,7 @@ class XiaomiMiDevice extends IPSModule
             return;
         }
         $this->CreateStateVariables();
+        $this->ReloadForm(); // Damit alle verbundenen Konsole die neuen Daten anzeigen und nicht nur die eine, welche auf übernehmen geklickt hat
         $this->SetStatus(IS_ACTIVE);
         if (!$this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud)) { //cloud aus
             if (!$this->RequestState()) { //erster Fehler dann ist cloud an
@@ -176,7 +177,7 @@ class XiaomiMiDevice extends IPSModule
                 $this->WriteAttributeString(\Xiaomi\Device\Attribute::Icon, '');
                 $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Locales, []);
                 $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, false);
-                IPS_RunScriptTextWait('IPS_Applychanges(' . $this->InstanceID . ');');
+                IPS_RunScriptText('IPS_Applychanges(' . $this->InstanceID . ');');
                 return;
             default:
             //todo prüfen ob in Specs
