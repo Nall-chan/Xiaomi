@@ -90,6 +90,7 @@ class XiaomiMiDevice extends IPSModule
             }
             if (!$this->SendHandshake()) { //online in cloud aber handshake fehlt oder did falsch
                 $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, true);
+                $this->ConnectParent(\Xiaomi\GUID::CloudIO);
                 //$this->SetStatus(\Xiaomi\Device\InstanceStatus::HandshakeError);
                 //return;
             }
@@ -502,6 +503,7 @@ class XiaomiMiDevice extends IPSModule
             $Result = json_decode(trim($JSONResult), true);
             if (array_key_exists('error', $Result)) {
                 if ((($Result['error']['code'] == -32601) || ($Result['error']['code'] == -9999)) && !$this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud)) {
+                    $this->ConnectParent(\Xiaomi\GUID::CloudIO);
                     $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, true);
                 } else {
                     trigger_error('Error: ' . $Result['error']['code'] . PHP_EOL . $Result['error']['message'], E_USER_NOTICE);
