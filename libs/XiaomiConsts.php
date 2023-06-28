@@ -87,6 +87,8 @@ namespace Xiaomi\Device{
         const Active = 'Open';
         const Host = 'Host';
         const DeviceId = 'DeviceId';
+        const ForceCloud = 'ForceCloud';
+        const DeniedCloud = 'DeniedCloud';
     }
     class Attribute
     {
@@ -97,6 +99,10 @@ namespace Xiaomi\Device{
         const Info = 'Info';
         const Token = 'Token';
         const Icon = 'Icon';
+        const ActionIdentsWithValues = 'ActionIdentsWithValues';
+        const ActionIdents = 'ActionIdents';
+        const ParamIdentsRead = 'ParamIdentsRead';
+        const ParamIdentsWrite = 'ParamIdentsWrite';
     }
     class InstanceStatus
     {
@@ -111,22 +117,23 @@ namespace Xiaomi\Device{
     {
         const Info = 'miIO.info';
         const GetProperties = 'get_properties';
-        const GetProps = 'get_prop';
         const SetProperties = 'set_properties';
+        const ExecuteAction = 'action';
     }
     class ApiError
     {
         const PaketError = 300;
         const ChecksumError = 301;
         public static $CodeToText = [
-            -4001  => 'Unreadable attribute',
-            -4002  => 'Attribute is not writable',
-            -4003  => 'Properties, methods, events do not exist',
-            -4004  => 'Other internal errors',
-            -4005  => 'Attribute value error',
-            -4006  => 'Method in parameter error',
-            -4007  => 'did error',
-            -9999  => 'user ack timeout'
+            -4001       => 'Unreadable attribute',
+            -4002       => 'Attribute is not writable',
+            -4003       => 'Properties, methods, events do not exist',
+            -4004       => 'Other internal errors',
+            -4005       => 'Attribute value error',
+            -4006       => 'Method in parameter error',
+            -4007       => 'did error',
+            -9999       => 'user ack timeout',
+            -704040005  => 'invalid action'
         ];
     }
     class SpecUrls
@@ -157,6 +164,7 @@ namespace Xiaomi\Cloud{
         const Device_List = '/v2/home/device_list_page';
         const GetProperties = '/miotspec/prop/get';
         const SetProperties = '/miotspec/prop/set';
+        const ExecuteAction = '/miotspec/action';
 
         public static function GetApiUrl(string $Country, string $Path): string
         {
@@ -166,7 +174,9 @@ namespace Xiaomi\Cloud{
     class ApiError
     {
         public static $CodeToText = [
-            -4  => 'Device offline'
+            -4  => 'Device offline',
+            -8  => 'data type not valid'
+
         ];
     }
     class ApiHeader

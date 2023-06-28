@@ -6,13 +6,15 @@
                 {
                     "type": "CheckBox",
                     "name": "Open",
-                    "caption": "Open"
+                    "caption": "Open",
+                    "width": "200px"
                 },
                 {
                     "name": "Host",
                     "type": "ValidationTextBox",
                     "validate": "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))$|^$",
-                    "caption": "Host"
+                    "caption": "Host",
+                    "width": "200px"
                 }
             ]
         },
@@ -25,14 +27,35 @@
                         {
                             "name": "DeviceId",
                             "type": "ValidationTextBox",
-                            "caption": "Device ID"
+                            "caption": "Device ID",
+                            "width": "200px"
                         },
                         {
                             "name": "RefreshInterval",
                             "type": "NumberSpinner",
                             "caption": "Refresh Interval",
                             "suffix": "seconds",
-                            "minimum": 0
+                            "minimum": 0,
+                            "width": "200px"
+                        }
+                    ]
+                },
+                {
+                    "type": "ColumnLayout",
+                    "items": [
+                        {
+                            "type": "CheckBox",
+                            "name": "ForceCloud",
+                            "caption": "Force cloud connection",
+                            "onChange": "IPS_RequestAction($id,'ForceCloud',$ForceCloud);",
+                            "width": "250px"
+                        },
+                        {
+                            "type": "CheckBox",
+                            "name": "DeniedCloud",
+                            "caption": "Denied cloud connection",
+                            "onChange": "IPS_RequestAction($id,'DeniedCloud',$DeniedCloud);",
+                            "width": "250px"
                         }
                     ]
                 },
