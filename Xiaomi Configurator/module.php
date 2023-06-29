@@ -34,6 +34,7 @@ class XiaomiConfigurator extends IPSModule
         switch ($Ident) {
             case \Xiaomi\Configurator\Attribute::ShowOffline:
                 $this->WriteAttributeBoolean(\Xiaomi\Configurator\Attribute::ShowOffline, $Value);
+                $this->ReloadForm();
                 return;
         }
     }
@@ -104,6 +105,7 @@ class XiaomiConfigurator extends IPSModule
             ];
             $DeviceValues[] = $AddDevice;
         }
+        $Form['actions'][0]['value'] = $ShowOffline;
         $Form['actions'][1]['values'] = $DeviceValues;
         $this->SendDebug('FORM', json_encode($Form), 0);
         $this->SendDebug('FORM', json_last_error_msg(), 0);
