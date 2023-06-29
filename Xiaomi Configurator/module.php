@@ -52,7 +52,7 @@ class XiaomiConfigurator extends IPSModule
         $ShowOffline = $this->ReadAttributeBoolean(\Xiaomi\Configurator\Attribute::ShowOffline);
 
         $DeviceValues = [];
-        $InstanceIDListe = $this->GetInstanceList(\Xiaomi\GUID::MiDevice, 'Host');
+        $InstanceIDList = $this->GetInstanceList(\Xiaomi\GUID::MiDevice, 'Host');
         foreach ($Devices as $Device) {
             if (!array_key_exists('localip', $Device)) {
                 continue;
@@ -71,12 +71,12 @@ class XiaomiConfigurator extends IPSModule
                 'Model'                  => $Device['model'],
                 'name'                   => $Device['name']
             ];
-            $InstanceIdDevice = array_search($Device['localip'], $InstanceIDListe);
+            $InstanceIdDevice = array_search($Device['localip'], $InstanceIDList);
             if ($InstanceIdDevice !== false) {
                 $AddDevice['name'] = IPS_GetName($InstanceIdDevice);
                 $AddDevice['instanceID'] = $InstanceIdDevice;
                 $AddDevice['host'] = $Device['localip'];
-                unset($InstanceIDListe[$InstanceIdDevice]);
+                unset($InstanceIDList[$InstanceIdDevice]);
             }
             // Erst hier auf offline filtern, damit offline Instanzen nicht rot angezeigt werden.
             if (!$Device['isOnline'] && !$ShowOffline) {
@@ -95,7 +95,8 @@ class XiaomiConfigurator extends IPSModule
 
             $DeviceValues[] = $AddDevice;
         }
-        foreach ($InstanceIDListe as $InstanceIdDevice => $IPAddress) {
+        $this->SendDebug('RedInstances', $InstanceIDList, 0);
+        foreach ($InstanceIDList as $InstanceIdDevice => $IPAddress) {
             $AddDevice = [
                 'instanceID'             => $InstanceIdDevice,
                 'IPAddress'              => $IPAddress,
@@ -105,7 +106,7 @@ class XiaomiConfigurator extends IPSModule
             ];
             $DeviceValues[] = $AddDevice;
         }
-        $Form['actions'][0]['value'] = $ShowOffline;
+        $Form['actions'][0]['items'][0]['value'] = $ShowOffline;
         $Form['actions'][1]['values'] = $DeviceValues;
         $this->SendDebug('FORM', json_encode($Form), 0);
         $this->SendDebug('FORM', json_last_error_msg(), 0);
