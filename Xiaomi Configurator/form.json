@@ -1,6 +1,18 @@
 {
     "actions": [
         {
+            "type": "RowLayout",
+            "items": [
+                {
+                    "type": "CheckBox",
+                    "name": "ShowOffline",
+                    "caption": "Show offline deviced",
+                    "onChange": "IPS_RequestAction($id,'ShowOffline',$ShowOffline);",
+                    "width": "250px"
+                }
+            ]
+        },
+        {
             "type": "Configurator",
             "name": "Devices",
             "discoveryInterval": 900,

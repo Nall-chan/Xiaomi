@@ -299,3 +299,10 @@ namespace Xiaomi\Cloud{
         }
     }
 }
+
+namespace Xiaomi\Configurator{
+    class Attribute
+    {
+        const ShowOffline = 'ShowOffline';
+    }
+}
