@@ -91,17 +91,17 @@
                     "expanded": true,
                     "caption": "Device information",
                     "items": []
-                }
-            ]
-        },
-        {
-            "type": "ExpansionPanel",
-            "name": "TestCenter",
-            "expanded": true,
-            "caption": "TestCenter",
-            "items": [
+                },
                 {
-                    "type": "TestCenter"
+                    "type": "ExpansionPanel",
+                    "name": "TestCenter",
+                    "expanded": true,
+                    "caption": "TestCenter",
+                    "items": [
+                        {
+                            "type": "TestCenter"
+                        }
+                    ]
                 }
             ]
         }

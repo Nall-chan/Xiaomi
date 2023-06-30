@@ -1,0 +1,5 @@
+- Alle Statusvariablen (aus den Attributen) als Liste im Actions Bereich ausgeben
+- Und mit LockedStateVariables ergänzen als abgewählt
+- Abwählen in der Liste führ zu einer Eintragung in LockedStateVariables
+- Auswählen in der Liste führ zu einem löschen in LockedStateVariables
+- Beim Anlegen von Variablen wird diese Liste als Filter benutzt
