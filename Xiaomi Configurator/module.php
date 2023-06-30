@@ -16,6 +16,7 @@ class XiaomiConfigurator extends IPSModule
         //Never delete this line!
         parent::Create();
         $this->RequireParent(\Xiaomi\GUID::CloudIO);
+        $this->RegisterAttributeBoolean(\Xiaomi\Configurator\Attribute::ShowOffline, true);
     }
     public function Destroy()
     {
@@ -28,6 +29,16 @@ class XiaomiConfigurator extends IPSModule
         //Never delete this line!
         parent::ApplyChanges();
     }
+    public function RequestAction($Ident, $Value)
+    {
+        switch ($Ident) {
+            case \Xiaomi\Configurator\Attribute::ShowOffline:
+                $this->WriteAttributeBoolean(\Xiaomi\Configurator\Attribute::ShowOffline, $Value);
+                $this->ReloadForm();
+                return;
+        }
+    }
+
     public function GetConfigurationForm()
     {
         $Form = json_decode(file_get_contents(__DIR__ . '/form.json'), true);
@@ -38,8 +49,10 @@ class XiaomiConfigurator extends IPSModule
         if ($this->HasActiveParent()) {
             $Devices = $this->GetDevices();
         }
+        $ShowOffline = $this->ReadAttributeBoolean(\Xiaomi\Configurator\Attribute::ShowOffline);
+
         $DeviceValues = [];
-        $InstanceIDListe = $this->GetInstanceList(\Xiaomi\GUID::MiDevice, 'Host');
+        $InstanceIDList = $this->GetInstanceList(\Xiaomi\GUID::MiDevice, 'Host');
         foreach ($Devices as $Device) {
             if (!array_key_exists('localip', $Device)) {
                 continue;
@@ -51,24 +64,24 @@ class XiaomiConfigurator extends IPSModule
             if (strpos($Device['spec_type'], 'urn:miot-spec-v2:device:gateway') === 0) {
                 //continue;
             }
-            //todo -> Checkbox in Actions für on/offline
-            if (!$Device['isOnline']) {
-                //continue;
-            }
+
             $AddDevice = [
                 'IPAddress'              => $Device['localip'],
                 'MAC'                    => $Device['mac'],
                 'Model'                  => $Device['model'],
                 'name'                   => $Device['name']
             ];
-            $InstanceIdDevice = array_search($Device['localip'], $InstanceIDListe);
+            $InstanceIdDevice = array_search($Device['localip'], $InstanceIDList);
             if ($InstanceIdDevice !== false) {
                 $AddDevice['name'] = IPS_GetName($InstanceIdDevice);
                 $AddDevice['instanceID'] = $InstanceIdDevice;
                 $AddDevice['host'] = $Device['localip'];
-                unset($InstanceIDListe[$InstanceIdDevice]);
+                unset($InstanceIDList[$InstanceIdDevice]);
             }
-
+            // Erst hier auf offline filtern, damit offline Instanzen nicht rot angezeigt werden.
+            if (!$Device['isOnline'] && !$ShowOffline) {
+                continue;
+            }
             $AddDevice['create'] = [
                 'moduleID'      => \Xiaomi\GUID::MiDevice,
                 'location'      => [$this->Translate('Mi Home Devices')],
@@ -82,7 +95,8 @@ class XiaomiConfigurator extends IPSModule
 
             $DeviceValues[] = $AddDevice;
         }
-        foreach ($InstanceIDListe as $InstanceIdDevice => $IPAddress) {
+        $this->SendDebug('RedInstances', $InstanceIDList, 0);
+        foreach ($InstanceIDList as $InstanceIdDevice => $IPAddress) {
             $AddDevice = [
                 'instanceID'             => $InstanceIdDevice,
                 'IPAddress'              => $IPAddress,
@@ -92,7 +106,8 @@ class XiaomiConfigurator extends IPSModule
             ];
             $DeviceValues[] = $AddDevice;
         }
-        $Form['actions'][0]['values'] = $DeviceValues;
+        $Form['actions'][0]['items'][0]['value'] = $ShowOffline;
+        $Form['actions'][1]['values'] = $DeviceValues;
         $this->SendDebug('FORM', json_encode($Form), 0);
         $this->SendDebug('FORM', json_last_error_msg(), 0);
         return json_encode($Form);
