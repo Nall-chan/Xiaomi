@@ -12,26 +12,14 @@ class LibraryTest extends TestCaseSymconValidation
     }
     public function testValidateCloudIO(): void
     {
-        $this->validateModule(__DIR__ . '/../Xiaomi Cloud IO');
+        $this->validateModule(__DIR__ . '/../Xiaomi MIoT Cloud IO');
     }
     public function testValidateConfigurator(): void
     {
-        $this->validateModule(__DIR__ . '/../Xiaomi Configurator');
+        $this->validateModule(__DIR__ . '/../Xiaomi MIoT Configurator');
     }
     public function testValidateMiDevice(): void
     {
-        $this->validateModule(__DIR__ . '/../Xiaomi Mi Device');
-    }
-    public function testValidateAqaraSplitter(): void
-    {
-        $this->validateModule(__DIR__ . '/../Xiaomi Aqara Splitter');
-    }
-    public function testValidateAqaraConfigurator(): void
-    {
-        $this->validateModule(__DIR__ . '/../Xiaomi Aqara Configurator');
-    }
-    public function testValidateAqaraDevice(): void
-    {
-        $this->validateModule(__DIR__ . '/../Xiaomi Aqara Device');
+        $this->validateModule(__DIR__ . '/../Xiaomi MIoT Device');
     }
 }

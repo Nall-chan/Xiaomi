@@ -7,7 +7,7 @@ require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
 /**
  * @method bool SendDebug(string $Message, mixed $Data, int $Format)
  */
-class XiaomiConfigurator extends IPSModule
+class XiaomiMIoTConfigurator extends IPSModule
 {
     use \XiaomiConfigurator\DebugHelper;
 

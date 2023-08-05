@@ -20,7 +20,7 @@ require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
  * @property int $ServerStamp
  * @property int $ServerStampTime
  */
-class XiaomiMiDevice extends IPSModule
+class XiaomiMIoTDevice extends IPSModule
 {
     use \XiaomiMiDevice\DebugHelper;
     use \XiaomiMiDevice\BufferHelper;

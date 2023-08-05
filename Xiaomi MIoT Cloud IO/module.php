@@ -12,7 +12,7 @@ require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
  * @property string $Location
  * @property string $ServiceToken
  */
-class XiaomiCloudIO extends IPSModule
+class XiaomiMIoTCloudIO extends IPSModule
 {
     use \XiaomiCloudIO\DebugHelper;
     use \XiaomiCloudIO\BufferHelper;
