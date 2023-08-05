@@ -1,8 +1,14 @@
 {
     "translations": {
         "de": {
-            "Translation 1": "Übersetzung 1",
-            "Translation 2": "Übersetzung 2"
+            "Username": "Benutzername",
+            "Password": "Passwort",
+            "Country": "Land",
+            "Germany": "Deutschland",
+            "Russia": "Russland",
+            "America": "Amerika",
+            "error on login": "Fehler beim Anmelden",
+            "This module is free for non-commercial use,\r\nDonations in support of the author are accepted here:": "Dieses Modul ist für die nicht kommerzielle Nutzung kostenlos,\r\nSchenkungen als Unterstützung für den Autor werden hier akzeptiert:"
         }
     }
 }

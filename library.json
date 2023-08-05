@@ -4,9 +4,9 @@
     "author": "Michael Tröger",
     "url": "https://github.com/Nall-chan/Xiaomi",
     "compatibility": {
-        "version": "6.0"
+        "version": "6.4"
     },
-    "version": "0.1",
-    "build": 1,
-    "date": 0
+    "version": "1.0",
+    "build": 100,
+    "date": 1691155365
 }

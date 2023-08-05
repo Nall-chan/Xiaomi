@@ -33,7 +33,13 @@ class XiaomiConfigurator extends IPSModule
     {
         switch ($Ident) {
             case \Xiaomi\Configurator\Attribute::ShowOffline:
-                $this->WriteAttributeBoolean(\Xiaomi\Configurator\Attribute::ShowOffline, $Value);
+                $this->WriteAttributeBoolean(\Xiaomi\Configurator\Attribute::ShowOffline, (bool) $Value);
+                $this->ReloadForm();
+                return;
+            case 'InstallRoborockModule':
+                $this->UpdateFormField('AlertPopup', 'visible', false);
+                $this->UpdateFormField('WaitPopup', 'visible', true);
+                $this->InstallRoborockModule();
                 $this->ReloadForm();
                 return;
         }
@@ -45,6 +51,8 @@ class XiaomiConfigurator extends IPSModule
         if ($this->GetStatus() == IS_CREATING) {
             return json_encode($Form);
         }
+        $RoborockModulAvailable = $this->isRoborockModuleInstalled();
+        $ShowRoborockModuleHint = !$RoborockModulAvailable;
         $Devices = [];
         if ($this->HasActiveParent()) {
             $Devices = $this->GetDevices();
@@ -52,7 +60,10 @@ class XiaomiConfigurator extends IPSModule
         $ShowOffline = $this->ReadAttributeBoolean(\Xiaomi\Configurator\Attribute::ShowOffline);
 
         $DeviceValues = [];
-        $InstanceIDList = $this->GetInstanceList(\Xiaomi\GUID::MiDevice, 'Host');
+        $InstanceIDList = $this->GetInstanceList(\Xiaomi\GUID::MiDevice, \Xiaomi\Device\Property::Host);
+        if ($RoborockModulAvailable) {
+            $RoborockInstanceIDList = $this->GetInstanceList(\Xiaomi\Roborock\GUID::Device, \Xiaomi\Roborock\Property::Ip);
+        }
         foreach ($Devices as $Device) {
             if (!array_key_exists('localip', $Device)) {
                 continue;
@@ -60,9 +71,9 @@ class XiaomiConfigurator extends IPSModule
             if ($Device['localip'] == '') {
                 continue;
             }
-            //todo -> for now we skip all Gateways...
+            //we skip all Gateways...
             if (strpos($Device['spec_type'], 'urn:miot-spec-v2:device:gateway') === 0) {
-                //continue;
+                continue;
             }
 
             $AddDevice = [
@@ -82,6 +93,32 @@ class XiaomiConfigurator extends IPSModule
             if (!$Device['isOnline'] && !$ShowOffline) {
                 continue;
             }
+            if (in_array($Device['model'], \Xiaomi\Roborock\Models::DEVICELIST)) { // supported model in Roborock-Modul
+                if ($RoborockModulAvailable) {
+                    $InstanceIdDevice = array_search($Device['localip'], $RoborockInstanceIDList);
+                    if ($InstanceIdDevice !== false) {
+                        $AddDevice['name'] = IPS_GetName($InstanceIdDevice);
+                        $AddDevice['instanceID'] = $InstanceIdDevice;
+                        $AddDevice['host'] = $Device['localip'];
+                        unset($RoborockInstanceIDList[$InstanceIdDevice]);
+                    }
+                    $IOId = IPS_GetInstance($this->InstanceID)['ConnectionID'];
+                    $AddDevice['create'] = [
+                        'moduleID'      => \Xiaomi\Roborock\GUID::Device,
+                        'location'      => [$this->Translate('Roborocks')],
+                        'configuration' => [
+                            \Xiaomi\Roborock\Property::Ip          => $Device['localip'],
+                            \Xiaomi\Roborock\Property::Server      => IPS_GetProperty($IOId, \Xiaomi\Cloud\Property::Country),
+                            \Xiaomi\Roborock\Property::User        => IPS_GetProperty($IOId, \Xiaomi\Cloud\Property::Username),
+                            \Xiaomi\Roborock\Property::Password    => IPS_GetProperty($IOId, \Xiaomi\Cloud\Property::Password)
+                        ]
+                    ];
+                    $DeviceValues[] = $AddDevice;
+                    continue;
+                } else {
+                    $ShowRoborockModuleHint = true;
+                }
+            }
             $AddDevice['create'] = [
                 'moduleID'      => \Xiaomi\GUID::MiDevice,
                 'location'      => [$this->Translate('Mi Home Devices')],
@@ -90,12 +127,9 @@ class XiaomiConfigurator extends IPSModule
                     \Xiaomi\Device\Property::Host           => $Device['localip'],
                     \Xiaomi\Device\Property::DeviceId       => $Device['did']
                 ]
-
             ];
-
             $DeviceValues[] = $AddDevice;
         }
-        $this->SendDebug('RedInstances', $InstanceIDList, 0);
         foreach ($InstanceIDList as $InstanceIdDevice => $IPAddress) {
             $AddDevice = [
                 'instanceID'             => $InstanceIdDevice,
@@ -106,13 +140,41 @@ class XiaomiConfigurator extends IPSModule
             ];
             $DeviceValues[] = $AddDevice;
         }
+        if ($RoborockModulAvailable) {
+            foreach ($RoborockInstanceIDList as $InstanceIdDevice => $IPAddress) {
+                $AddDevice = [
+                    'instanceID'             => $InstanceIdDevice,
+                    'IPAddress'              => $IPAddress,
+                    'MAC'                    => '',
+                    'Model'                  => '',
+                    'name'                   => IPS_GetName($InstanceIdDevice)
+                ];
+                $DeviceValues[] = $AddDevice;
+            }
+        }
+        if ($ShowRoborockModuleHint) {
+            $Form['actions'][2]['visible'] = true;
+            if (!$this->StoreAvailable()) {
+                $Form['actions'][2]['popup']['buttons'] = [
+
+                    [
+                        'caption'=> 'Module-Store not available',
+                        'enabled'=> false
+                    ]
+                ];
+            }
+        }
         $Form['actions'][0]['items'][0]['value'] = $ShowOffline;
         $Form['actions'][1]['values'] = $DeviceValues;
         $this->SendDebug('FORM', json_encode($Form), 0);
         $this->SendDebug('FORM', json_last_error_msg(), 0);
         return json_encode($Form);
     }
-    public function GetDevices(): array
+    protected function GetConfigParam(&$item1, int $InstanceID, string $ConfigParam): void
+    {
+        $item1 = IPS_GetProperty($InstanceID, $ConfigParam);
+    }
+    private function GetDevices(): array
     {
         $this->SendDebug(__FUNCTION__, \Xiaomi\Cloud\ApiUrl::Device_List, 0);
         $Request = json_encode([
@@ -129,10 +191,6 @@ class XiaomiConfigurator extends IPSModule
         }
         return [];
     }
-    protected function GetConfigParam(&$item1, int $InstanceID, string $ConfigParam): void
-    {
-        $item1 = IPS_GetProperty($InstanceID, $ConfigParam);
-    }
 
     private function Request(string $Uri, string $Params): ?string
     {
@@ -147,5 +205,35 @@ class XiaomiConfigurator extends IPSModule
         array_walk($InstanceIDList, [$this, 'GetConfigParam'], $ConfigParam);
         $this->SendDebug('Filter', $InstanceIDList, 0);
         return $InstanceIDList;
+    }
+    private function isRoborockModuleInstalled(): bool
+    {
+        return IPS_LibraryExists(\Xiaomi\Roborock\GUID::Module);
+    }
+    private function StoreAvailable(): bool
+    {
+        $Id = IPS_GetInstanceListByModuleID(\Xiaomi\Roborock\GUID::Store)[0];
+        return SC_GetLastConfirmedStoreConditions($Id) == 3;
+    }
+    private function InstallRoborockModule()
+    {
+        $Id = IPS_GetInstanceListByModuleID(\Xiaomi\Roborock\GUID::Store)[0];
+        $Context = stream_context_create(\Xiaomi\Roborock\Store::$Opts);
+        $Version = urlencode('{"version":"6.4","date":' . time() . '}');
+        $Bundles = json_decode(file_get_contents('https://api.symcon.de/store/modules?language=de&search=roborock&compatibility=' . $Version, false, $Context), true);
+        $Bundles = array_values(array_filter($Bundles, function ($item)
+        {
+            return $item['bundle'] == \Xiaomi\Roborock\Store::BundleId;
+        }));
+        $Module = [];
+        foreach ($Bundles as $Channel) {
+            $Module[$Channel['channel']] = $Channel;
+        }
+        if (array_key_exists('beta', $Module)) {
+            $Install = $Module['beta'];
+        } else {
+            $Install = $Module['stable'];
+        }
+        return SC_InstallModule($Id, $Install['bundle'], 1, $Install['release']);
     }
 }

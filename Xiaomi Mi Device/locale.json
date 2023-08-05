@@ -1,8 +1,40 @@
 {
     "translations": {
         "de": {
-            "Translation 1": "Übersetzung 1",
-            "Translation 2": "Übersetzung 2"
+            "Open": "Aktiv",
+            "Device ID": "Geräte ID",
+            "Refresh Interval": "Aktualisierungsintervall",
+            "seconds": "Sekunden",
+            "Force cloud connection": "Cloud-Verbindung erzwingen",
+            "Denied cloud connection": "Cloud-Verbindung verbieten",
+            "Device ID is missing": "Geräte ID fehlt",
+            "Cloud not get token from cloud. Device in cloud online?": "Token konnte nicht von der Cloud geladen werden. Gerät mit Cloud verbunden?",
+            "API error, check log file for more information": "API Fehler, Logfile für weitere Informationen prüfen",
+            "Error load device specs from cloud": "Fehler beim laden der Spezifikationen aus der Cloud",
+            "Device response with wrong ID": "Gerät hat mit falscher ID geantwortet",
+            "Device in cloud offline": "Gerät in der Cloud offline",
+            "Device offline": "Gerät offline",
+            "Cloud response that device is offline": "Cloud meldet das Gerät als offline",
+            "Send blocked": "Senden blockiert",
+            "Invalid Ident": "Ungültiger Ident",
+            "Instance is not active": "Instanz ist nicht aktiv",
+            "Data type not valid": "Datentyp ungültig",
+            "Invalid action": "Ungültige Aktion",
+            "Unknown error: ": "Unbekannter Fehler: ",
+            "Unreadable attribute": "Nicht lesbare Eigenschaft",
+            "Attribute is not writable": "Eigenschaft nicht beschreibbar",
+            "Properties, methods, events do not exist": "Eigenschaft, Funktion oder Ereignis existiert nicht",
+            "Other internal errors": "Anderer interner Fehler",
+            "Attribute value error": "Ungültiger Wert für Eigenschaft",
+            "Method in parameter error": "Parameter von Funktion ungültig",
+            "DeviceId error": "DeviceId Fehler",
+            "Invalid ServiceId oder PropertyId": "Ungültige ServiceId oder PropertyId",
+            "Connection established": "Verbindung hergestellt",
+            "Reconnect successfully": "Wiederverbinden erfolgreich",
+            "Request state": "Zustand lesen",
+            "Reload device information": "Geräteinformationen neu laden",
+            "Device information": "Geräteinformationen",
+            "This module is free for non-commercial use,\r\nDonations in support of the author are accepted here:": "Dieses Modul ist für die nicht kommerzielle Nutzung kostenlos,\r\nSchenkungen als Unterstützung für den Autor werden hier akzeptiert:"
         }
     }
 }

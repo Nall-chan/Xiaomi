@@ -48,8 +48,6 @@ namespace Xiaomi{
                 }
             }
             $Columns = array_column($Names, $Locale, 'en');
-            //echo  $Name;
-            //var_dump($Key);
             if (array_key_exists($Name, $Columns)) {
                 return $Columns[$Name];
             }
@@ -79,6 +77,14 @@ namespace Xiaomi{
         const Event = 'E';
         const Action = 'A';
     }
+    class SpecTypes
+    {
+        const Gateway = 'urn:miot-spec-v2:device:gateway';
+        const Roborocks = [
+            'urn:miot-spec-v2:device:vacuum:0000A006:roborock',
+            'urn:miot-spec-v2:device:vacuum:0000A006:rockrobo'
+        ];
+    }
 }
 
 namespace Xiaomi\Device{
@@ -89,6 +95,12 @@ namespace Xiaomi\Device{
         const DeviceId = 'DeviceId';
         const ForceCloud = 'ForceCloud';
         const DeniedCloud = 'DeniedCloud';
+        const RefreshInterval = 'RefreshInterval';
+    }
+    class Timer
+    {
+        const RefreshState = 'RefreshState';
+        const Reconnect = 'Reconnect';
     }
     class Attribute
     {
@@ -112,6 +124,7 @@ namespace Xiaomi\Device{
         const GetSpecsFailed = IS_EBASE + 4;
         const DidNotMatch = IS_EBASE + 5;
         const TimeoutError = IS_EBASE + 6;
+        const InCloudOffline = IS_EBASE + 7;
     }
     class ApiMethod
     {
@@ -131,9 +144,13 @@ namespace Xiaomi\Device{
             -4004       => 'Other internal errors',
             -4005       => 'Attribute value error',
             -4006       => 'Method in parameter error',
-            -4007       => 'did error',
+            -4007       => 'DeviceId error',
             -9999       => 'user ack timeout',
-            -704040005  => 'invalid action'
+            -704010000  => 'Unknown error',
+            -704040002  => 'Unknown error', //Gateway offline?
+            -704040003  => 'Unknown error',
+            -704040005  => 'Invalid action',
+            -704042011  => 'Device offline'
         ];
     }
     class SpecUrls
@@ -175,7 +192,7 @@ namespace Xiaomi\Cloud{
     {
         public static $CodeToText = [
             -4  => 'Device offline',
-            -8  => 'data type not valid'
+            -8  => 'Data type not valid'
 
         ];
     }
@@ -209,8 +226,6 @@ namespace Xiaomi\Cloud{
                 sprintf(self::UserAgent, $AgentID),
                 self::Encoding,
                 self::Accept,
-                //self::Connection,
-                //self::CLI,
                 self::ClientId,
                 self::Content,
                 self::Encrypt,
@@ -304,5 +319,49 @@ namespace Xiaomi\Configurator{
     class Attribute
     {
         const ShowOffline = 'ShowOffline';
+    }
+}
+
+namespace Xiaomi\Roborock{
+    class GUID
+    {
+        const Module = '{CD3419DA-91F2-C5DA-7FEE-6EB452506C9F}';
+        const Store = '{F45B5D1F-56AE-4C61-9AB2-C87C63149EC3}';
+        const Device = '{E65614FB-B37A-219A-4876-E5676C948C33}';
+        const IO = '{4743ED9C-720B-D5EA-9B0C-0585803284F3}';
+    }
+    class Property
+    {
+        const Ip = 'ip';
+        const Model = 'model';
+        const Server = 'Server';
+        const User = 'xiaomi_user';
+        const Password = 'xiaomi_password';
+    }
+    class Store
+    {
+        const BundleId = 'fonzo.ipsymconroborock';
+        public static $Opts = [
+            'http' => [
+                'method' => 'GET',
+                'header' => "User-Agent: Awesome-PHP\r\n"
+            ]
+        ];
+    }
+    class Models
+    {
+        const RoborockVacuum = 'roborock.vacuum';
+        const DEVICELIST = [
+            self::RoborockVacuum,
+            self::RoborockVacuum . '.m1s',
+            'rockrobo.vacuum.v1',
+            self::RoborockVacuum . '.s5',
+            self::RoborockVacuum . '.s5e',
+            self::RoborockVacuum . '.s6',
+            self::RoborockVacuum . '.a10',
+            self::RoborockVacuum . '.a15',
+            self::RoborockVacuum . '.a27',
+            self::RoborockVacuum . '.a51'
+        ];
     }
 }
