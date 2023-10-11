@@ -52,7 +52,7 @@ class XiaomiMIoTConfigurator extends IPSModule
             return json_encode($Form);
         }
         $RoborockModulAvailable = $this->isRoborockModuleInstalled();
-        $ShowRoborockModuleHint = !$RoborockModulAvailable;
+        $ShowRoborockModuleHint = false;
         $Devices = [];
         if ($this->HasActiveParent()) {
             $Devices = $this->GetDevices();

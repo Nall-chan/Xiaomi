@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Xiaomi{
     class GUID
     {
-        const MiDevice = '{733AB5D2-957D-E76A-BA5D-5006701A6216}';
-        const CloudIO = '{DF2248D9-FC17-4609-840D-BA52DBF9CEB6}';
-        const ReceiveFromCloud = '{5F3A76AF-D01E-42A3-93A3-D4E5E9267E32}';
-        const SendToCloud = '{76F2BB7B-F2B9-47EA-88F7-FD357D2E49E1}';
+        public const MiDevice = '{733AB5D2-957D-E76A-BA5D-5006701A6216}';
+        public const CloudIO = '{DF2248D9-FC17-4609-840D-BA52DBF9CEB6}';
+        public const ReceiveFromCloud = '{5F3A76AF-D01E-42A3-93A3-D4E5E9267E32}';
+        public const SendToCloud = '{76F2BB7B-F2B9-47EA-88F7-FD357D2E49E1}';
     }
     class Convert
     {
@@ -23,7 +23,7 @@ namespace Xiaomi{
                 case 'int8':
                 case 'int16':
                 case 'int32':
-                            return VARIABLETYPE_INTEGER;
+                    return VARIABLETYPE_INTEGER;
                 case 'float':
                 case 'double':
                     return VARIABLETYPE_FLOAT;
@@ -73,14 +73,14 @@ namespace Xiaomi{
     }
     class IdentPrefix
     {
-        const Property = 'P';
-        const Event = 'E';
-        const Action = 'A';
+        public const Property = 'P';
+        public const Event = 'E';
+        public const Action = 'A';
     }
     class SpecTypes
     {
-        const Gateway = 'urn:miot-spec-v2:device:gateway';
-        const Roborocks = [
+        public const Gateway = 'urn:miot-spec-v2:device:gateway';
+        public const Roborocks = [
             'urn:miot-spec-v2:device:vacuum:0000A006:roborock',
             'urn:miot-spec-v2:device:vacuum:0000A006:rockrobo'
         ];
@@ -90,53 +90,53 @@ namespace Xiaomi{
 namespace Xiaomi\Device{
     class Property
     {
-        const Active = 'Open';
-        const Host = 'Host';
-        const DeviceId = 'DeviceId';
-        const ForceCloud = 'ForceCloud';
-        const DeniedCloud = 'DeniedCloud';
-        const RefreshInterval = 'RefreshInterval';
+        public const Active = 'Open';
+        public const Host = 'Host';
+        public const DeviceId = 'DeviceId';
+        public const ForceCloud = 'ForceCloud';
+        public const DeniedCloud = 'DeniedCloud';
+        public const RefreshInterval = 'RefreshInterval';
     }
     class Timer
     {
-        const RefreshState = 'RefreshState';
-        const Reconnect = 'Reconnect';
+        public const RefreshState = 'RefreshState';
+        public const Reconnect = 'Reconnect';
     }
     class Attribute
     {
-        const Specs = 'Specs';
-        const ProductName = 'ModelName';
-        const Locales = 'Locales';
-        const useCloud = 'useCloud';
-        const Info = 'Info';
-        const Token = 'Token';
-        const Icon = 'Icon';
-        const ActionIdentsWithValues = 'ActionIdentsWithValues';
-        const ActionIdents = 'ActionIdents';
-        const ParamIdentsRead = 'ParamIdentsRead';
-        const ParamIdentsWrite = 'ParamIdentsWrite';
+        public const Specs = 'Specs';
+        public const ProductName = 'ModelName';
+        public const Locales = 'Locales';
+        public const useCloud = 'useCloud';
+        public const Info = 'Info';
+        public const Token = 'Token';
+        public const Icon = 'Icon';
+        public const ActionIdentsWithValues = 'ActionIdentsWithValues';
+        public const ActionIdents = 'ActionIdents';
+        public const ParamIdentsRead = 'ParamIdentsRead';
+        public const ParamIdentsWrite = 'ParamIdentsWrite';
     }
     class InstanceStatus
     {
-        const ConfigError = IS_EBASE + 1;
-        const GetTokenFailed = IS_EBASE + 2;
-        const ApiError = IS_EBASE + 3;
-        const GetSpecsFailed = IS_EBASE + 4;
-        const DidNotMatch = IS_EBASE + 5;
-        const TimeoutError = IS_EBASE + 6;
-        const InCloudOffline = IS_EBASE + 7;
+        public const ConfigError = IS_EBASE + 1;
+        public const GetTokenFailed = IS_EBASE + 2;
+        public const ApiError = IS_EBASE + 3;
+        public const GetSpecsFailed = IS_EBASE + 4;
+        public const DidNotMatch = IS_EBASE + 5;
+        public const TimeoutError = IS_EBASE + 6;
+        public const InCloudOffline = IS_EBASE + 7;
     }
     class ApiMethod
     {
-        const Info = 'miIO.info';
-        const GetProperties = 'get_properties';
-        const SetProperties = 'set_properties';
-        const ExecuteAction = 'action';
+        public const Info = 'miIO.info';
+        public const GetProperties = 'get_properties';
+        public const SetProperties = 'set_properties';
+        public const ExecuteAction = 'action';
     }
     class ApiError
     {
-        const PaketError = 300;
-        const ChecksumError = 301;
+        public const PaketError = 300;
+        public const ChecksumError = 301;
         public static $CodeToText = [
             -4001       => 'Unreadable attribute',
             -4002       => 'Attribute is not writable',
@@ -155,33 +155,32 @@ namespace Xiaomi\Device{
     }
     class SpecUrls
     {
-        const Device = 'https://home.miot-spec.com/spec/';
-        const Locales = 'https://miot-spec.org/instance/v2/multiLanguage?urn=';
+        public const Device = 'https://home.miot-spec.com/spec/';
+        public const Locales = 'https://miot-spec.org/instance/v2/multiLanguage?urn=';
     }
 }
 
 namespace Xiaomi\Cloud{
-
     class Property
     {
-        const Username = 'Username';
-        const Password = 'Password';
-        const Country = 'Country';
+        public const Username = 'Username';
+        public const Password = 'Password';
+        public const Country = 'Country';
     }
     class Attribute
     {
-        const AgentID = 'AgentID';
-        const ClientID = 'ClientID';
+        public const AgentID = 'AgentID';
+        public const ClientID = 'ClientID';
     }
     class ApiUrl
     {
-        const GetSign = 'https://account.xiaomi.com/pass/serviceLogin?sid=xiaomiio&_json=true';
-        const Login = 'https://account.xiaomi.com/pass/serviceLoginAuth2';
-        const Domain = 'api.io.mi.com/app';
-        const Device_List = '/v2/home/device_list_page';
-        const GetProperties = '/miotspec/prop/get';
-        const SetProperties = '/miotspec/prop/set';
-        const ExecuteAction = '/miotspec/action';
+        public const GetSign = 'https://account.xiaomi.com/pass/serviceLogin?sid=xiaomiio&_json=true';
+        public const Login = 'https://account.xiaomi.com/pass/serviceLoginAuth2';
+        public const Domain = 'api.io.mi.com/app';
+        public const Device_List = '/v2/home/device_list_page';
+        public const GetProperties = '/miotspec/prop/get';
+        public const SetProperties = '/miotspec/prop/set';
+        public const ExecuteAction = '/miotspec/action';
 
         public static function GetApiUrl(string $Country, string $Path): string
         {
@@ -198,15 +197,15 @@ namespace Xiaomi\Cloud{
     }
     class ApiHeader
     {
-        const UserAgent = 'User-Agent: Android-7.1.1-1.0.0-ONEPLUS A3010-136-%sAPP/xiaomi.smarthome APPV/62830';
-        const Encoding = 'Accept-Encoding: identity';
-        const Accept = 'Accept: */*';
-        const Connection = 'Connection: keep-alive';
-        const CLI = 'x-xiaomi-protocal-flag-cli: PROTOCAL-HTTP2';
-        const ClientId = 'mishop-client-id: 180100041079';
-        const Content = 'Content-Type: application/x-www-form-urlencoded';
-        const Encrypt = 'MIOT-ENCRYPT-ALGORITHM: ENCRYPT-RC4';
-        const Cookie = 'Cookie: ';
+        public const UserAgent = 'User-Agent: Android-7.1.1-1.0.0-ONEPLUS A3010-136-%sAPP/xiaomi.smarthome APPV/62830';
+        public const Encoding = 'Accept-Encoding: identity';
+        public const Accept = 'Accept: */*';
+        public const Connection = 'Connection: keep-alive';
+        public const CLI = 'x-xiaomi-protocal-flag-cli: PROTOCAL-HTTP2';
+        public const ClientId = 'mishop-client-id: 180100041079';
+        public const Content = 'Content-Type: application/x-www-form-urlencoded';
+        public const Encrypt = 'MIOT-ENCRYPT-ALGORITHM: ENCRYPT-RC4';
+        public const Cookie = 'Cookie: ';
         public static function getLoginHeader(string $AgentID, string $Cookie): array
         {
             return
@@ -250,16 +249,16 @@ namespace Xiaomi\Cloud{
     }
     class ApiCookie
     {
-        const SDKVersion = 'sdkVersion=accountsdk-18.8.15';
-        const DeviceId = 'deviceId=';
-        const UserId = 'userId=';
-        const YAST = 'yetAnotherServiceToken=';
-        const ServiceToken = 'serviceToken=';
-        const Locale = 'locale=';
-        const Timezone = 'timezone=GMT';
-        const IsDaylight = 'is_daylight=';
-        const DSTOffset = 'dst_offset=';
-        const Channel = 'channel=MI_APP_STORE';
+        public const SDKVersion = 'sdkVersion=accountsdk-18.8.15';
+        public const DeviceId = 'deviceId=';
+        public const UserId = 'userId=';
+        public const YAST = 'yetAnotherServiceToken=';
+        public const ServiceToken = 'serviceToken=';
+        public const Locale = 'locale=';
+        public const Timezone = 'timezone=GMT';
+        public const IsDaylight = 'is_daylight=';
+        public const DSTOffset = 'dst_offset=';
+        public const Channel = 'channel=MI_APP_STORE';
 
         public static function getLoginCookie(string $ClientID): string
         {
@@ -293,9 +292,9 @@ namespace Xiaomi\Cloud{
     }
     class ForwardData
     {
-        const GUID = 'DataID';
-        const Uri = 'Uri';
-        const Params = 'Params';
+        public const GUID = 'DataID';
+        public const Uri = 'Uri';
+        public const Params = 'Params';
 
         public static function ToJson(string $Uri, string $Params = ''): string
         {
@@ -318,29 +317,29 @@ namespace Xiaomi\Cloud{
 namespace Xiaomi\Configurator{
     class Attribute
     {
-        const ShowOffline = 'ShowOffline';
+        public const ShowOffline = 'ShowOffline';
     }
 }
 
 namespace Xiaomi\Roborock{
     class GUID
     {
-        const Module = '{CD3419DA-91F2-C5DA-7FEE-6EB452506C9F}';
-        const Store = '{F45B5D1F-56AE-4C61-9AB2-C87C63149EC3}';
-        const Device = '{E65614FB-B37A-219A-4876-E5676C948C33}';
-        const IO = '{4743ED9C-720B-D5EA-9B0C-0585803284F3}';
+        public const Module = '{CD3419DA-91F2-C5DA-7FEE-6EB452506C9F}';
+        public const Store = '{F45B5D1F-56AE-4C61-9AB2-C87C63149EC3}';
+        public const Device = '{E65614FB-B37A-219A-4876-E5676C948C33}';
+        public const IO = '{4743ED9C-720B-D5EA-9B0C-0585803284F3}';
     }
     class Property
     {
-        const Ip = 'ip';
-        const Model = 'model';
-        const Server = 'Server';
-        const User = 'xiaomi_user';
-        const Password = 'xiaomi_password';
+        public const Ip = 'ip';
+        public const Model = 'model';
+        public const Server = 'Server';
+        public const User = 'xiaomi_user';
+        public const Password = 'xiaomi_password';
     }
     class Store
     {
-        const BundleId = 'fonzo.ipsymconroborock';
+        public const BundleId = 'fonzo.ipsymconroborock';
         public static $Opts = [
             'http' => [
                 'method' => 'GET',
@@ -350,8 +349,8 @@ namespace Xiaomi\Roborock{
     }
     class Models
     {
-        const RoborockVacuum = 'roborock.vacuum';
-        const DEVICELIST = [
+        public const RoborockVacuum = 'roborock.vacuum';
+        public const DEVICELIST = [
             self::RoborockVacuum,
             self::RoborockVacuum . '.m1s',
             'rockrobo.vacuum.v1',

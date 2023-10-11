@@ -28,7 +28,7 @@ class XiaomiMIoTDevice extends IPSModule
     use \XiaomiMiDevice\VariableProfileHelper;
     use \XiaomiMiDevice\Semaphore;
 
-    const PORT_UDP = 54321;
+    public const PORT_UDP = 54321;
 
     private $Socket = false;
 
@@ -556,7 +556,7 @@ class XiaomiMIoTDevice extends IPSModule
                     $Profile = (in_array('write', $Property['access']) ? '~Switch' : '');
                 }
                 break;
-            }
+        }
         if (($Profile) && ($Profile[0] != '~')) {
             if (count($Assoziation)) {
                 $this->RegisterProfileEx($IpsVarType, $Profile, '', '', $Suffix, $Assoziation);
@@ -868,7 +868,6 @@ class XiaomiMIoTDevice extends IPSModule
         }
 
         if (strlen($encryptedMsg) === 0) {           // handshake
-
             if ($this->ReadPropertyString(\Xiaomi\Device\Property::DeviceId) == (string) $DeviceId) {
                 return '';
             }
