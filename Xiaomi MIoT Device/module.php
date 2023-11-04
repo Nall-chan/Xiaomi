@@ -64,6 +64,7 @@ class XiaomiMIoTDevice extends IPSModule
         $this->RegisterAttributeArray(\Xiaomi\Device\Attribute::ParamIdentsWrite, []);
         $this->RegisterTimer(\Xiaomi\Device\Timer::RefreshState, 0, 'IPS_RequestAction(' . $this->InstanceID . ',"' . \Xiaomi\Device\Timer::RefreshState . '",true);');
         $this->RegisterTimer(\Xiaomi\Device\Timer::Reconnect, 0, 'IPS_RequestAction(' . $this->InstanceID . ',"' . \Xiaomi\Device\Timer::Reconnect . '",true);');
+        $this->Retries = 2;
     }
 
     public function Destroy()
@@ -87,7 +88,7 @@ class XiaomiMIoTDevice extends IPSModule
         );
         $this->ServerStamp = 0;
         $this->ServerStampTime = 0;
-        $this->Retries = 0;
+
         //Never delete this line!
         parent::ApplyChanges();
         // Anzeige IP in der INFO Spalte
@@ -359,11 +360,11 @@ class XiaomiMIoTDevice extends IPSModule
                     $this->LogMessage($this->Translate('Reconnect successfully'), KL_MESSAGE);
                 }
                 $this->SetTimerInterval(\Xiaomi\Device\Timer::Reconnect, 0);
-                $this->Retries = 0;
+                $this->Retries = 2;
                 break;
             case IS_INACTIVE:
                 $this->SetTimerInterval(\Xiaomi\Device\Timer::Reconnect, 0);
-                $this->Retries = 0;
+                $this->Retries = 2;
                 break;
             default:
                 if ($this->Retries < 3600) {
@@ -657,15 +658,18 @@ class XiaomiMIoTDevice extends IPSModule
         }
         socket_set_option($this->Socket, SOL_SOCKET, SO_RCVTIMEO, ['sec' => 7, 'usec' => 0]);
         if (!(@socket_sendto($this->Socket, $Data, strlen($Data), 0, $this->ReadPropertyString(\Xiaomi\Device\Property::Host), self::PORT_UDP))) {
+            $ErrorCode = socket_last_error();
+            $ErrorMsg = socket_strerror($ErrorCode);
+            $this->SendDebug('Socket Error', $ErrorCode . ' message: ' . $ErrorMsg, 0);
             $State = \Xiaomi\Device\InstanceStatus::TimeoutError;
             return null;
         }
-        $this->SendDebug('Send (' . $this->ReadPropertyString(\Xiaomi\Device\Property::Host) . ')', $Data, 0);
+        $this->SendDebug('Send (' . $this->ReadPropertyString(\Xiaomi\Device\Property::Host) . ')', $Data, 1);
         $Response = '';
         $RemoteIp = '';
         $RemotePort = 0;
         if (($bytes = @socket_recvfrom($this->Socket, $Response, 4096, 0, $RemoteIp, $RemotePort)) !== false) {
-            $this->Retries = 0;
+            $this->Retries = 2;
             $this->SendDebug('Receive [' . $RemoteIp . ':' . (string) $RemotePort . ']', $Response, 1);
             $DecodeError = 0;
             $JSONResult = $this->DecryptMessage($Response, $DecodeError);
@@ -717,7 +721,6 @@ class XiaomiMIoTDevice extends IPSModule
             }
         }
         $State = \Xiaomi\Device\InstanceStatus::TimeoutError;
-        $this->SendDebug('Final Timeout', '', 0);
         return null;
     }
     private function GetModelData(): bool
@@ -802,7 +805,7 @@ class XiaomiMIoTDevice extends IPSModule
         $Data = hex2bin('21310020ffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
         $this->SendDebug('Send Handshake', $Data, 1);
         $State = IS_ACTIVE;
-        $Result = $this->SocketSend($Data, $State);
+        $Result = $this->SocketSend($Data, $State, false);
         if (is_null($Result)) {
             if ($State == \Xiaomi\Device\InstanceStatus::DidNotMatch) {
                 $this->SetStatus(\Xiaomi\Device\InstanceStatus::DidNotMatch);
