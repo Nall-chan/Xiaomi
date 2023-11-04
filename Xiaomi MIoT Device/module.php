@@ -660,6 +660,7 @@ class XiaomiMIoTDevice extends IPSModule
             $State = \Xiaomi\Device\InstanceStatus::TimeoutError;
             return null;
         }
+        $this->SendDebug('Send (' . $this->ReadPropertyString(\Xiaomi\Device\Property::Host) . ')', $Data, 0);
         $Response = '';
         $RemoteIp = '';
         $RemotePort = 0;
@@ -710,11 +711,13 @@ class XiaomiMIoTDevice extends IPSModule
         }
         $this->SendDebug('Receive Timeout', '', 0);
         if ($Retry) {
+            $this->SendDebug('Retry', '', 0);
             if ($this->SendHandshake()) {
                 return $this->SocketSend($Data, $State, false);
             }
         }
         $State = \Xiaomi\Device\InstanceStatus::TimeoutError;
+        $this->SendDebug('Final Timeout', '', 0);
         return null;
     }
     private function GetModelData(): bool
