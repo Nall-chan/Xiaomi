@@ -418,7 +418,7 @@ class XiaomiMIoTDevice extends IPSModule
         $this->SendDebug('Cloud Request Data', $Params, 0);
         $Response = $this->SendDataToParent(\Xiaomi\Cloud\ForwardData::ToJson($Uri, $Params));
         $this->SendDebug('Cloud Response', $Response, 0);
-        if ($Response == '') {
+        if (($Response == '') || ($Response == false)) {
             return null;
         }
         $Result = json_decode($Response, true);
