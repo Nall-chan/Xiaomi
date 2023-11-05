@@ -136,7 +136,10 @@ class XiaomiMIoTDevice extends IPSModule
             $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, true);
         }
         if ($this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud)) { //cloud an -> nur ein Versuch
-            $this->RequestState();
+            if (!$this->RequestState()) {
+                $this->SetStatus(\Xiaomi\Device\InstanceStatus::InCloudOffline);
+                return;
+            }
         } else {
             if (!$this->RequestState()) { // wenn erster Versuch fehlschlägt
                 if ($this->ReadPropertyBoolean(\Xiaomi\Device\Property::DeniedCloud)) { // und Cloud verboten
@@ -144,7 +147,10 @@ class XiaomiMIoTDevice extends IPSModule
                     return;
                 }
                 $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, true); // umschalten auf Cloud
-                $this->RequestState(); //zweiter versuch
+                if (!$this->RequestState()) {
+                    $this->SetStatus(\Xiaomi\Device\InstanceStatus::InCloudOffline);
+                    return;
+                }
             }
         }
         $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, $this->ReadPropertyInteger(\Xiaomi\Device\Property::RefreshInterval) * 1000);

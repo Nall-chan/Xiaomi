@@ -60,7 +60,7 @@ class XiaomiMIoTConfigurator extends IPSModule
         $ShowOffline = $this->ReadAttributeBoolean(\Xiaomi\Configurator\Attribute::ShowOffline);
 
         $DeviceValues = [];
-        $InstanceIDList = $this->GetInstanceList(\Xiaomi\GUID::MiDevice, \Xiaomi\Device\Property::Host);
+        $InstanceIDList = $this->GetInstanceList(\Xiaomi\GUID::MiDevice, \Xiaomi\Device\Property::DeviceId);
         if ($RoborockModulAvailable) {
             $RoborockInstanceIDList = $this->GetInstanceList(\Xiaomi\Roborock\GUID::Device, \Xiaomi\Roborock\Property::Ip);
         }
@@ -82,7 +82,7 @@ class XiaomiMIoTConfigurator extends IPSModule
                 'Model'                  => $Device['model'],
                 'name'                   => $Device['name']
             ];
-            $InstanceIdDevice = array_search($Device['localip'], $InstanceIDList);
+            $InstanceIdDevice = array_search($Device['did'], $InstanceIDList);
             if ($InstanceIdDevice !== false) {
                 $AddDevice['name'] = IPS_GetName($InstanceIdDevice);
                 $AddDevice['instanceID'] = $InstanceIdDevice;
@@ -130,10 +130,10 @@ class XiaomiMIoTConfigurator extends IPSModule
             ];
             $DeviceValues[] = $AddDevice;
         }
-        foreach ($InstanceIDList as $InstanceIdDevice => $IPAddress) {
+        foreach ($InstanceIDList as $InstanceIdDevice => $DID) {
             $AddDevice = [
                 'instanceID'             => $InstanceIdDevice,
-                'IPAddress'              => $IPAddress,
+                'IPAddress'              => IPS_GetProperty($InstanceIdDevice,\Xiaomi\Device\Property::Host),
                 'MAC'                    => '',
                 'Model'                  => '',
                 'name'                   => IPS_GetName($InstanceIdDevice)
