@@ -376,7 +376,7 @@ class XiaomiMIoTDevice extends IPSModule
                 if ($this->Retries < 3600) {
                     $this->Retries++;
                 }
-                $this->LogMessage('Retries: ' . $this->Retries, KL_DEBUG);
+                $this->LogMessage('Retry in ' . $this->Retries . ' seconds', KL_MESSAGE);
                 $this->SetTimerInterval(\Xiaomi\Device\Timer::Reconnect, $this->Retries * 1000);
                 break;
         }
