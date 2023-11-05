@@ -76,6 +76,7 @@ class XiaomiMIoTDevice extends IPSModule
     public function ApplyChanges()
     {
         $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, 0);
+        $this->SetTimerInterval(\Xiaomi\Device\Timer::Reconnect, 0);
         $this->RegisterProfileEx(
             VARIABLETYPE_INTEGER,
             'XIAOMI.ExecuteAction',
@@ -100,6 +101,7 @@ class XiaomiMIoTDevice extends IPSModule
             return;
         }
         if ((!$this->ReadPropertyBoolean(\Xiaomi\Device\Property::Active)) || (!$this->ReadPropertyString(\Xiaomi\Device\Property::Host))) {
+            $this->Retries = 2;
             $this->SetStatus(IS_INACTIVE);
             return;
         }
@@ -153,6 +155,7 @@ class XiaomiMIoTDevice extends IPSModule
                 }
             }
         }
+        $this->Retries = 2;
         $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, $this->ReadPropertyInteger(\Xiaomi\Device\Property::RefreshInterval) * 1000);
     }
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
@@ -365,12 +368,9 @@ class XiaomiMIoTDevice extends IPSModule
                 if ($this->GetStatus() > IS_EBASE) {
                     $this->LogMessage($this->Translate('Reconnect successfully'), KL_MESSAGE);
                 }
-                $this->SetTimerInterval(\Xiaomi\Device\Timer::Reconnect, 0);
-                $this->Retries = 2;
                 break;
             case IS_INACTIVE:
-                $this->SetTimerInterval(\Xiaomi\Device\Timer::Reconnect, 0);
-                $this->Retries = 2;
+
                 break;
             default:
                 if ($this->Retries < 3600) {
