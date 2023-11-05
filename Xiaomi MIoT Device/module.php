@@ -128,9 +128,7 @@ class XiaomiMIoTDevice extends IPSModule
             return;
         }
         $this->CreateStateVariables();
-        $this->ReloadForm(); // Damit alle verbundenen Konsole die neuen Daten anzeigen und nicht nur die eine, welche auf übernehmen geklickt hat
         $this->SetStatus(IS_ACTIVE);
-        $this->LogMessage($this->Translate('Connection established'), KL_MESSAGE);
         if ($this->ReadPropertyBoolean(\Xiaomi\Device\Property::DeniedCloud)) {
             $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, false);
         }
@@ -155,6 +153,8 @@ class XiaomiMIoTDevice extends IPSModule
                 }
             }
         }
+
+        $this->LogMessage($this->Translate('Connection established'), KL_MESSAGE);
         $this->Retries = 2;
         $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, $this->ReadPropertyInteger(\Xiaomi\Device\Property::RefreshInterval) * 1000);
     }
@@ -370,7 +370,7 @@ class XiaomiMIoTDevice extends IPSModule
                 }
                 break;
             case IS_INACTIVE:
-
+                $this->LogMessage($this->Translate('disconnected'), KL_MESSAGE);
                 break;
             default:
                 if ($this->Retries < 3600) {
