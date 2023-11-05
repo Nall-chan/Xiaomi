@@ -119,8 +119,6 @@ class XiaomiMIoTDevice extends IPSModule
         if (!$this->SendHandshake()) {
             return;
         }
-        // Noch keine Events, somit kein Filter
-        //$this->SetReceiveDataFilter('.*"ClientIP":"' . $this->ReadPropertyString(\Xiaomi\Device\Property::Host) . '".*');
 
         // Info Paket abholen mit model
         if (!$this->GetModelData()) {
@@ -129,11 +127,10 @@ class XiaomiMIoTDevice extends IPSModule
         }
         $this->CreateStateVariables();
         $this->SetStatus(IS_ACTIVE);
-        if ($this->ReadPropertyBoolean(\Xiaomi\Device\Property::DeniedCloud)) {
-            $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, false);
-        }
         if ($this->ReadPropertyBoolean(\Xiaomi\Device\Property::ForceCloud)) {
             $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, true);
+        } else {
+            $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, false);
         }
         if ($this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud)) { //cloud an -> nur ein Versuch
             if (!$this->RequestState()) {
@@ -675,7 +672,6 @@ class XiaomiMIoTDevice extends IPSModule
         $RemoteIp = '';
         $RemotePort = 0;
         if (($bytes = @socket_recvfrom($this->Socket, $Response, 4096, 0, $RemoteIp, $RemotePort)) !== false) {
-            $this->Retries = 2;
             $this->SendDebug('Receive [' . $RemoteIp . ':' . (string) $RemotePort . ']', $Response, 1);
             $DecodeError = 0;
             $JSONResult = $this->DecryptMessage($Response, $DecodeError);
