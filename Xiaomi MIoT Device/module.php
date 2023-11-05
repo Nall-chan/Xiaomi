@@ -781,6 +781,7 @@ class XiaomiMIoTDevice extends IPSModule
         $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Specs, $Specs['props']['spec']);
         $this->loadLocale($Specs['props']['spec']['urn']);
         // Wenn nicht vorhanden, dann geht auch nicht das get/set_properties + siid/piid protokoll ?!
+        $this->ReloadForm();
         return true;
     }
     private function loadLocale(string $Urn)

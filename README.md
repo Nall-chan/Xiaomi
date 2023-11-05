@@ -12,6 +12,7 @@
 Ermöglicht die Einbindung von Xiaomi Geräten in IP-Symcon.  
 
 ## Inhaltsverzeichnis <!-- omit in toc -->
+
 - [1. Vorbemerkungen](#1-vorbemerkungen)
 	- [Zur Library](#zur-library)
 	- [Zur Integration von Geräten](#zur-integration-von-geräten)
@@ -84,11 +85,11 @@ Sind die Eingaben korrekt, so wird der Konfigurator geöffnet.
 ###  1. GUID der Module
  
  
-|          Modul           |     Typ      | Prefix |                  GUID                  |
-| :----------------------: | :----------: | :----: | :------------------------------------: |
-|   Xiaomi MIoT Cloud IO   |      IO      | XIAOMI | {DF2248D9-FC17-4609-840D-BA52DBF9CEB6} |
+| Modul                    | Typ          | Prefix | GUID                                   |
+| ------------------------ | ------------ | ------ | -------------------------------------- |
+| Xiaomi MIoT Cloud IO     | IO           | XIAOMI | {DF2248D9-FC17-4609-840D-BA52DBF9CEB6} |
 | Xiaomi MIoT Configurator | Configurator | XIAOMI | {CCB7419D-F038-E519-8D63-171260FED0A0} |
-|    Xiaomi MIoT Device    |    Device    | XIAOMI | {733AB5D2-957D-E76A-BA5D-5006701A6216} |
+| Xiaomi MIoT Device       | Device       | XIAOMI | {733AB5D2-957D-E76A-BA5D-5006701A6216} |
 
 ### 2. Changelog
 

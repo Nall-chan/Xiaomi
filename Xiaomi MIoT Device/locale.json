@@ -32,6 +32,7 @@
             "Connection established": "Verbindung hergestellt",
             "Reconnect successfully": "Wiederverbinden erfolgreich",
             "disconnected": "getrennt",
+            "Execute":"Ausführen",
             "Request state": "Zustand lesen",
             "Reload device information": "Geräteinformationen neu laden",
             "Device information": "Geräteinformationen",
