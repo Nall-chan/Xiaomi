@@ -121,7 +121,7 @@ class XiaomiMIoTConfigurator extends IPSModule
             }
             $AddDevice['create'] = [
                 'moduleID'      => \Xiaomi\GUID::MiDevice,
-                'location'      => [$this->Translate('Mi Home Devices')],
+                'location'      => ((float) IPS_GetKernelVersion() < 7) ? [$this->Translate('Mi Home Devices')] : [],
                 'configuration' => [
                     \Xiaomi\Device\Property::Active         => $Device['isOnline'],
                     \Xiaomi\Device\Property::Host           => $Device['localip'],
@@ -133,7 +133,7 @@ class XiaomiMIoTConfigurator extends IPSModule
         foreach ($InstanceIDList as $InstanceIdDevice => $DID) {
             $AddDevice = [
                 'instanceID'             => $InstanceIdDevice,
-                'IPAddress'              => IPS_GetProperty($InstanceIdDevice,\Xiaomi\Device\Property::Host),
+                'IPAddress'              => IPS_GetProperty($InstanceIdDevice, \Xiaomi\Device\Property::Host),
                 'MAC'                    => '',
                 'Model'                  => '',
                 'name'                   => IPS_GetName($InstanceIdDevice)

@@ -6,7 +6,7 @@
 [![Spenden](https://www.paypalobjects.com/de_DE/DE/i/btn/btn_donate_SM.gif)](#2-spenden)
 [![Wunschliste](https://img.shields.io/badge/Wunschliste-Amazon-ff69fb.svg)](#2-spenden)  
 
-# Xiaomi MIoT Configurator <!-- omit in toc -->  
+# Xiaomi MIoT Cloud IO <!-- omit in toc -->  
 
 ## Inhaltsverzeichnis <!-- omit in toc -->  
 
@@ -25,7 +25,7 @@
 
 ## 1. Funktionsumfang
 
-* Instanz zum einfachen anlegen von Geräte Instanzen in Symcon.  
+* Instanz für die Kommunikation mit der MIoT Cloud.  
 
 ## 2. Voraussetzungen
 
@@ -38,16 +38,23 @@
 
 ## 4. Einrichten der Instanzen in IP-Symcon
 
- Unter `Instanz hinzufügen` ist das `Xiaomi MIoT Configurator`-Modul unter dem Hersteller `Xiaomi` aufgeführt.  
+ Unter `Instanz hinzufügen` ist das `Xiaomi MIoT Cloud IO`-Modul unter dem Hersteller `Xiaomi` aufgeführt.  
 ![Module](../imgs/module.png)  
+
+ Diese Instanz wird automatisch mit erzeugt, wenn eine neue Instanz vom [MIoT Configurator-Modul](../Xiaomi%20MIoT%20Configurator/README.md) angelegt wird.  
+
+![Config](imgs/config.png)  
 
 ### Konfigurationsseite <!-- omit in toc -->  
 
-![Module-Store](../imgs/install5.png)  
+| Name     | Text         | Beschreibung                                                  |
+| -------- | ------------ | ------------------------------------------------------------- |
+| Username | Benutzername | eMail-Adresse, MI Konto-ID oder Rufnummer inkl. Länderkennung |
+| Password | Passwort     | Passwort des Account                                          |
+| Country  | Land         | Auswahl welche Cloud benutzt werden soll                      |
 
-Der Konfigurator kann nur Geräte erkennen, sofern die [Xiaomi MIoT Cloud IO Instanz](../Xiaomi%20MIoT%20Cloud%20IO/README.md) korrekt verbunden ist.
-
-Über den Schalter `Zeige offline Geräte` können Geräte welche aktuell in der Cloud als offline markiert sind eingeblendet werden.  
+Da es diverse Geräte gibt, welche keine direkte Kommunikation im lokalen Netzwerk erlauben, versucht die `Xiaomi MIoT Geräte`-Instanz das Gerät dann über die Cloud anzusprechen.  
+Dazu zu zwingend eine `Xiaomi MIoT Cloud IO`-Instanz als Gateway verbunden sein.  
 
 ## 5. Statusvariablen und Profile
 

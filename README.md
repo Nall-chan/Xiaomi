@@ -77,7 +77,7 @@ Nach der installation aus dem Store wird diese Instanz auf Rückfrage automatisc
 ![Module-Store](imgs/install3.png)  
  Dabei wird die Konfiguration bis zur [Xiaomi MIoT Cloud IO](Xiaomi%20MIoT%20Cloud%20IO/README.md) durchlaufen.  
 ![Module-Store](imgs/install4.png)  
-Sind die Eingaben korrekt, so wird der Konfigurator geöffnet.
+Sind die Eingaben korrekt, so wird der [Xiaomi MIoT Configurator](Xiaomi%20MIoT%20Configurator/README.md) geöffnet.
 ![Module-Store](imgs/install5.png)  
 
 ## 6. Anhang
