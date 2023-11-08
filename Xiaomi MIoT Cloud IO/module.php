@@ -133,14 +133,36 @@ class XiaomiMIoTCloudIO extends IPSModule
     {
         //Never delete this line!
         parent::ApplyChanges();
+        $this->SetSummary($this->ReadPropertyString(\Xiaomi\Cloud\Property::Username));
+        if (IPS_GetKernelRunlevel() != KR_READY) {
+            $this->RegisterMessage(0, IPS_KERNELSTARTED);
+            return;
+        }
         $this->UpdateServiceToken();
     }
+
+    public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
+    {
+        switch ($Message) {
+            case IPS_KERNELSTARTED:
+                $this->KernelReady();
+                break;
+        }
+    }
+
     public function ForwardData($JSONString)
     {
         list($Uri, $Params) = \Xiaomi\Cloud\ForwardData::FromJson($JSONString);
         $Result = $this->Request($Uri, $Params);
         return is_null($Result) ? '' : $Result;
     }
+
+    private function KernelReady()
+    {
+        $this->UnregisterMessage(0, IPS_KERNELSTARTED);
+        $this->ApplyChanges();
+    }
+
     private function Request(string $Path, string $ParamsString): ?string
     {
         $Params['data'] = $ParamsString;
@@ -211,6 +233,7 @@ class XiaomiMIoTCloudIO extends IPSModule
         $this->SendDebug('Cloud Response', $Result, 0);
         return $Result;
     }
+
     private function isLoggedIn()
     {
         return $this->ServiceToken !== '';

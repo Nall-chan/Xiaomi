@@ -53,16 +53,29 @@ class XiaomiMIoTConfigurator extends IPSModule
         }
         $RoborockModulAvailable = $this->isRoborockModuleInstalled();
         $ShowRoborockModuleHint = false;
-        $Devices = [];
-        if ($this->HasActiveParent()) {
-            $Devices = $this->GetDevices();
-        }
-        $ShowOffline = $this->ReadAttributeBoolean(\Xiaomi\Configurator\Attribute::ShowOffline);
 
+        $ShowOffline = $this->ReadAttributeBoolean(\Xiaomi\Configurator\Attribute::ShowOffline);
         $DeviceValues = [];
         $InstanceIDList = $this->GetInstanceList(\Xiaomi\GUID::MiDevice, \Xiaomi\Device\Property::DeviceId);
+        $RoborockInstanceIDList = [];
         if ($RoborockModulAvailable) {
             $RoborockInstanceIDList = $this->GetInstanceList(\Xiaomi\Roborock\GUID::Device, \Xiaomi\Roborock\Property::Ip);
+        }
+        $Devices = [];
+        if (IPS_GetInstance($this->InstanceID)['ConnectionID'] > 1) {
+            $Devices = $this->GetDevices();
+
+            // Filter auf gleichen IO
+            $InstanceIDList = array_filter($InstanceIDList, function ($InstanceIdDevice)
+            {
+                return IPS_GetInstance($InstanceIdDevice)['ConnectionID'] == IPS_GetInstance($this->InstanceID)['ConnectionID'];
+            }, ARRAY_FILTER_USE_KEY);
+
+            // Filter auf gleichen Username der Cloud
+            $RoborockInstanceIDList = array_filter($RoborockInstanceIDList, function ($InstanceIdDevice)
+            {
+                return IPS_GetProperty($InstanceIdDevice, \Xiaomi\Roborock\Property::User) == IPS_GetProperty(IPS_GetInstance($this->InstanceID)['ConnectionID'], \Xiaomi\Cloud\Property::Username);
+            }, ARRAY_FILTER_USE_KEY);
         }
         foreach ($Devices as $Device) {
             if (!array_key_exists('localip', $Device)) {
@@ -169,6 +182,10 @@ class XiaomiMIoTConfigurator extends IPSModule
         $this->SendDebug('FORM', json_encode($Form), 0);
         $this->SendDebug('FORM', json_last_error_msg(), 0);
         return json_encode($Form);
+    }
+    protected function FilterInstances(int $InstanceID): bool
+    {
+        return IPS_GetInstance($InstanceID)['ConnectionID'] == $this->ParentID;
     }
     protected function GetConfigParam(&$item1, int $InstanceID, string $ConfigParam): void
     {

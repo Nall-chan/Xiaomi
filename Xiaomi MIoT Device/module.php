@@ -599,6 +599,11 @@ class XiaomiMIoTDevice extends IPSModule
                         $Name = \Xiaomi\Translate::getLocaleName($Name);
                     }
 
+                    $LocaleServiceKey = sprintf('service:%03d', $Service['iid']);
+                    if (array_key_exists($LocaleServiceKey, $Locales)) {
+                        $Name = $Locales[$LocaleServiceKey] . ': ' . $Name;
+                    }
+
                     list($IpsVarType, $Profile) = $this->GetVariableData($Service['iid'], $Property, $Locales);
                     $this->MaintainVariable($Ident, $Name, $IpsVarType, $Profile, $Pos++, true);
                     if (in_array('write', $Property['access'])) {
@@ -624,6 +629,12 @@ class XiaomiMIoTDevice extends IPSModule
                     } else {
                         $Name = \Xiaomi\Translate::getLocaleName($Name);
                     }
+
+                    $LocaleServiceKey = sprintf('service:%03d', $Service['iid']);
+                    if (array_key_exists($LocaleServiceKey, $Locales)) {
+                        $Name = $Locales[$LocaleServiceKey] . ': ' . $Name;
+                    }
+
                     if (count($Action['in'])) { // ein Parameter -> Variable mit passendem Profil
                         $PropertyIndex = $Action['in'][0];
                         list($IpsVarType, $Profile) = $this->GetVariableData($Service['iid'], $Service['properties'][$PropertyIndex], $Locales);
@@ -738,6 +749,7 @@ class XiaomiMIoTDevice extends IPSModule
         $OldModel = array_key_exists('model', $OldSpecs) ? $OldSpecs['model'] : '';
         $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Info, $Result);
         $this->SendDebug('Model loaded', $Result['model'], 0);
+        $this->SetSummary($this->ReadPropertyString(\Xiaomi\Device\Property::Host) . ' (' . $Result['model'] . ')');
         // das Attribute schon vorhanden ist brauchen wir vielleicht nicht neu laden
         // Fallback von Versionen wo das Attribute fehlte
         if (count($this->ReadAttributeArray(\Xiaomi\Device\Attribute::ParamIdentsRead))) {
@@ -797,10 +809,11 @@ class XiaomiMIoTDevice extends IPSModule
         if (!count($Data)) { //empty
             return false;
         }
-        if (!array_key_exists($locale, $Data)) {
-            $locale = 'en';
+        if (array_key_exists($locale, $Data)) {
+            $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Locales, array_merge($Data['en'], $Data[$locale]));
+        } else {
+            $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Locales, $Data['en']);
         }
-        $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Locales, $Data[$locale]);
         return true;
     }
     private function SendHandshake(): bool

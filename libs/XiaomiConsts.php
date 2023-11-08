@@ -57,10 +57,10 @@ namespace Xiaomi{
         {
             $Locale = explode('_', IPS_GetSystemLanguage())[0];
             $All = json_decode(file_get_contents(__DIR__ . '/card_default.json'), true);
-            $ComplexUnits = array_column($All['complex_units'], 'name', 'key');
+            $ComplexUnits = array_column($All['complex_units'][0], 'name', 'key');
             if (array_key_exists($Unit, $ComplexUnits)) {
                 if (array_key_exists($Locale, $ComplexUnits[$Unit])) {
-                    return $ComplexUnits[$Unit][$Unit][$Locale];
+                    return $ComplexUnits[$Unit][$Locale];
                 }
             }
             if (array_key_exists($Unit, $All['units'])) {
