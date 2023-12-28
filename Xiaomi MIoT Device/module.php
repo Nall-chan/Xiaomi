@@ -239,6 +239,9 @@ class XiaomiMIoTDevice extends IPSModule
                         $this->LogMessage($this->Translate('Device in cloud offline'), KL_ERROR);
                         $this->SetStatus(\Xiaomi\Device\InstanceStatus::InCloudOffline);
                     }
+                } elseif ($Value['code'] == -704220043) {
+                    $this->SendDebug((string) $Value['siid'] . '_' . (string) $Value['piid'], $this->Translate(\Xiaomi\Device\ApiError::$CodeToText[$Value['code']]), 0);
+                    continue;
                 } elseif ($Value['code'] != 0) {
                     $this->LogMessage($this->Translate('Unknown error: ') . $Value['code'], KL_ERROR);
                     continue;

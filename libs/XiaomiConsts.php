@@ -150,7 +150,8 @@ namespace Xiaomi\Device{
             -704040002  => 'Unknown error', //Gateway offline?
             -704040003  => 'Unknown error',
             -704040005  => 'Invalid action',
-            -704042011  => 'Device offline'
+            -704042011  => 'Device offline',
+            -704220043  => 'Property value invalid'
         ];
     }
     class SpecUrls

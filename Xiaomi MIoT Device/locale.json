@@ -14,6 +14,7 @@
             "Device response with wrong ID": "Gerät hat mit falscher ID geantwortet",
             "Device in cloud offline, or cloud offline": "Gerät in der Cloud offline, oder Cloud offline",
             "Device offline": "Gerät offline",
+            "Property value invalid": "Wert der Eingenschaft nicht gültig",
             "Cloud response that device is offline": "Cloud meldet das Gerät als offline",
             "Send blocked": "Senden blockiert",
             "Invalid Ident": "Ungültiger Ident",
