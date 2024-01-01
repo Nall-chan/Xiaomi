@@ -1,5 +1,5 @@
 [![SDK](https://img.shields.io/badge/Symcon-PHPModul-red.svg)](https://www.symcon.de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/)
-[![Version](https://img.shields.io/badge/Modul%20version-1.05-blue.svg)]()
+[![Version](https://img.shields.io/badge/Modul%20version-1.10-blue.svg)]()
 [![Version](https://img.shields.io/badge/Symcon%20Version-6.4%20%3E-green.svg)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v63-v64-q2-2023/)  
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-green.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![Check Style](https://github.com/Nall-chan/Xiaomi/workflows/Check%20Style/badge.svg)](https://github.com/Nall-chan/Xiaomi/actions) [![Run Tests](https://github.com/Nall-chan/Xiaomi/workflows/Run%20Tests/badge.svg)](https://github.com/Nall-chan/Xiaomi/actions)  
@@ -65,12 +65,13 @@
 
 
 Da es diverse Geräte gibt, welche keine direkte Kommunikation im lokalen Netzwerk erlauben, versucht die Geräte-Instanz das Gerät dann über die Cloud anzusprechen.  
-Dieses Verhalten kann durch die beiden Einstellungen `Cloud-Verbindung erzwingen` bzw. `Cloud-Verbindung verbieten` verändert werden.  
+
+Dieses Verhalten **kann** durch die beiden Einstellungen `Cloud-Verbindung erzwingen` bzw. `Cloud-Verbindung verbieten` verändert werden.  
 Es darf nur einer der beiden Einstellungen aktiv sein.  
 Bei `erzwingen` wird (nach dem Handshake mit dem Gerät, was immer lokal läuft) die gesamte weitere Kommunikation über die Cloud geführt.  
 Bei `verbieten` wird niemals automatisch auf die Cloud Verbindung umgeschaltet, wenn das Gerät auf lokale Anfragen nicht reagiert.  
 
-Im Normalfall brauchen diese Einstellungen nicht verändert werden!  
+**Im Normalfall brauchen diese Einstellungen nicht verändert werden!**
 
 ### Konfigurationsseite (Status und Bedienung)  
 
@@ -79,7 +80,7 @@ Die Schaltfläche `Geräteinformationen neu laden` bewirkt das löschen alle abg
 
 Der Bereich `Geräteinformationen` zeigt alle erkannten Eigenschaften von dem Gerät an.  
 Besonders hervorzuheben ist der Punkt `Model`, da eine Änderung vom Model ein automatisches neu laden der Geräteinformationen auslöst.  
-Der Link unter `Infosite` führt zu den MIoT Spezifikationen des Gerätes.  
+Der Link unter `Spezifikationen` führt zu den MIoT Spezifikationen des Gerätes.  
 
 ## 5. Statusvariablen und Profile
 
@@ -87,19 +88,20 @@ Der Link unter `Infosite` führt zu den MIoT Spezifikationen des Gerätes.
 
 Die Statusvariablen inklusive der Übersetzung werden automatisch auf Basis der Gerätefähigkeiten erzeugt.  
 
-Bei fehlende Übersetzungen gibt es in der Cloud keine passende Lokalisierung, die Variablen sollten dann selbst umbenannt werden.
+Bei fehlenden Übersetzungen in der Cloud, findet keine passende Lokalisierung statt, die Variablen sollten dann selbst umbenannt werden.
 
 __Beispiel von einem Standlüfter:__
 
 ![Config](imgs/variables.png)  
 
-Der Erste Buchstabe einer Statusvariable gibt Auskunft darüber ob es sich um eine Eigenschaft vom Gerät (P) oder eine ausführbare Aktion (A) handelt.  
-Während Eigenschaften jeweiligen Zustand darstellen und auch abgefragt werden können, so sind Aktion nicht lesbar und können entsprechen keinen Zustand annehmen und darstellen.  
+**Ident der Variablen:**  
+Der Erste Buchstabe eines Ident einer Statusvariable gibt Auskunft darüber ob es sich um eine Eigenschaft/Wert vom Gerät (P) oder eine ausführbare Aktion (A) handelt.  
+Während Eigenschaften/Werte den jeweiligen Zustand darstellen und auch abgefragt werden können, so sind Aktion nicht lesbar und können entsprechen keinen Zustand annehmen und darstellen.  
 
 ### Profile
 
 Die Profile inklusive der Übersetzungen, Maßeinheiten usw. werden automatisch auf Basis der Gerätefähigkeiten erzeugt.
-Statusvariablen welche Aktionen abbilden und keine Parameter erwarten, erhalten einheitlich das Profil XIAOMI.Execute mit der einzigen Assoziation 'Ausführen'.  
+Statusvariablen welche Aktionen abbilden und keine Parameter erwarten, erhalten einheitlich das Profil `XIAOMI.Execute` mit der einzigen Assoziation `Ausführen`.  
 
 ## 6. WebFront
 
@@ -121,10 +123,10 @@ XIAOMI_RequestState(12345);
 ---
 ### Schreiben von Werten  
 
-**Es wird empfohlen Schaltaktionen dem universellen Befehl [`RequestAction(integer $VariableID, mixed $Value);` Link zur Doku](https://www.symcon.de/de/service/dokumentation/befehlsreferenz/variablenzugriff/requestaction/) auszuführen.**  
+**Es wird empfohlen Schaltaktionen mit dem universellen Befehl [`RequestAction(integer $VariableID, mixed $Value);` (Link zur Doku)](https://www.symcon.de/de/service/dokumentation/befehlsreferenz/variablenzugriff/requestaction/) auszuführen.**  
 
 Sollte es dennoch erforderlich gezielt Werte an bestimme Services zu senden, so stehen folgende Befehle zur Verfügung.  
-Dabei sind `$ServiceID` und `$PropertyID` die nummerischen Indexes der MIoT Spezifikationen des Gerätes, welche in der Konfiguration der Instanz unter [`Infosite`](#konfigurationsseite-status-und-bedienung) verlinkt sind.  
+Dabei sind `$ServiceID` und `$PropertyID` die nummerischen Indexes der MIoT Spezifikationen des Gerätes, welche in der Konfiguration der Instanz unter [`Spezifikationen`](#konfigurationsseite-status-und-bedienung) verlinkt sind.  
 
 ```php
 boolean XIAOMI_WriteValueBoolean(integer $InstanzID, integer $ServiceID, integer $PropertyID, boolean $Value);
@@ -140,10 +142,10 @@ XIAOMI_WriteValueBoolean(12345, 1, 1, true);
 ---
 ### Ausführen einer Aktion  
 
-**Es wird empfohlen Schaltaktionen dem universellen Befehl [`RequestAction(integer $VariableID, mixed $Value);` Link zur Doku](https://www.symcon.de/de/service/dokumentation/befehlsreferenz/variablenzugriff/requestaction/) auszuführen.** 
+**Es wird empfohlen Schaltaktionen mit dem universellen Befehl [`RequestAction(integer $VariableID, mixed $Value);` (Link zur Doku)](https://www.symcon.de/de/service/dokumentation/befehlsreferenz/variablenzugriff/requestaction/) auszuführen.** 
 
 Verfügbare Werte sind z.B. dem Variablenprofil zu entnehmen, oder bei Aktionen welche keine Parameter erwarten irrelevant.  
-Dabei sind `$ServiceID` und `$ActionID` die nummerischen Indexes der MIoT Spezifikationen des Gerätes, welche in der Konfiguration der Instanz unter [`Infosite`](#konfigurationsseite-status-und-bedienung) verlinkt sind.  
+Dabei sind `$ServiceID` und `$ActionID` die nummerischen Indexes der MIoT Spezifikationen des Gerätes, welche in der Konfiguration der Instanz unter [`Spezifikationen`](#konfigurationsseite-status-und-bedienung) verlinkt sind.  
 
 ```php
 boolean XIAOMI_ExecuteAction(integer $InstanzID, integer $ServiceID, integer $ActionID, array $Values);
