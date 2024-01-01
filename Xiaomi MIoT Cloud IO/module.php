@@ -123,6 +123,7 @@ class XiaomiMIoTCloudIO extends IPSModule
         $this->Location = '';
         $this->ServiceToken = '';
     }
+
     public function Destroy()
     {
         //Never delete this line!
@@ -423,6 +424,7 @@ class XiaomiMIoTCloudIO extends IPSModule
         $exps[] = $SignedNonce;
         return base64_encode(sha1(implode('&', $exps), true));
     }
+
     private function rc4(string $pwd, string $data): string
     {
         $key[] = '';

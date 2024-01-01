@@ -37,6 +37,20 @@
             "Request state": "Zustand lesen",
             "Reload device information": "Geräteinformationen neu laden",
             "Device information": "Geräteinformationen",
+            "Names: ": "Namen: ",
+            "Specs: ": "Spezifikationen: ",
+            "Connection: ": "Verbindung: ",
+            "Enabled variables": "Aktivierte Variablen",
+            "Attention!": "Achtung!",
+            "Deselecting a variable will delete it immediately.": "Abwählen einer Variable wird diese umgehend löschen!",
+            "Statevariables": "Statusvariablen",
+            "Service type": "Servicetyp",
+            "Variable name": "Variablenname",
+            "Enabled": "Aktiviert",
+            "Action": "Aktion",
+            "Action with value": "Aktion mit Wert",
+            "Value Read": "Wert lesen",
+            "Value Read/Write": "Wert lesen/schreiben",
             "This module is free for non-commercial use,\r\nDonations in support of the author are accepted here:": "Dieses Modul ist für die nicht kommerzielle Nutzung kostenlos,\r\nSchenkungen als Unterstützung für den Autor werden hier akzeptiert:"
         }
     }

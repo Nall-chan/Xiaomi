@@ -18,6 +18,7 @@ class XiaomiMIoTConfigurator extends IPSModule
         $this->RequireParent(\Xiaomi\GUID::CloudIO);
         $this->RegisterAttributeBoolean(\Xiaomi\Configurator\Attribute::ShowOffline, true);
     }
+
     public function Destroy()
     {
         //Never delete this line!
@@ -29,6 +30,7 @@ class XiaomiMIoTConfigurator extends IPSModule
         //Never delete this line!
         parent::ApplyChanges();
     }
+
     public function RequestAction($Ident, $Value)
     {
         switch ($Ident) {
@@ -118,7 +120,7 @@ class XiaomiMIoTConfigurator extends IPSModule
                     $IOId = IPS_GetInstance($this->InstanceID)['ConnectionID'];
                     $AddDevice['create'] = [
                         'moduleID'      => \Xiaomi\Roborock\GUID::Device,
-                        'location'      => [$this->Translate('Roborocks')],
+                        'location'      => ((float) IPS_GetKernelVersion() < 7) ? [$this->Translate('Roborocks')] : [],
                         'configuration' => [
                             \Xiaomi\Roborock\Property::Ip          => $Device['localip'],
                             \Xiaomi\Roborock\Property::Server      => IPS_GetProperty($IOId, \Xiaomi\Cloud\Property::Country),
@@ -183,14 +185,17 @@ class XiaomiMIoTConfigurator extends IPSModule
         $this->SendDebug('FORM', json_last_error_msg(), 0);
         return json_encode($Form);
     }
+
     protected function FilterInstances(int $InstanceID): bool
     {
         return IPS_GetInstance($InstanceID)['ConnectionID'] == $this->ParentID;
     }
+
     protected function GetConfigParam(&$item1, int $InstanceID, string $ConfigParam): void
     {
         $item1 = IPS_GetProperty($InstanceID, $ConfigParam);
     }
+
     private function GetDevices(): array
     {
         $this->SendDebug(__FUNCTION__, \Xiaomi\Cloud\ApiUrl::Device_List, 0);
@@ -223,15 +228,18 @@ class XiaomiMIoTConfigurator extends IPSModule
         $this->SendDebug('Filter', $InstanceIDList, 0);
         return $InstanceIDList;
     }
+
     private function isRoborockModuleInstalled(): bool
     {
         return IPS_LibraryExists(\Xiaomi\Roborock\GUID::Module);
     }
+
     private function StoreAvailable(): bool
     {
         $Id = IPS_GetInstanceListByModuleID(\Xiaomi\Roborock\GUID::Store)[0];
         return SC_GetLastConfirmedStoreConditions($Id) == 3;
     }
+
     private function InstallRoborockModule()
     {
         $Id = IPS_GetInstanceListByModuleID(\Xiaomi\Roborock\GUID::Store)[0];

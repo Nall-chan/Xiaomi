@@ -95,17 +95,90 @@
                 },
                 {
                     "type": "ExpansionPanel",
-                    "name": "TestCenter",
-                    "width": "350px",
-                    "expanded": false,
-                    "caption": "TestCenter",
+                    "name": "VariablePanel",
+                    "caption": "Enabled variables",
+                    "width": "700px",
+                    "onClick": "",
                     "items": [
                         {
-                            "type": "TestCenter"
+                            "type": "List",
+                            "name": "Statevariables",
+                            "caption": "Statevariables",
+                            "rowCount": 20,
+                            "add": false,
+                            "delete": false,
+                            "onEdit": "IPS_RequestAction($id, 'ChangeVariableEnabled', json_encode([$Statevariables['ident'], $Statevariables['enabled']]));",
+                            "loadValuesFromConfiguration": false,
+                            "sort": {
+                                "column": "name",
+                                "direction": "ascending"
+                            },
+                            "columns": [
+                                {
+                                    "name": "ident",
+                                    "caption": "Ident",
+                                    "visible": false
+                                },
+                                {
+                                    "name": "type",
+                                    "caption": "Service type",
+                                    "width": "150px"
+                                },
+                                {
+                                    "name": "name",
+                                    "caption": "Variable name",
+                                    "width": "325px"
+                                },
+                                {
+                                    "name": "enabled",
+                                    "caption": "Enabled",
+                                    "width": "75px",
+                                    "edit": {
+                                        "type": "CheckBox"
+                                    }
+                                }
+                            ]
                         }
                     ]
                 }
             ]
+        },
+        {
+            "type": "ExpansionPanel",
+            "name": "TestCenter",
+            "width": "450px",
+            "expanded": false,
+            "caption": "TestCenter",
+            "items": [
+                {
+                    "type": "TestCenter"
+                }
+            ]
+        },
+        {
+            "name": "ErrorPopup",
+            "type": "PopupAlert",
+            "visible": false,
+            "popup": {
+                "items": [
+                    {
+                        "name": "ErrorTitle",
+                        "type": "Label",
+                        "caption": ""
+                    },
+                    {
+                        "name": "ErrorText",
+                        "type": "Label",
+                        "caption": ""
+                    },
+                    {
+                        "type": "OpenObjectButton",
+                        "caption": "",
+                        "objectID": 1,
+                        "visible": false
+                    }
+                ]
+            }
         },
         {
             "type": "Label",

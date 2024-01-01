@@ -115,6 +115,7 @@ namespace Xiaomi\Device{
         public const ActionIdents = 'ActionIdents';
         public const ParamIdentsRead = 'ParamIdentsRead';
         public const ParamIdentsWrite = 'ParamIdentsWrite';
+        public const LockedStateVariables = 'LockedStateVariables';
     }
     class InstanceStatus
     {
