@@ -161,7 +161,7 @@ class XiaomiMIoTCloudIO extends IPSModule
     private function KernelReady()
     {
         $this->UnregisterMessage(0, IPS_KERNELSTARTED);
-        $this->ApplyChanges();
+        $this->UpdateServiceToken();
     }
 
     private function Request(string $Path, string $ParamsString): ?string

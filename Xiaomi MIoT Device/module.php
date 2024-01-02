@@ -96,8 +96,8 @@ class XiaomiMIoTDevice extends IPSModule
         parent::ApplyChanges();
         // Anzeige IP in der INFO Spalte
         $this->SetSummary($this->ReadPropertyString(\Xiaomi\Device\Property::Host));
-        // Noch keine Events, somit kein Filter
-        //$this->SetReceiveDataFilter('.*"ClientIP":"".*');
+
+        // Wenn Kernel nicht fertig, dann nix machen und darauf warten
         if (IPS_GetKernelRunlevel() != KR_READY) {
             $this->RegisterMessage(0, IPS_KERNELSTARTED);
             return;
@@ -180,10 +180,13 @@ class XiaomiMIoTDevice extends IPSModule
                 $this->RequestState();
                 return;
             case \Xiaomi\Device\Timer::Reconnect:
+                //Reconnect Timer abgelaufen. Verbindungsaufbau versuchen.
                 $this->ApplyChanges();
                 return;
             case 'ForceReloadModel':
+                //User hat Geräteinfos neu laden über die Instanz-Konfig ausgeführt.
                 $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, 0);
+                $this->SetTimerInterval(\Xiaomi\Device\Timer::Reconnect, 0);
                 $this->WriteAttributeString(\Xiaomi\Device\Attribute::Token, '');
                 $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Specs, []);
                 $this->WriteAttributeString(\Xiaomi\Device\Attribute::ProductName, '');
@@ -474,6 +477,7 @@ class XiaomiMIoTDevice extends IPSModule
     private function KernelReady()
     {
         $this->UnregisterMessage(0, IPS_KERNELSTARTED);
+        // Wenn Kernel fertig, dann fangen wir von vorne an.
         $this->ApplyChanges();
     }
 
