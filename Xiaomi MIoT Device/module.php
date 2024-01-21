@@ -475,6 +475,9 @@ class XiaomiMIoTDevice extends IPSModule
                 $this->LogMessage($this->Translate('disconnected'), KL_MESSAGE);
                 break;
             default:
+                if (!$this->ReadPropertyBoolean(\Xiaomi\Device\Property::Active)) { // Zwischen senden und empfangen wurde die Instanz auf inactik gesetzt
+                    return;
+                }
                 $this->LogMessage($this->Translate('Reconnect failed'), KL_MESSAGE);
                 if ($this->Retries < 3600) {
                     $this->Retries++;
