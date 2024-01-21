@@ -5,6 +5,8 @@ declare(strict_types=1);
 eval('declare(strict_types=1);namespace XiaomiConfigurator {?>' . file_get_contents(__DIR__ . '/../libs/helper/DebugHelper.php') . '}');
 require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
 /**
+ * @property int ParentID
+ *
  * @method bool SendDebug(string $Message, mixed $Data, int $Format)
  */
 class XiaomiMIoTConfigurator extends IPSModule

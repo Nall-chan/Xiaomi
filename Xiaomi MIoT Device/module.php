@@ -91,9 +91,11 @@ class XiaomiMIoTDevice extends IPSModule
         );
         $this->ServerStamp = 0;
         $this->ServerStampTime = 0;
+        $this->Retries = 2;
 
         //Never delete this line!
         parent::ApplyChanges();
+
         // Anzeige IP in der INFO Spalte
         $this->SetSummary($this->ReadPropertyString(\Xiaomi\Device\Property::Host));
 
@@ -103,7 +105,6 @@ class XiaomiMIoTDevice extends IPSModule
             return;
         }
         if ((!$this->ReadPropertyBoolean(\Xiaomi\Device\Property::Active)) || (!$this->ReadPropertyString(\Xiaomi\Device\Property::Host))) {
-            $this->Retries = 2;
             $this->SetStatus(IS_INACTIVE);
             return;
         }
@@ -154,7 +155,6 @@ class XiaomiMIoTDevice extends IPSModule
         }
 
         $this->LogMessage($this->Translate('Connection established'), KL_MESSAGE);
-        $this->Retries = 2;
         $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, $this->ReadPropertyInteger(\Xiaomi\Device\Property::RefreshInterval) * 1000);
     }
 
@@ -180,13 +180,21 @@ class XiaomiMIoTDevice extends IPSModule
                 $this->RequestState();
                 return;
             case \Xiaomi\Device\Timer::Reconnect:
-                //Reconnect Timer abgelaufen. Verbindungsaufbau versuchen.
-                $this->ApplyChanges();
+                // Reconnect Timer abgelaufen. Verbindungsaufbau versuchen.
+                $this->SetTimerInterval(\Xiaomi\Device\Timer::Reconnect, 0);
+                $this->LogMessage($this->Translate('Try reconnecting'), KL_MESSAGE);
+                if ($this->SendHandshake()) {
+                    $this->Retries = 2;
+                    $this->SetStatus(IS_ACTIVE);
+                    $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, $this->ReadPropertyInteger(\Xiaomi\Device\Property::RefreshInterval) * 1000);
+                }
                 return;
             case 'ForceReloadModel':
-                //User hat Geräteinfos neu laden über die Instanz-Konfig ausgeführt.
+                // User hat Geräteinfos neu laden über die Instanz-Konfig ausgeführt.
+                // Alle Timer anhalten
                 $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, 0);
                 $this->SetTimerInterval(\Xiaomi\Device\Timer::Reconnect, 0);
+                // Alle Attribute löschen
                 $this->WriteAttributeString(\Xiaomi\Device\Attribute::Token, '');
                 $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Specs, []);
                 $this->WriteAttributeString(\Xiaomi\Device\Attribute::ProductName, '');
@@ -198,6 +206,7 @@ class XiaomiMIoTDevice extends IPSModule
                 $this->WriteAttributeArray(\Xiaomi\Device\Attribute::ActionIdents, []);
                 $this->WriteAttributeArray(\Xiaomi\Device\Attribute::ParamIdentsRead, []);
                 $this->WriteAttributeArray(\Xiaomi\Device\Attribute::ParamIdentsWrite, []);
+                // Neu laden von allen Einstellungen und Attributen
                 IPS_RunScriptText('IPS_Applychanges(' . $this->InstanceID . ');');
                 return;
             case 'ReloadForm':
@@ -456,18 +465,21 @@ class XiaomiMIoTDevice extends IPSModule
     {
         switch ($State) {
             case IS_ACTIVE:
+                $this->Retries = 2;
                 if ($this->GetStatus() > IS_EBASE) {
                     $this->LogMessage($this->Translate('Reconnect successfully'), KL_MESSAGE);
                 }
                 break;
             case IS_INACTIVE:
+                $this->Retries = 2;
                 $this->LogMessage($this->Translate('disconnected'), KL_MESSAGE);
                 break;
             default:
+                $this->LogMessage($this->Translate('Reconnect failed'), KL_MESSAGE);
                 if ($this->Retries < 3600) {
                     $this->Retries++;
                 }
-                $this->LogMessage('Retry in ' . $this->Retries . ' seconds', KL_MESSAGE);
+                $this->LogMessage(sprintf($this->Translate('Try to reconnect in %d seconds'), $this->Retries), KL_MESSAGE);
                 $this->SetTimerInterval(\Xiaomi\Device\Timer::Reconnect, $this->Retries * 1000);
                 break;
         }
@@ -477,7 +489,7 @@ class XiaomiMIoTDevice extends IPSModule
     private function KernelReady()
     {
         $this->UnregisterMessage(0, IPS_KERNELSTARTED);
-        // Wenn Kernel fertig, dann fangen wir von vorne an.
+        // Wenn Kernel fertig, dann machen wir da im Applychanges weiter, wo wir vorher abgebrochen haben.
         $this->ApplyChanges();
     }
 
