@@ -77,8 +77,6 @@ class XiaomiMIoTDevice extends IPSModule
 
     public function ApplyChanges()
     {
-        $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, 0);
-        $this->SetTimerInterval(\Xiaomi\Device\Timer::Reconnect, 0);
         $this->RegisterProfileEx(
             VARIABLETYPE_INTEGER,
             'XIAOMI.ExecuteAction',
@@ -89,73 +87,16 @@ class XiaomiMIoTDevice extends IPSModule
                 [0, 'Execute', '', -1]
             ]
         );
-        $this->ServerStamp = 0;
-        $this->ServerStampTime = 0;
-        $this->Retries = 2;
 
         //Never delete this line!
         parent::ApplyChanges();
-
-        // Anzeige IP in der INFO Spalte
-        $this->SetSummary($this->ReadPropertyString(\Xiaomi\Device\Property::Host));
 
         // Wenn Kernel nicht fertig, dann nix machen und darauf warten
         if (IPS_GetKernelRunlevel() != KR_READY) {
             $this->RegisterMessage(0, IPS_KERNELSTARTED);
             return;
         }
-        if ((!$this->ReadPropertyBoolean(\Xiaomi\Device\Property::Active)) || (!$this->ReadPropertyString(\Xiaomi\Device\Property::Host))) {
-            $this->SetStatus(IS_INACTIVE);
-            return;
-        }
-        if (!$this->ReadPropertyString(\Xiaomi\Device\Property::DeviceId)) {
-            $this->SetStatus(\Xiaomi\Device\InstanceStatus::ConfigError);
-            return;
-        }
-        if (!$this->ReadAttributeString(\Xiaomi\Device\Attribute::Token)) {
-            // Kein Token -> Token aus Cloud holen.
-            if (!$this->GetToken()) {
-                $this->SetStatus(\Xiaomi\Device\InstanceStatus::GetTokenFailed);
-                return;
-            }
-        }
-        if (!$this->SendHandshake()) {
-            return;
-        }
-
-        // Info Paket abholen mit model
-        if (!$this->GetModelData()) {
-            $this->SetStatus(\Xiaomi\Device\InstanceStatus::GetSpecsFailed);
-            return;
-        }
-        $this->CreateStateVariables();
-        $this->SetStatus(IS_ACTIVE);
-        if ($this->ReadPropertyBoolean(\Xiaomi\Device\Property::ForceCloud)) {
-            $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, true);
-        } else {
-            $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, false);
-        }
-        if ($this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud)) { //cloud an -> nur ein Versuch
-            if (!$this->RequestState()) {
-                $this->SetStatus(\Xiaomi\Device\InstanceStatus::InCloudOffline);
-                return;
-            }
-        } else {
-            if (!$this->RequestState()) { // wenn erster Versuch fehlschlägt
-                if ($this->ReadPropertyBoolean(\Xiaomi\Device\Property::DeniedCloud)) { // und Cloud verboten
-                    $this->SetStatus(\Xiaomi\Device\InstanceStatus::TimeoutError);
-                    return;
-                }
-                $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, true); // umschalten auf Cloud
-                if (!$this->RequestState()) {
-                    $this->SetStatus(\Xiaomi\Device\InstanceStatus::InCloudOffline);
-                    return;
-                }
-            }
-        }
-
-        $this->LogMessage($this->Translate('Connection established'), KL_MESSAGE);
-        $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, $this->ReadPropertyInteger(\Xiaomi\Device\Property::RefreshInterval) * 1000);
+        $this->InitConnection();
     }
 
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
@@ -207,9 +148,7 @@ class XiaomiMIoTDevice extends IPSModule
                 $this->WriteAttributeArray(\Xiaomi\Device\Attribute::ParamIdentsRead, []);
                 $this->WriteAttributeArray(\Xiaomi\Device\Attribute::ParamIdentsWrite, []);
                 // Neu laden von allen Einstellungen und Attributen
-                IPS_RunScriptText('IPS_Applychanges(' . $this->InstanceID . ');');
-                return;
-            case 'ReloadForm':
+                $this->InitConnection();
                 $this->ReloadForm();
                 return;
             case 'VariablePanel':
@@ -489,11 +428,74 @@ class XiaomiMIoTDevice extends IPSModule
         parent::SetStatus($State);
     }
 
+    private function InitConnection()
+    {
+        $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, 0);
+        $this->SetTimerInterval(\Xiaomi\Device\Timer::Reconnect, 0);
+        $this->ServerStamp = 0;
+        $this->ServerStampTime = 0;
+        $this->Retries = 2;
+        // Anzeige IP in der INFO Spalte
+        $this->SetSummary($this->ReadPropertyString(\Xiaomi\Device\Property::Host));
+
+        if ((!$this->ReadPropertyBoolean(\Xiaomi\Device\Property::Active)) || (!$this->ReadPropertyString(\Xiaomi\Device\Property::Host))) {
+            $this->SetStatus(IS_INACTIVE);
+            return;
+        }
+        if (!$this->ReadPropertyString(\Xiaomi\Device\Property::DeviceId)) {
+            $this->SetStatus(\Xiaomi\Device\InstanceStatus::ConfigError);
+            return;
+        }
+        if (!$this->ReadAttributeString(\Xiaomi\Device\Attribute::Token)) {
+            // Kein Token -> Token aus Cloud holen.
+            if (!$this->GetToken()) {
+                $this->SetStatus(\Xiaomi\Device\InstanceStatus::GetTokenFailed);
+                return;
+            }
+        }
+        if (!$this->SendHandshake()) {
+            return;
+        }
+
+        // Info Paket abholen mit model
+        if (!$this->GetModelData()) {
+            $this->SetStatus(\Xiaomi\Device\InstanceStatus::GetSpecsFailed);
+            return;
+        }
+        $this->CreateStateVariables();
+        $this->SetStatus(IS_ACTIVE);
+        if ($this->ReadPropertyBoolean(\Xiaomi\Device\Property::ForceCloud)) {
+            $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, true);
+        } else {
+            $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, false);
+        }
+        if ($this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud)) { //cloud an -> nur ein Versuch
+            if (!$this->RequestState()) {
+                $this->SetStatus(\Xiaomi\Device\InstanceStatus::InCloudOffline);
+                return;
+            }
+        } else {
+            if (!$this->RequestState()) { // wenn erster Versuch fehlschlägt
+                if ($this->ReadPropertyBoolean(\Xiaomi\Device\Property::DeniedCloud)) { // und Cloud verboten
+                    $this->SetStatus(\Xiaomi\Device\InstanceStatus::TimeoutError);
+                    return;
+                }
+                $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, true); // umschalten auf Cloud
+                if (!$this->RequestState()) {
+                    $this->SetStatus(\Xiaomi\Device\InstanceStatus::InCloudOffline);
+                    return;
+                }
+            }
+        }
+
+        $this->LogMessage($this->Translate('Connection established'), KL_MESSAGE);
+        $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, $this->ReadPropertyInteger(\Xiaomi\Device\Property::RefreshInterval) * 1000);
+    }
+
     private function KernelReady()
     {
         $this->UnregisterMessage(0, IPS_KERNELSTARTED);
-        // Wenn Kernel fertig, dann machen wir da im Applychanges weiter, wo wir vorher abgebrochen haben.
-        $this->ApplyChanges();
+        $this->InitConnection();
     }
 
     private function SendLocal(string $Method, array $Prams = []): ?array
@@ -923,8 +925,6 @@ class XiaomiMIoTDevice extends IPSModule
         $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Specs, $Specs['props']['spec']);
         // Wenn nicht vorhanden, dann geht auch nicht das get/set_properties + siid/piid Protokoll
         $this->loadLocale($Specs['props']['spec']['urn']);
-        // Form verzögert neu laden, da die Attribute erst in CreateStateVariables gefüllt werden.
-        IPS_RunScriptText('IPS_Sleep(500);IPS_RequestAction(' . $this->InstanceID . ',"ReloadForm",true);');
         return true;
     }
 
