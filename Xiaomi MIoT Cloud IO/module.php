@@ -269,9 +269,8 @@ class XiaomiMIoTCloudIO extends IPSModule
 
     private function parseCookies(string $Data): string
     {
-        $Lines = explode("\r\n", $Data);
+        $Lines = explode("\r\n", trim($Data));
         array_shift($Lines);
-        array_pop($Lines);
 
         foreach ($Lines as $Line) {
             $line_array = explode(':', $Line);
