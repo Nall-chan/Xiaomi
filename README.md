@@ -14,16 +14,16 @@ Ermöglicht die Einbindung von Xiaomi Geräten in IP-Symcon.
 ## Inhaltsverzeichnis <!-- omit in toc -->
 
 - [1. Vorbemerkungen](#1-vorbemerkungen)
-	- [Zur Library](#zur-library)
-	- [Zur Integration von Geräten](#zur-integration-von-geräten)
+  - [Zur Library](#zur-library)
+  - [Zur Integration von Geräten](#zur-integration-von-geräten)
 - [2. Voraussetzungen](#2-voraussetzungen)
 - [3. Enthaltende Module](#3-enthaltende-module)
 - [4. Software-Installation](#4-software-installation)
 - [5. Einrichten der Instanzen in IP-Symcon](#5-einrichten-der-instanzen-in-ip-symcon)
 - [6. Anhang](#6-anhang)
-	- [1. GUID der Module](#1-guid-der-module)
-	- [2. Changelog](#2-changelog)
-	- [3. Spenden](#3-spenden)
+  - [1. GUID der Module](#1-guid-der-module)
+  - [2. Changelog](#2-changelog)
+  - [3. Spenden](#3-spenden)
 - [7. Lizenz](#7-lizenz)
 
 ----------
@@ -35,7 +35,7 @@ Stattdessen werden alle Fähigkeiten und Eigenschaften von Geräten einmalig aus
 Entsprechend können grundsätzlich alle Geräte, auch von Drittherstellern, eingebunden werden, sofern das Gerät in der `Mi Home App` vorhanden und angelernt ist.  
 
 Die Kommunikation der Geräte kann sowohl lokal (LAN/WLAN) als auch über die Cloud erfolgen.  
-**Jedoch unterstützt nicht jedes Gerät die lokale Kommunikation.**
+**Jedoch unterstützt nicht jedes Gerät die lokale Kommunikation.**  
 
 ----------
 ### Zur Integration von Geräten  
@@ -43,6 +43,8 @@ Die Kommunikation der Geräte kann sowohl lokal (LAN/WLAN) als auch über die Cl
 Es werden Instanzen zur Kommunikation mit der Cloud (Cloud IO), einrichten von Geräten in Symcon (Konfigurator) und die eigentlichen Geräte Instanzen bereitgestellt.  
 
 Für die Ersteinrichtung ist zwingend ein Internetzugang, sowie die Zugangsdaten des Account der Mi Cloud (Mi Account bzw. Konto der Mi Home App) nötig.  
+
+**Die Geräte müssen sich im gleichen Subnet wie Symcon befindet, da viele Geräte eine Verbindung sonst ablehnen und somit keine Kommunikation möglich ist.**  
 
 ## 2. Voraussetzungen
 
@@ -94,9 +96,12 @@ Sind die Eingaben korrekt, so wird der [Xiaomi MIoT Configurator](Xiaomi%20MIoT%
 
 ### 2. Changelog
 
+  Version 1.11:  
+  - Token konnte nicht ermittelt werden  
+  
   Version 1.10:  
-  - In den Geräte Instanzen können nicht genutzte Statusvariablen deaktiviert werden.  
-  - Diverse Übersetzungen ergänzt.  
+  - In den Geräte Instanzen können nicht genutzte Statusvariablen deaktiviert werden  
+  - Diverse Übersetzungen ergänzt  
   
   Version 1.05:  
  - Übersetzungen von Tagen, Stunden, Minuten, Sekunden fehlte  
