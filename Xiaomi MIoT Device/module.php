@@ -534,6 +534,9 @@ class XiaomiMIoTDevice extends IPSModule
             return null;
         }
         $Result = json_decode($Response, true);
+        if ($Result === null) {
+            return null;
+        }
         if ($Result['code'] != 0) {
             echo $this->Translate(\Xiaomi\Cloud\ApiError::$CodeToText[$Result['code']]);
             return null;
@@ -882,7 +885,7 @@ class XiaomiMIoTDevice extends IPSModule
         $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Info, $Result);
         $this->SendDebug('Model loaded', $Result['model'], 0);
         $this->SetSummary($this->ReadPropertyString(\Xiaomi\Device\Property::Host) . ' (' . $Result['model'] . ')');
-        // das Attribute schon vorhanden ist brauchen wir vielleicht nicht neu laden
+        // wenn das Attribute schon vorhanden ist brauchen wir vielleicht nicht neu laden
         // Fallback von Versionen wo das Attribute fehlte
         if (count($this->ReadAttributeArray(\Xiaomi\Device\Attribute::ParamIdentsRead))) {
             // Wenn model nicht geändert alles okay

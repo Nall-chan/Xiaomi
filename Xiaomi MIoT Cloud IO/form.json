@@ -57,6 +57,29 @@
     ],
     "actions": [
         {
+            "type": "PopupAlert",
+            "name": "ErrorPopup",
+            "popup": {
+                "closeCaption": "Close",
+                "items": [
+                    {
+                        "type": "Label",
+                        "bold": true,
+                        "caption": "Verify Login",
+                        "name": "ErrorTitle"
+                    },
+                    {
+                        "type": "Button",
+                        "caption": "Open Link",
+                        "link": true,
+                        "name": "ErrorUrl",
+                        "onClick": ""
+                    }
+                ]
+            },
+            "visible": false
+        },
+        {
             "type": "Label",
             "caption": "This module is free for non-commercial use,\r\nDonations in support of the author are accepted here:"
         },

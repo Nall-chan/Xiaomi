@@ -96,21 +96,21 @@ Sind die Eingaben korrekt, so wird der [Xiaomi MIoT Configurator](Xiaomi%20MIoT%
 
 ### 2. Changelog
 
-  Version 1.11:  
+  **Version 1.11:**  
   - Token konnte nicht ermittelt werden  
   
-  Version 1.10:  
+  **Version 1.10:**  
   - In den Geräte Instanzen können nicht genutzte Statusvariablen deaktiviert werden  
   - Diverse Übersetzungen ergänzt  
   
-  Version 1.05:  
+  **Version 1.05:**  
  - Übersetzungen von Tagen, Stunden, Minuten, Sekunden fehlte  
  - Fehlende Übersetzungen der Systemsprache werden aus der englischen Übersetzung des Gerätes ergänzt  
  - Cloud IO zeigt den Benutzernamen in der Info Spalte an, damit mehrere Instanzen besser unterschieden werden können  
  - Konfigurator  berücksichtigt nur Instanzen welche am selben IO hängen (oder bei Roborock-Instanzen welche den gleichen Cloud Usernamen haben)  
  - Geräte Instanz zeigt das Modul in der Info Spalte an     
 
-  Version 1.01:  
+  **Version 1.01:**  
  - Start der offenen Beta  
 
 ### 3. Spenden  

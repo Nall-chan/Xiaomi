@@ -139,7 +139,7 @@ class XiaomiMIoTCloudIO extends IPSModule
             $this->RegisterMessage(0, IPS_KERNELSTARTED);
             return;
         }
-        $this->UpdateServiceToken();
+        IPS_RunScriptText('IPS_Sleep(250);IPS_RequestAction(' . $this->InstanceID . ',"UpdateServiceToken","");');
     }
 
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
@@ -156,6 +156,14 @@ class XiaomiMIoTCloudIO extends IPSModule
         list($Uri, $Params) = \Xiaomi\Cloud\ForwardData::FromJson($JSONString);
         $Result = $this->Request($Uri, $Params);
         return is_null($Result) ? '' : $Result;
+    }
+    
+    public function RequestAction($Ident, $Value)
+    {
+        switch ($Ident) {
+            case 'UpdateServiceToken':
+                $this->UpdateServiceToken();
+        }
     }
 
     private function KernelReady()
@@ -360,6 +368,19 @@ class XiaomiMIoTCloudIO extends IPSModule
         }
         $this->SendDebug('Cloud Body (' . $HttpCode . ')', $Result, 0);
         $Json = $this->parseJson($Result);
+        if ($Json === null) {
+            return false;
+        }
+        if ($Json['code'] == 70016) { //captcha via location
+            $this->UpdateFormField('ErrorUrl', 'onClick', 'echo "' . $Json['location'] . '";');
+            $this->UpdateFormField('ErrorPopup', 'visible', true);
+            return false;
+        }
+        if ($Json['securityStatus'] == 16) { // notificationUrl
+            $this->UpdateFormField('ErrorUrl', 'onClick', 'echo "' . $Json['notificationUrl'] . '";');
+            $this->UpdateFormField('ErrorPopup', 'visible', true);
+            return false;
+        }
         $Data = array_intersect_key($Json, array_flip(['ssecurity', 'userId', 'location']));
         if (count($Data) !== 3) {
             return false;
