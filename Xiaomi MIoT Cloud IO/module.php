@@ -157,7 +157,7 @@ class XiaomiMIoTCloudIO extends IPSModule
         $Result = $this->Request($Uri, $Params);
         return is_null($Result) ? '' : $Result;
     }
-    
+
     public function RequestAction($Ident, $Value)
     {
         switch ($Ident) {
@@ -341,7 +341,8 @@ class XiaomiMIoTCloudIO extends IPSModule
             $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::AgentID),
             $Cookie
         );
-        $this->SendDebug('Cloud Request', \Xiaomi\Cloud\ApiUrl::Login, 0);
+        $this->SendDebug('Cloud Request (Header)', implode("\r\n", $Headers), 0);
+        $this->SendDebug('Cloud Request (URL)', \Xiaomi\Cloud\ApiUrl::Login, 0);
         $ch = curl_init(\Xiaomi\Cloud\ApiUrl::Login);
         curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
         curl_setopt($ch, CURLOPT_POST, true);
@@ -369,11 +370,6 @@ class XiaomiMIoTCloudIO extends IPSModule
         $this->SendDebug('Cloud Body (' . $HttpCode . ')', $Result, 0);
         $Json = $this->parseJson($Result);
         if ($Json === null) {
-            return false;
-        }
-        if ($Json['code'] == 70016) { //captcha via location
-            $this->UpdateFormField('ErrorUrl', 'onClick', 'echo "' . $Json['location'] . '";');
-            $this->UpdateFormField('ErrorPopup', 'visible', true);
             return false;
         }
         if ($Json['securityStatus'] == 16) { // notificationUrl
