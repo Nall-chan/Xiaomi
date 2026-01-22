@@ -463,7 +463,6 @@ class XiaomiMIoTDevice extends IPSModule
             return;
         }
         $this->CreateStateVariables();
-        $this->SetStatus(IS_ACTIVE);
         if ($this->ReadPropertyBoolean(\Xiaomi\Device\Property::ForceCloud)) {
             $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, true);
         } else {
@@ -487,7 +486,7 @@ class XiaomiMIoTDevice extends IPSModule
                 }
             }
         }
-
+        $this->SetStatus(IS_ACTIVE);
         $this->LogMessage($this->Translate('Connection established'), KL_MESSAGE);
         $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, $this->ReadPropertyInteger(\Xiaomi\Device\Property::RefreshInterval) * 1000);
     }

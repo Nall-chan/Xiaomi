@@ -203,8 +203,7 @@ namespace Xiaomi\Cloud{
         public const Encoding = 'Accept-Encoding: identity';
         public const Accept = 'Accept: */*';
         public const Connection = 'Connection: keep-alive';
-        public const CLI = 'x-xiaomi-protocal-flag-cli: PROTOCAL-HTTP2';
-        public const ClientId = 'mishop-client-id: 180100041079';
+        public const CLI = 'X-XIAOMI-PROTOCAL-FLAG-CLI: PROTOCAL-HTTP2';
         public const Content = 'Content-Type: application/x-www-form-urlencoded';
         public const Encrypt = 'MIOT-ENCRYPT-ALGORITHM: ENCRYPT-RC4';
         public const Cookie = 'Cookie: ';
@@ -215,7 +214,7 @@ namespace Xiaomi\Cloud{
                 sprintf(self::UserAgent, $AgentID),
                 self::Encoding,
                 self::Accept,
-                self::ClientId,
+                self::CLI,
                 self::Content,
                 self::Cookie . $Cookie
             ];
@@ -227,7 +226,7 @@ namespace Xiaomi\Cloud{
                 sprintf(self::UserAgent, $AgentID),
                 self::Encoding,
                 self::Accept,
-                self::ClientId,
+                self::CLI,
                 self::Content,
                 self::Encrypt,
                 self::Cookie . $Cookie
@@ -290,6 +289,41 @@ namespace Xiaomi\Cloud{
                     self::Channel
                 ]
             );
+        }
+    }
+    class ApiVerifyIdentity
+    {
+        public const Phone = 4;
+        public const Email = 8;
+        public static $TypeToPath =
+            [
+                self::Phone => 'https://account.xiaomi.com/identity/auth/verifyPhone?',
+                self::Email => 'https://account.xiaomi.com/identity/auth/verifyEmail?',
+            ];
+        public static function getUrl(int $Type): string
+        {
+            if (!array_key_exists($Type, self::$TypeToPath)) {
+                throw new \Exception('Unknown verification type: ' . $Type);
+            }
+            return self::$TypeToPath[$Type];
+        }
+    }
+
+    class ApiCheckIdentity
+    {
+        public const Phone = 4;
+        public const Email = 8;
+        public static $TypeToPath =
+            [
+                self::Phone => 'https://account.xiaomi.com/identity/auth/sendPhoneTicket?',
+                self::Email => 'https://account.xiaomi.com/identity/auth/sendEmailTicket?',
+            ];
+        public static function getUrl(int $Type): string
+        {
+            if (!array_key_exists($Type, self::$TypeToPath)) {
+                throw new \Exception('Unknown verification type: ' . $Type);
+            }
+            return self::$TypeToPath[$Type];
         }
     }
     class ForwardData
