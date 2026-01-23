@@ -7,10 +7,6 @@ eval('declare(strict_types=1);namespace XiaomiCloudIO {?>' . file_get_contents(_
 require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
 /**
  * @method bool SendDebug(string $Message, mixed $Data, int $Format)
- * @property string $SSecurity
- * @property string $UserId
- * @property string $Location
- * @property string $ServiceToken
  * @property string $VerifyUrl
  */
 class XiaomiMIoTCloudIO extends IPSModule
@@ -92,7 +88,6 @@ class XiaomiMIoTCloudIO extends IPSModule
         82 => 'CURLE_SSL_CRL_BADFILE',
         83 => 'CURLE_SSL_ISSUER_ERROR',
         84 => 'CURLE_FTP_PRET_FAILED',
-        84 => 'CURLE_FTP_PRET_FAILED',
         85 => 'CURLE_RTSP_CSEQ_ERROR',
         86 => 'CURLE_RTSP_SESSION_ERROR',
         87 => 'CURLE_FTP_BAD_FILE_LIST',
@@ -109,46 +104,88 @@ class XiaomiMIoTCloudIO extends IPSModule
             500 => 'Server error'
         ];
 
+    /**
+     * Create
+     *
+     * @return void
+     */
     public function Create()
     {
         //Never delete this line!
         parent::Create();
-
-        $this->RegisterPropertyString(\Xiaomi\Cloud\Property::Username, '');
-        $this->RegisterPropertyString(\Xiaomi\Cloud\Property::Password, '');
-        $this->RegisterPropertyString(\Xiaomi\Cloud\Property::Country, 'de');
+        $this->RegisterAttributeString(\Xiaomi\Cloud\Attribute::Username, '');
+        $this->RegisterAttributeString(\Xiaomi\Cloud\Attribute::Password, '');
+        $this->RegisterAttributeString(\Xiaomi\Cloud\Attribute::Country, 'de');
         $this->RegisterAttributeString(\Xiaomi\Cloud\Attribute::AgentID, self::generateRandomString('ABCDEF', 13));
         $this->RegisterAttributeString(\Xiaomi\Cloud\Attribute::ClientID, self::generateRandomString('ABCDEFGHIJKLMNOPQRSTUVWXYZ', 6));
-        $this->SSecurity = '';
-        $this->UserId = '';
-        $this->Location = '';
-        $this->ServiceToken = '';
+        $this->RegisterAttributeString(\Xiaomi\Cloud\Attribute::ServiceToken, '');
+        $this->RegisterAttributeString(\Xiaomi\Cloud\Attribute::SSecurity, '');
+        $this->RegisterAttributeString(\Xiaomi\Cloud\Attribute::UserId, '');
+        $this->RegisterAttributeString(\Xiaomi\Cloud\Attribute::cUserId, '');
+        $this->RegisterAttributeString(\Xiaomi\Cloud\Attribute::Location, '');
+        $this->RegisterAttributeString(\Xiaomi\Cloud\Attribute::Sign, '');
         $this->VerifyUrl = '';
     }
 
-    public function Destroy()
+    /**
+     * Migrate
+     *
+     * @param  string $JSONData
+     * @return string
+     */
+    public function Migrate($JSONData)
     {
-        //Never delete this line!
-        parent::Destroy();
+        $j = json_decode($JSONData);
+        if (isset($j->configuration->{\Xiaomi\Cloud\Attribute::Username})) {
+            $j->attributes->{\Xiaomi\Cloud\Attribute::Username} = $j->configuration->{\Xiaomi\Cloud\Attribute::Username};
+            $j->attributes->{\Xiaomi\Cloud\Attribute::Password} = $j->configuration->{\Xiaomi\Cloud\Attribute::Password};
+            $j->attributes->{\Xiaomi\Cloud\Attribute::Country} = $j->configuration->{\Xiaomi\Cloud\Attribute::Country};
+            unset($j->configuration->{\Xiaomi\Cloud\Attribute::Username});
+            unset($j->configuration->{\Xiaomi\Cloud\Attribute::Password});
+            unset($j->configuration->{\Xiaomi\Cloud\Attribute::Country});
+        }
+        return json_encode($j);
     }
 
+    /**
+     * ApplyChanges
+     *
+     * @return void
+     */
     public function ApplyChanges()
     {
         //Never delete this line!
         parent::ApplyChanges();
-        $this->SetSummary($this->ReadPropertyString(\Xiaomi\Cloud\Property::Username));
+        $this->SetSummary($this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Username));
         if (IPS_GetKernelRunlevel() != KR_READY) {
             $this->RegisterMessage(0, IPS_KERNELSTARTED);
             return;
         }
-        $this->SSecurity = '';
-        $this->UserId = '';
-        $this->Location = '';
-        $this->ServiceToken = '';
-        $this->VerifyUrl = '';
-        IPS_RunScriptText('IPS_Sleep(250);IPS_RequestAction(' . $this->InstanceID . ',"UpdateServiceToken","");');
+        if ($this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Username) == '' || $this->VerifyUrl != '') {
+            $this->SetStatus(IS_INACTIVE);
+            return;
+        }
+        if ($this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Location) == '') {
+            if (!$this->StartLogin(
+                $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Username),
+                $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Password)
+            )) {
+                $this->SetStatus(IS_EBASE + 1);
+                return;
+            }
+        }
+        $this->UpdateServiceToken();
     }
 
+    /**
+     * MessageSink
+     *
+     * @param  mixed $TimeStamp
+     * @param  mixed $SenderID
+     * @param  mixed $Message
+     * @param  mixed $Data
+     * @return void
+     */
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
     {
         switch ($Message) {
@@ -158,65 +195,140 @@ class XiaomiMIoTCloudIO extends IPSModule
         }
     }
 
+    /**
+     * RequestAction
+     *
+     * @param  string $Ident
+     * @param  mixed $Value
+     * @return void
+     */
+    public function RequestAction($Ident, $Value)
+    {
+        switch ($Ident) {
+            case 'LoginPopup':
+                $this->UpdateFormField('LoginPopup', 'visible', true);
+                break;
+        }
+    }
+
+    /**
+     * GetConfigurationForm
+     *
+     * @return string
+     */
+    public function GetConfigurationForm(): string
+    {
+        $Form = json_decode(file_get_contents(__DIR__ . '/form.json'), true);
+        if ($this->GetStatus() == IS_CREATING) {
+            return json_encode($Form);
+        }
+        if ($this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Username)) {
+            $Form['actions'][0]['visible'] = true;
+            if ($this->VerifyUrl) {
+                $Form['actions'][3]['visible'] = true;
+                $Form['actions'][3]['popup']['items'][1]['onClick'] = 'echo "' . $this->VerifyUrl . '";';
+            }
+        } else {
+            $Form['actions'][1]['visible'] = true;
+            $Form['actions'][2]['visible'] = true;
+        }
+        $this->SendDebug('FORM', json_encode($Form), 0);
+        $this->SendDebug('FORM', json_last_error_msg(), 0);
+        return json_encode($Form);
+    }
+
+    /**
+     * ForwardData
+     *
+     * @param  mixed $JSONString
+     * @return string
+     */
     public function ForwardData($JSONString)
     {
+        if ($this->GetStatus() != IS_ACTIVE) {
+            $this->SendDebug('ForwardData', 'Instance not active', 0);
+            return '';
+        }
         list($Uri, $Params) = \Xiaomi\Cloud\ForwardData::FromJson($JSONString);
         $Result = $this->Request($Uri, $Params);
         return is_null($Result) ? '' : $Result;
     }
 
-    public function RequestAction($Ident, $Value)
+    public function Logout(): void
     {
-        switch ($Ident) {
-            case 'UpdateServiceToken':
-                $this->UpdateServiceToken();
-                break;
+        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::Username, '');
+        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::Password, '');
+        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::ServiceToken, '');
+        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::SSecurity, '');
+        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::UserId, '');
+        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::cUserId, '');
+        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::Location, '');
+        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::Sign, '');
+        $this->SetStatus(IS_INACTIVE);
+        $this->ReloadForm();
+    }
+    public function SetCredentials(string $Username, string $Password, string $Country): string
+    {
+        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::Country, $Country);
+        if ($this->StartLogin($Username, $Password)) {
+            $this->UpdateServiceToken();
+            $this->ReloadForm();
+            return '';
         }
+        return $this->Translate('Unauthorized');
     }
 
     public function SubmitVerificationCode(string $Code): string
     {
-        return $this->VerifyDevice($Code);
+        $Result = $this->VerifyDevice($Code);
+        if ($Result == '') {
+            return $this->Translate('MESSAGE:Verification successful!');
+        }
+        return $Result;
     }
 
+    /**
+     * KernelReady
+     *
+     * @return void
+     */
     private function KernelReady()
     {
         $this->UnregisterMessage(0, IPS_KERNELSTARTED);
         $this->UpdateServiceToken();
     }
 
-    private function UpdateServiceToken(): bool
+    /**
+     * StartLogin
+     *
+     * @param  string $Username
+     * @param  string $Password
+     * @return bool
+     */
+    private function StartLogin(string $Username, string $Password): bool
     {
-        $this->VerifyUrl = '';
-        if ($this->ReadPropertyString(\Xiaomi\Cloud\Property::Username) == '') {
-            $this->SetStatus(IS_INACTIVE);
-            return false;
-        }
         $Sign = $this->getLoginSign();
         if (is_null($Sign)) {
             $this->SendDebug('ERROR Cloud', 'could not connect', 0);
             $this->SetStatus(IS_EBASE + 1);
             return false;
         }
-        if (!$this->Login($Sign)) {
-            if ($this->VerifyUrl !== '') {
-                $this->SetStatus(IS_INACTIVE);
-            } else {
+        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::Sign, $Sign);
+        if (!$this->Login($Username, $Password)) {
+            if ($this->VerifyUrl == '') {
                 $this->SendDebug('ERROR Cloud', 'invalid login', 0);
                 $this->SetStatus(IS_EBASE + 1);
             }
             return false;
         }
-        $this->ServiceToken = $this->GetServiceToken((strpos($Sign, 'http') !== 0) ? $this->Location : $Sign);
-        if ($this->ServiceToken === '') {
-            $this->SendDebug('ERROR Cloud', 'could not fetch token', 0);
-            $this->SetStatus(IS_EBASE + 1);
-            return false;
-        }
-        $this->SetStatus(IS_ACTIVE);
         return true;
     }
 
+    /**
+     * getLoginSign
+     *
+     * @return string
+     */
     private function getLoginSign(): ?string
     {
         $this->SendDebug(__FUNCTION__, '', 0);
@@ -228,13 +340,21 @@ class XiaomiMIoTCloudIO extends IPSModule
         return null;
     }
 
-    private function Login(string $Sign): bool
+    /**
+     * Login
+     *
+     * @param  string $Username
+     * @param  string $Password
+     * @return bool
+     */
+    private function Login(string $Username, string $Password): bool
     {
-        $this->SendDebug(__FUNCTION__, $Sign, 0);
+        $this->SendDebug(__FUNCTION__, '', 0);
+        $this->VerifyUrl = '';
         $Payload = \Xiaomi\Cloud\ApiData::getLoginPayload(
-            $this->ReadPropertyString(\Xiaomi\Cloud\Property::Username),
-            $this->ReadPropertyString(\Xiaomi\Cloud\Property::Password),
-            $Sign
+            $Username,
+            $Password,
+            $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Sign)
         );
         $Cookie = \Xiaomi\Cloud\ApiCookie::getLoginCookie($this->ReadAttributeString(\Xiaomi\Cloud\Attribute::ClientID));
         $Headers = \Xiaomi\Cloud\ApiHeader::getLoginHeader(
@@ -250,19 +370,27 @@ class XiaomiMIoTCloudIO extends IPSModule
             return false;
         }
         if ($Json['securityStatus'] == 16) {
+            $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::Username, $Username);
+            $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::Password, $Password);
             $this->SendDebug('Cloud Login', 'Additional verification required', 0);
             $this->VerifyUrl = $Json['notificationUrl'];
+            $this->UpdateFormField('LoginPopup', 'visible', false);
+            $this->UpdateFormField('LogoutButton', 'visible', true);
+            $this->UpdateFormField('LoginButton', 'visible', false);
             $this->UpdateFormField('VerifyUrl', 'onClick', 'echo "' . $Json['notificationUrl'] . '";');
             $this->UpdateFormField('VerifyPopup', 'visible', true);
             return false;
         }
-        $Data = array_intersect_key($Json, array_flip(['ssecurity', 'userId', 'location']));
-        if (count($Data) !== 3) {
+        $Data = array_intersect_key($Json, array_flip(['ssecurity', 'userId', 'location', 'cUserId']));
+        if (count($Data) !== 4) {
             return false;
         }
-        $this->SSecurity = $Data['ssecurity'];
-        $this->UserId = (string) $Data['userId'];
-        $this->Location = $Data['location'];
+        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::Username, $Username);
+        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::Password, $Password);
+        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::SSecurity, $Data['ssecurity']);
+        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::UserId, (string) $Data['userId']);
+        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::cUserId, $Data['cUserId']);
+        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::Location, $Data['location']);
         return true;
     }
 
@@ -322,55 +450,79 @@ class XiaomiMIoTCloudIO extends IPSModule
         $LoginUrl = $Json['location'];
         $ResponseHeader = '';
         $Result = $this->CurlCall($ResponseHeader, $LoginUrl, $Headers);
-        $this->ServiceToken = self::parseCookies($ResponseHeader, 'serviceToken');
-        $this->UserId = (string) self::parseCookies($ResponseHeader, 'userId');
-        $Lines = explode("\r\n", $ResponseHeader);
+        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::ServiceToken, self::parseCookies($Result, 'serviceToken'));
+        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::UserId, (string) self::parseCookies($Result, 'userId'));
+        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::cUserId, (string) self::parseCookies($Result, 'cUserId'));
+        $Lines = explode("\r\n", $Result);
         foreach ($Lines as $Line) {
             $line_array = explode(':', $Line);
             $Field = strtolower(trim(array_shift($line_array)));
+            if ($Field == 'location') {
+                $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::Location, trim(implode(':', $line_array)));
+                continue;
+            }
             if ($Field == 'extension-pragma') {
-                $Data = json_decode(array_shift($line_array), true);
-                $this->SSecurity = $Data['ssecurity'];
+                $Data = json_decode(trim(implode(':', $line_array)), true);
+                $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::SSecurity, $Data['ssecurity']);
                 $this->SendDebug('Cloud Login', 'Device verification successful', 0);
                 $this->SetStatus(IS_ACTIVE);
+                $this->VerifyUrl = '';
                 return '';
             }
         }
         return 'Error on finalizing verification';
     }
 
-    private function GetServiceToken(string $Url): string
+    /**
+     * UpdateServiceToken
+     *
+     * @return bool
+     */
+    private function UpdateServiceToken(): bool
     {
-        $this->SendDebug(__FUNCTION__, $Url, 0);
+        $this->SendDebug(__FUNCTION__, '', 0);
+        $ServiceToken = '';
         $Headers = [
             sprintf(\Xiaomi\Cloud\ApiHeader::UserAgent, $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::AgentID))
         ];
-        $Result = $this->CurlCall($ResponseHeader, $Url, $Headers);
+        $Result = $this->CurlCall($ResponseHeader, $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Location), $Headers);
         if ($Result == 'ok') {
-            return self::parseCookies($ResponseHeader, 'serviceToken');
+            $ServiceToken = self::parseCookies($ResponseHeader, 'serviceToken');
+            $this->SetStatus(IS_ACTIVE);
+        } else {
+            $this->SendDebug('ERROR Cloud', 'could not fetch token', 0);
+            $this->SetStatus(IS_EBASE + 1);
         }
-        return '';
+        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::ServiceToken, $ServiceToken);
+        return $ServiceToken !== '';
     }
 
+    /**
+     * Request
+     *
+     * @param  string $Path
+     * @param  string $ParamsString
+     * @return ?string
+     */
     private function Request(string $Path, string $ParamsString): ?string
     {
         $this->SendDebug(__FUNCTION__, $Path, 0);
         $this->SendDebug(__FUNCTION__, $ParamsString, 0);
         $Params['data'] = $ParamsString;
-        $Url = \Xiaomi\Cloud\ApiUrl::GetApiUrl($this->ReadPropertyString(\Xiaomi\Cloud\Property::Country), $Path);
+        $Url = \Xiaomi\Cloud\ApiUrl::GetApiUrl($this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Country), $Path);
         $Nonce = self::GenerateNonce();
-        $SignedNonce = self::SignedNonce($this->SSecurity, $Nonce);
+        $SignedNonce = self::SignedNonce($this->ReadAttributeString(\Xiaomi\Cloud\Attribute::SSecurity), $Nonce);
         $Params['rc4_hash__'] = self::GenerateSignature($Path, $SignedNonce, $Params);
         foreach ($Params as &$Param) {
             $Param = base64_encode(substr(self::rc4(base64_decode($SignedNonce), str_repeat("\x0", 1024) . $Param), 1024));
         }
         $Params['signature'] = self::GenerateSignature($Path, $SignedNonce, $Params);
         $Params['_nonce'] = $Nonce;
-        $Params['ssecurity'] = $this->SSecurity;
+        $Params['ssecurity'] = $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::SSecurity);
         $Cookie = \Xiaomi\Cloud\ApiCookie::getApiCookie(
             $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::ClientID),
-            $this->UserId,
-            $this->ServiceToken
+            $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::UserId),
+            $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::ServiceToken)
         );
         $this->SendDebug('Cloud Request (Cookie)', $Cookie, 0);
         $Headers = \Xiaomi\Cloud\ApiHeader::getApiHeader(
@@ -385,10 +537,19 @@ class XiaomiMIoTCloudIO extends IPSModule
             return $Result;
         }
         $Result = substr(self::rc4(base64_decode($SignedNonce), str_repeat("\x0", 1024) . base64_decode($Result)), 1024);
-        $this->SendDebug('Cloud Response', $Result, 0);
+        $this->SendDebug('Cloud Response Decoded', $Result, 0);
         return $Result;
     }
 
+    /**
+     * CurlCall
+     *
+     * @param  ?string $ResponseHeader
+     * @param  string $Url
+     * @param  array $Headers
+     * @param  ?array $Data
+     * @return ?string
+     */
     private function CurlCall(?string &$ResponseHeader, string $Url, array $Headers = [], ?array $Data = null): ?string
     {
         $this->SendDebug('Cloud Request Url', $Url, 0);
@@ -435,6 +596,13 @@ class XiaomiMIoTCloudIO extends IPSModule
         return $Result;
     }
 
+    /**
+     * parseCookies
+     *
+     * @param  string $Data
+     * @param  string $CookieName
+     * @return string
+     */
     private static function parseCookies(string $Data, string $CookieName): string
     {
         $Lines = explode("\r\n", trim($Data));
@@ -456,6 +624,12 @@ class XiaomiMIoTCloudIO extends IPSModule
         return '';
     }
 
+    /**
+     * parseJson
+     *
+     * @param  string $Data
+     * @return array
+     */
     private static function parseJson(string $Data): ?array
     {
         if (strpos($Data, '&&&START&&&') === 0) {
@@ -464,11 +638,23 @@ class XiaomiMIoTCloudIO extends IPSModule
         return json_decode($Data, true);
     }
 
+    /**
+     * generateRandomString
+     *
+     * @param  string $x
+     * @param  int $length
+     * @return string
+     */
     private static function generateRandomString(string $x, int $length = 10): string
     {
         return substr(str_shuffle(str_repeat($x, (int) ceil($length / strlen($x)))), 1, $length);
     }
 
+    /**
+     * GenerateNonce
+     *
+     * @return string
+     */
     private static function GenerateNonce(): string
     {
         $buf = random_bytes(8);
@@ -479,7 +665,14 @@ class XiaomiMIoTCloudIO extends IPSModule
         return $base64;
     }
 
-    private static function SignedNonce(string $SSecurity, string $nonce)
+    /**
+     * SignedNonce
+     *
+     * @param  string $SSecurity
+     * @param  string $nonce
+     * @return string
+     */
+    private static function SignedNonce(string $SSecurity, string $nonce): string
     {
         $s = base64_decode($SSecurity);
         $n = base64_decode($nonce);
@@ -487,7 +680,15 @@ class XiaomiMIoTCloudIO extends IPSModule
         return base64_encode($hash);
     }
 
-    private static function GenerateSignature(string $Path, string $SignedNonce, array $Params)
+    /**
+     * GenerateSignature
+     *
+     * @param  string $Path
+     * @param  string $SignedNonce
+     * @param  array $Params
+     * @return string
+     */
+    private static function GenerateSignature(string $Path, string $SignedNonce, array $Params): string
     {
         $exps = [
             'POST',
@@ -501,6 +702,13 @@ class XiaomiMIoTCloudIO extends IPSModule
         return base64_encode(sha1(implode('&', $exps), true));
     }
 
+    /**
+     * rc4
+     *
+     * @param  string $pwd
+     * @param  string $data
+     * @return string
+     */
     private static function rc4(string $pwd, string $data): string
     {
         $key[] = '';

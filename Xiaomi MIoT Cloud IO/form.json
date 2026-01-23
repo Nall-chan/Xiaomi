@@ -1,61 +1,85 @@
 {
-    "elements": [
-        {
-            "type": "RowLayout",
-            "items": [
-                {
-                    "name": "Username",
-                    "type": "ValidationTextBox",
-                    "caption": "Username"
-                },
-                {
-                    "name": "Password",
-                    "type": "PasswordTextBox",
-                    "caption": "Password"
-                },
-                {
-                    "type": "Select",
-                    "name": "Country",
-                    "caption": "Country",
-                    "options": [
-                        {
-                            "caption": "China",
-                            "value": "cn"
-                        },
-                        {
-                            "caption": "Germany",
-                            "value": "de"
-                        },
-                        {
-                            "caption": "Russia",
-                            "value": "ru"
-                        },
-                        {
-                            "caption": "America",
-                            "value": "us"
-                        },
-                        {
-                            "caption": "Taiwan",
-                            "value": "tw"
-                        },
-                        {
-                            "caption": "Singapur",
-                            "value": "sg"
-                        },
-                        {
-                            "caption": "India",
-                            "value": "in"
-                        },
-                        {
-                            "caption": "India? [i2]",
-                            "value": "i2"
-                        }
-                    ]
-                }
-            ]
-        }
-    ],
     "actions": [
+        {
+            "type": "Button",
+            "name": "LogoutButton",
+            "caption": "Logout",
+            "visible": false,
+            "onClick": "XIAOMI_Logout($id);"
+        },
+        {
+            "type": "Button",
+            "name": "LoginButton",
+            "caption": "Login",
+            "onClick": "IPS_RequestAction($id,'LoginPopup',true);",
+            "visible": false
+        },
+        {
+            "type": "PopupAlert",
+            "name": "LoginPopup",
+            "popup": {
+                "closeCaption": "Abort",
+                "items": [
+                    {
+                        "name": "Username",
+                        "type": "ValidationTextBox",
+                        "caption": "Username"
+                    },
+                    {
+                        "name": "Password",
+                        "type": "PasswordTextBox",
+                        "caption": "Password"
+                    },
+                    {
+                        "type": "Select",
+                        "name": "Country",
+                        "caption": "Country",
+                        "options": [
+                            {
+                                "caption": "China",
+                                "value": "cn"
+                            },
+                            {
+                                "caption": "Germany",
+                                "value": "de"
+                            },
+                            {
+                                "caption": "Russia",
+                                "value": "ru"
+                            },
+                            {
+                                "caption": "America",
+                                "value": "us"
+                            },
+                            {
+                                "caption": "Taiwan",
+                                "value": "tw"
+                            },
+                            {
+                                "caption": "Singapur",
+                                "value": "sg"
+                            },
+                            {
+                                "caption": "India",
+                                "value": "in"
+                            },
+                            {
+                                "caption": "India? [i2]",
+                                "value": "i2"
+                            }
+                        ]
+                    }
+                ],
+                "buttons": [
+                    {
+                        "type": "Button",
+                        "caption": "Login",
+                        "onClick": "echo XIAOMI_SetCredentials($id, $Username, $Password, $Country);"
+                    }
+                ]
+            },
+            "visible": false
+        },
         {
             "type": "PopupAlert",
             "name": "VerifyPopup",
@@ -90,14 +114,7 @@
                     {
                         "type": "Button",
                         "caption": "Submit",
-                        "onClick": [
-                            "$Result = XIAOMI_SubmitVerificationCode($id, $VerifyCode);",
-                            "if ($Result === 'OK'){",
-                            "   echo 'MESSAGE:Verification successful!';",
-                            "} else {",
-                            "    echo $Result;",
-                            "}"
-                        ]
+                        "onClick": "echo XIAOMI_SubmitVerificationCode($id, $VerifyCode);"
                     }
                 ]
             },

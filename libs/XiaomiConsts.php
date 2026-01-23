@@ -163,16 +163,21 @@ namespace Xiaomi\Device{
 }
 
 namespace Xiaomi\Cloud{
-    class Property
+
+    class Attribute
     {
         public const Username = 'Username';
         public const Password = 'Password';
         public const Country = 'Country';
-    }
-    class Attribute
-    {
         public const AgentID = 'AgentID';
         public const ClientID = 'ClientID';
+        public const ClientSecret = 'ClientSecret';
+        public const ServiceToken = 'ServiceToken';
+        public const SSecurity = 'SSecurity';
+        public const UserId = 'UserId';
+        public const cUserId = 'cUserId';
+        public const Location = 'Location';
+        public const Sign = 'Sign';
     }
     class ApiUrl
     {
