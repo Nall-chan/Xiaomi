@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 eval('declare(strict_types=1);namespace XiaomiConfigurator {?>' . file_get_contents(__DIR__ . '/../libs/helper/DebugHelper.php') . '}');
 require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
+
 /**
  * @property int ParentID
  *
@@ -13,6 +14,11 @@ class XiaomiMIoTConfigurator extends IPSModule
 {
     use \XiaomiConfigurator\DebugHelper;
 
+    /**
+     * Create
+     *
+     * @return void
+     */
     public function Create()
     {
         //Never delete this line!
@@ -21,18 +27,13 @@ class XiaomiMIoTConfigurator extends IPSModule
         $this->RegisterAttributeBoolean(\Xiaomi\Configurator\Attribute::ShowOffline, true);
     }
 
-    public function Destroy()
-    {
-        //Never delete this line!
-        parent::Destroy();
-    }
-
-    public function ApplyChanges()
-    {
-        //Never delete this line!
-        parent::ApplyChanges();
-    }
-
+    /**
+     * RequestAction
+     *
+     * @param  string $Ident
+     * @param  mixed $Value
+     * @return void
+     */
     public function RequestAction($Ident, $Value)
     {
         switch ($Ident) {
@@ -49,6 +50,11 @@ class XiaomiMIoTConfigurator extends IPSModule
         }
     }
 
+    /**
+     * GetConfigurationForm
+     *
+     * @return string
+     */
     public function GetConfigurationForm()
     {
         $Form = json_decode(file_get_contents(__DIR__ . '/form.json'), true);
@@ -188,16 +194,35 @@ class XiaomiMIoTConfigurator extends IPSModule
         return json_encode($Form);
     }
 
+    /**
+     * FilterInstances
+     *
+     * @param  int $InstanceID
+     * @return bool
+     */
     protected function FilterInstances(int $InstanceID): bool
     {
         return IPS_GetInstance($InstanceID)['ConnectionID'] == $this->ParentID;
     }
 
+    /**
+     * GetConfigParam
+     *
+     * @param  mixed $item1
+     * @param  int $InstanceID
+     * @param  string $ConfigParam
+     * @return void
+     */
     protected function GetConfigParam(&$item1, int $InstanceID, string $ConfigParam): void
     {
         $item1 = IPS_GetProperty($InstanceID, $ConfigParam);
     }
 
+    /**
+     * GetDevices
+     *
+     * @return array
+     */
     private function GetDevices(): array
     {
         $this->SendDebug(__FUNCTION__, \Xiaomi\Cloud\ApiUrl::Device_List, 0);
@@ -216,12 +241,26 @@ class XiaomiMIoTConfigurator extends IPSModule
         return [];
     }
 
+    /**
+     * Request
+     *
+     * @param  string $Uri
+     * @param  string $Params
+     * @return ?string
+     */
     private function Request(string $Uri, string $Params): ?string
     {
         $Result = $this->SendDataToParent(\Xiaomi\Cloud\ForwardData::ToJson($Uri, $Params));
         return ($Result == '') ? null : $Result;
     }
 
+    /**
+     * GetInstanceList
+     *
+     * @param  string $GUID
+     * @param  string $ConfigParam
+     * @return array
+     */
     private function GetInstanceList(string $GUID, string $ConfigParam): array
     {
         $InstanceIDList = IPS_GetInstanceListByModuleID($GUID);
@@ -231,18 +270,33 @@ class XiaomiMIoTConfigurator extends IPSModule
         return $InstanceIDList;
     }
 
+    /**
+     * isRoborockModuleInstalled
+     *
+     * @return bool
+     */
     private function isRoborockModuleInstalled(): bool
     {
         return IPS_LibraryExists(\Xiaomi\Roborock\GUID::Module);
     }
 
+    /**
+     * StoreAvailable
+     *
+     * @return bool
+     */
     private function StoreAvailable(): bool
     {
         $Id = IPS_GetInstanceListByModuleID(\Xiaomi\Roborock\GUID::Store)[0];
         return SC_GetLastConfirmedStoreConditions($Id) == 3;
     }
 
-    private function InstallRoborockModule()
+    /**
+     * InstallRoborockModule
+     *
+     * @return bool
+     */
+    private function InstallRoborockModule(): bool
     {
         $Id = IPS_GetInstanceListByModuleID(\Xiaomi\Roborock\GUID::Store)[0];
         $Context = stream_context_create(\Xiaomi\Roborock\Store::$Opts);

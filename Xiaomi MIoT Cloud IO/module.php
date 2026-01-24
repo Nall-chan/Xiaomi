@@ -8,12 +8,15 @@ require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
 /**
  * @method bool SendDebug(string $Message, mixed $Data, int $Format)
  * @property string $VerifyUrl
+ * @property string $IdentitySession
+ * @property int $Flag
  */
 class XiaomiMIoTCloudIO extends IPSModule
 {
     use \XiaomiCloudIO\DebugHelper;
     use \XiaomiCloudIO\BufferHelper;
 
+    /** @var array $CURL_error_codes */
     private static $CURL_error_codes = [
         0  => 'UNKNOWN ERROR',
         1  => 'CURLE_UNSUPPORTED_PROTOCOL',
@@ -94,6 +97,7 @@ class XiaomiMIoTCloudIO extends IPSModule
         88 => 'CURLE_CHUNK_FAILED'
     ];
 
+    /** @var array $http_error */
     private static $http_error =
         [
             400 => 'Bad Request',
@@ -125,6 +129,7 @@ class XiaomiMIoTCloudIO extends IPSModule
         $this->RegisterAttributeString(\Xiaomi\Cloud\Attribute::Location, '');
         $this->RegisterAttributeString(\Xiaomi\Cloud\Attribute::Sign, '');
         $this->VerifyUrl = '';
+        $this->IdentitySession = '';
     }
 
     /**
@@ -225,8 +230,16 @@ class XiaomiMIoTCloudIO extends IPSModule
         if ($this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Username)) {
             $Form['actions'][0]['visible'] = true;
             if ($this->VerifyUrl) {
+                list($VerifyMessage, $ErrorMessage) = $this->StartVerifyDevice();
+                if ($VerifyMessage != '') {
+                    $Form['actions'][3]['popup']['items'][1]['caption'] = $VerifyMessage;
+                } else {
+                    $Form['actions'][3]['popup']['items'][1]['caption'] = $this->Translate($ErrorMessage);
+                    $Form['actions'][3]['popup']['items'][1]['color'] = 0xff0000;
+                    $Form['actions'][3]['popup']['items'][2]['enabled'] = false;
+                }
                 $Form['actions'][3]['visible'] = true;
-                $Form['actions'][3]['popup']['items'][1]['onClick'] = 'echo "' . $this->VerifyUrl . '";';
+                //$Form['actions'][3]['popup']['items'][1]['onClick'] = 'echo "' . $this->VerifyUrl . '";';
             }
         } else {
             $Form['actions'][1]['visible'] = true;
@@ -254,6 +267,11 @@ class XiaomiMIoTCloudIO extends IPSModule
         return is_null($Result) ? '' : $Result;
     }
 
+    /**
+     * Logout
+     *
+     * @return void
+     */
     public function Logout(): void
     {
         $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::Username, '');
@@ -267,6 +285,15 @@ class XiaomiMIoTCloudIO extends IPSModule
         $this->SetStatus(IS_INACTIVE);
         $this->ReloadForm();
     }
+
+    /**
+     * SetCredentials
+     *
+     * @param  string $Username
+     * @param  string $Password
+     * @param  string $Country
+     * @return string
+     */
     public function SetCredentials(string $Username, string $Password, string $Country): string
     {
         $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::Country, $Country);
@@ -278,6 +305,53 @@ class XiaomiMIoTCloudIO extends IPSModule
         return $this->Translate('Unauthorized');
     }
 
+    /**
+     * SendVerificationCode
+     *
+     * @return string
+     */
+    public function SendVerificationCode(): string
+    {
+        $this->SendDebug(__FUNCTION__, '', 0);
+        $Cookie = \Xiaomi\Cloud\ApiCookie::getLoginCookie($this->ReadAttributeString(\Xiaomi\Cloud\Attribute::ClientID));
+        $VerifyUrl = \Xiaomi\Cloud\ApiCheckIdentity::getUrl($this->Flag) . http_build_query([
+            '_dc'   => (int) (time() * 1000)
+        ]);
+        $Headers = \Xiaomi\Cloud\ApiHeader::getLoginHeader(
+            $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::AgentID),
+            $Cookie . '; identity_session=' . $this->IdentitySession
+        );
+        $Data = [
+            'retry'  => 0,
+            'icode'  => '',
+            '_json'  => 'true'
+        ];
+        $ResponseHeader = '';
+        $Result = $this->CurlCall($ResponseHeader, $VerifyUrl, $Headers, $Data);
+        if ($Result === null) {
+            return 'Error in request to send verification code';
+        }
+        $Json = self::parseJson($Result);
+        if ($Json === null) {
+            return 'Error in parsing result from send verification request';
+        }
+        if ($Json['code'] !== 0) {
+            if (isset($Json['tips'])) {
+                return $Json['tips'];
+            }
+            return 'Error in request to send verification code';
+        }
+        $this->UpdateFormField('SendVerificationCodeButton', 'enabled', false);
+        $this->UpdateFormField('SendVerificationCodeButton', 'caption', $this->Translate('Code sent'));
+        return '';
+    }
+
+    /**
+     * SubmitVerificationCode
+     *
+     * @param  string $Code
+     * @return string
+     */
     public function SubmitVerificationCode(string $Code): string
     {
         $Result = $this->VerifyDevice($Code);
@@ -351,6 +425,7 @@ class XiaomiMIoTCloudIO extends IPSModule
     {
         $this->SendDebug(__FUNCTION__, '', 0);
         $this->VerifyUrl = '';
+        $this->IdentitySession = '';
         $Payload = \Xiaomi\Cloud\ApiData::getLoginPayload(
             $Username,
             $Password,
@@ -370,14 +445,25 @@ class XiaomiMIoTCloudIO extends IPSModule
             return false;
         }
         if ($Json['securityStatus'] == 16) {
-            $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::Username, $Username);
-            $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::Password, $Password);
             $this->SendDebug('Cloud Login', 'Additional verification required', 0);
             $this->VerifyUrl = $Json['notificationUrl'];
-            $this->UpdateFormField('LoginPopup', 'visible', false);
+            $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::Username, $Username);
+            $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::Password, $Password);
+            list($VerifyMessage, $ErrorMessage) = $this->StartVerifyDevice();
+
             $this->UpdateFormField('LogoutButton', 'visible', true);
             $this->UpdateFormField('LoginButton', 'visible', false);
-            $this->UpdateFormField('VerifyUrl', 'onClick', 'echo "' . $Json['notificationUrl'] . '";');
+            $this->UpdateFormField('LoginPopup', 'visible', false);
+
+            //$this->UpdateFormField('VerifyUrl', 'onClick', 'echo "' . $Json['notificationUrl'] . '";');
+            $this->UpdateFormField('VerifyMessage', 'caption', $VerifyMessage);
+            if ($VerifyMessage != '') {
+                $this->UpdateFormField('VerifyMessage', 'caption', $VerifyMessage);
+            } else {
+                $this->UpdateFormField('VerifyMessage', 'caption', $this->Translate($ErrorMessage));
+                $this->UpdateFormField('VerifyMessage', 'color', 0xff0000);
+                $this->UpdateFormField('SubmitVerificationCodeButton', 'visible', false);
+            }
             $this->UpdateFormField('VerifyPopup', 'visible', true);
             return false;
         }
@@ -394,9 +480,13 @@ class XiaomiMIoTCloudIO extends IPSModule
         return true;
     }
 
-    private function VerifyDevice(string $Code): string
+    /**
+     * StartVerifyDevice
+     *
+     * @return array
+     */
+    private function StartVerifyDevice(): array
     {
-        $this->SendDebug(__FUNCTION__, $Code, 0);
         $this->SendDebug('Cloud Login', 'Device verification process initiated', 0);
         $IdentityUrl = str_replace('fe/service/identity/authStart', 'identity/list', $this->VerifyUrl);
         $Cookie = \Xiaomi\Cloud\ApiCookie::getLoginCookie($this->ReadAttributeString(\Xiaomi\Cloud\Attribute::ClientID));
@@ -407,30 +497,70 @@ class XiaomiMIoTCloudIO extends IPSModule
         $ResponseHeader = '';
         $Result = $this->CurlCall($ResponseHeader, $IdentityUrl, $Headers);
         if ($Result === null) {
-            return 'Error on fetching identity list';
+            return ['', 'Error on fetching verification list'];
         }
-        $IdentitySession = self::parseCookies($ResponseHeader, 'identity_session');
-        if ($IdentitySession === '') {
-            return 'Error on parsing identity session';
+        $this->IdentitySession = self::parseCookies($ResponseHeader, 'identity_session');
+        if ($this->IdentitySession === '') {
+            return ['', 'Error on parsing identity session'];
         }
         $Json = self::parseJson($Result);
         if ($Json === null) {
-            return 'Error on parsing identity result';
+            return ['', 'Error on parsing verification list'];
         }
-        $Flag = $Json['flag'];
+        $this->Flag = (int) $Json['flag'];
+        $VerifyUrl = \Xiaomi\Cloud\ApiVerifyIdentity::getUrl($this->Flag)
+        . http_build_query(
+            [
+                '_flag'  => $this->Flag,
+                '_json'  => 'true'
+            ]
+        );
+        $Headers = \Xiaomi\Cloud\ApiHeader::getLoginHeader(
+            $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::AgentID),
+            $Cookie . '; identity_session=' . $this->IdentitySession
+        );
+        $ResponseHeader = '';
+        $Result = $this->CurlCall($ResponseHeader, $VerifyUrl, $Headers);
+        if ($Result === null) {
+            return ['', 'Error on fetching verification message'];
+        }
+        $Json = self::parseJson($Result);
+        if ($Json === null) {
+            return ['', 'Error on parsing verification message'];
+        }
+        if ($Json['code'] !== 0) {
+            if (isset($Json['tips'])) {
+                return $Json['tips'];
+            }
+            return ['', 'Error on fetching verification message'];
+        }
+        list($Message, $Index) = \Xiaomi\Cloud\ApiVerifyIdentity::getMessageTextAndIndex($this->Flag);
+        $Message = sprintf($this->Translate($Message), $Json[$Index]);
+        return [$Message, ''];
+    }
 
-        $VerifyUrl = \Xiaomi\Cloud\ApiVerifyIdentity::getUrl((int) $Flag) . http_build_query([
+    /**
+     * VerifyDevice
+     *
+     * @param  string $Code
+     * @return string
+     */
+    private function VerifyDevice(string $Code): string
+    {
+        $this->SendDebug(__FUNCTION__, $Code, 0);
+        $Cookie = \Xiaomi\Cloud\ApiCookie::getLoginCookie($this->ReadAttributeString(\Xiaomi\Cloud\Attribute::ClientID));
+        $VerifyUrl = \Xiaomi\Cloud\ApiVerifyIdentity::getUrl($this->Flag) . http_build_query([
             '_dc'   => (int) (time() * 1000)
         ]);
         $Headers = \Xiaomi\Cloud\ApiHeader::getLoginHeader(
             $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::AgentID),
-            $Cookie . '; identity_session=' . $IdentitySession
+            $Cookie . '; identity_session=' . $this->IdentitySession
         );
         $Data = [
-            '_flag'  => $Flag,
+            '_flag'  => $this->Flag,
+            '_json'  => 'true',
             'ticket' => $Code,
-            'trust'  => true,
-            '_json'  => true
+            'trust'  => 'true'
         ];
         $ResponseHeader = '';
         $Result = $this->CurlCall($ResponseHeader, $VerifyUrl, $Headers, $Data);

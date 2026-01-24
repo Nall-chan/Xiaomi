@@ -1,6 +1,8 @@
 {
     "translations": {
         "de": {
+            "Login": "Anmelden",
+            "Logout": "Abmelden",
             "Username": "Benutzername",
             "Password": "Passwort",
             "Country": "Land",
@@ -8,8 +10,24 @@
             "Russia": "Russland",
             "America": "Amerika",
             "Verify Login": "Anmeldung prüfen",
-            "Open Link": "Link öffnen",
+            "Send the confirmation code to the email address (%s).": "Bestätigungscode an die E-Mail-Adresse (%s) senden.",
+            "Send the confirmation code to the phone number (%s).": "Bestätigungscode an die Telefonnummer (%s) senden.",
+            "Send": " Senden",
+            "Code sent": "Code gesendet",
+            "Enter the verification code below and click Submit to continue.": "Geben Sie den Verifizierungscode unten ein und klicken Sie auf Absenden, um fortzufahren.",
+            "Verification Code": "Verifizierungscode",
+            "Abort": " Abbrechen",
+            "Submit": "Absenden",
+            "Unauthorized": "Nicht autorisiert",
+            "MESSAGE:Verification successful!": "MESSAGE:Verifizierung erfolgreich!",
             "error on login": "Fehler beim Anmelden",
+            "Error on fetching verification list": "Fehler beim Abrufen der Verifizierungsliste",
+            "Error on parsing identity session": "Fehler beim Parsen der Identitätssitzung",
+            "Error on parsing verification list": "Fehler beim Parsen der Verifizierungsliste",
+            "Error on fetching verification message": "Fehler beim Abrufen der Verifizierungsnachricht",
+            "Error on parsing verification message": "Fehler beim Parsen der Verifizierungsnachricht",
+            "Error in request to send verification code": "Fehler bei der Anforderung zum Senden des Verifizierungscodes",
+            "Error in parsing result from send verification request": "Fehler beim Parsen des Ergebnisses der Anforderung zum senden des Verifizierungscodes",
             "This module is free for non-commercial use,\r\nDonations in support of the author are accepted here:": "Dieses Modul ist für die nicht kommerzielle Nutzung kostenlos,\r\nSchenkungen als Unterstützung für den Autor werden hier akzeptiert:"
         }
     }

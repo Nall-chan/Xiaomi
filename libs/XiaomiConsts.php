@@ -3,6 +3,10 @@
 declare(strict_types=1);
 
 namespace Xiaomi{
+
+    /**
+     * GUID
+     */
     class GUID
     {
         public const MiDevice = '{733AB5D2-957D-E76A-BA5D-5006701A6216}';
@@ -10,8 +14,18 @@ namespace Xiaomi{
         public const ReceiveFromCloud = '{5F3A76AF-D01E-42A3-93A3-D4E5E9267E32}';
         public const SendToCloud = '{76F2BB7B-F2B9-47EA-88F7-FD357D2E49E1}';
     }
+
+    /**
+     * Convert
+     */
     class Convert
     {
+        /**
+         * ToIPSVar
+         *
+         * @param  string $Format
+         * @return int
+         */
         public static function ToIPSVar(string $Format): int
         {
             switch ($Format) {
@@ -30,14 +44,32 @@ namespace Xiaomi{
             }
             return VARIABLETYPE_STRING;
         }
+
+        /**
+         * getProfileName
+         *
+         * @param  string $Urn
+         * @param  string $Name
+         * @return string
+         */
         public static function getProfileName(string $Urn, string $Name): string
         {
             $Parts = explode(':', substr($Urn, strpos($Urn, ':' . $Name . ':') + strlen($Name) + 2));
             return 'XIAOMI.' . $Name . '.' . $Parts[0] . '.' . $Parts[1];
         }
     }
+
+    /**
+     * Translate
+     */
     class Translate
     {
+        /**
+         * getLocaleName
+         *
+         * @param  string $Name
+         * @return string
+         */
         public static function getLocaleName(string $Name): string
         {
             $Locale = explode('_', IPS_GetSystemLanguage())[0];
@@ -53,6 +85,13 @@ namespace Xiaomi{
             }
             return $Name;
         }
+
+        /**
+         * getLocaleUnit
+         *
+         * @param  string $Unit
+         * @return string
+         */
         public static function getLocaleUnit(string $Unit): string
         {
             $Locale = explode('_', IPS_GetSystemLanguage())[0];
@@ -71,12 +110,20 @@ namespace Xiaomi{
             return $Unit;
         }
     }
+
+    /**
+     * IdentPrefix
+     */
     class IdentPrefix
     {
         public const Property = 'P';
         public const Event = 'E';
         public const Action = 'A';
     }
+
+    /**
+     * SpecTypes
+     */
     class SpecTypes
     {
         public const Gateway = 'urn:miot-spec-v2:device:gateway';
@@ -88,6 +135,10 @@ namespace Xiaomi{
 }
 
 namespace Xiaomi\Device{
+
+    /**
+     * Property
+     */
     class Property
     {
         public const Active = 'Open';
@@ -97,11 +148,19 @@ namespace Xiaomi\Device{
         public const DeniedCloud = 'DeniedCloud';
         public const RefreshInterval = 'RefreshInterval';
     }
+
+    /**
+     * Timer
+     */
     class Timer
     {
         public const RefreshState = 'RefreshState';
         public const Reconnect = 'Reconnect';
     }
+
+    /**
+     * Attribute
+     */
     class Attribute
     {
         public const Specs = 'Specs';
@@ -117,6 +176,10 @@ namespace Xiaomi\Device{
         public const ParamIdentsWrite = 'ParamIdentsWrite';
         public const LockedStateVariables = 'LockedStateVariables';
     }
+
+    /**
+     * InstanceStatus
+     */
     class InstanceStatus
     {
         public const ConfigError = IS_EBASE + 1;
@@ -127,6 +190,10 @@ namespace Xiaomi\Device{
         public const TimeoutError = IS_EBASE + 6;
         public const InCloudOffline = IS_EBASE + 7;
     }
+
+    /**
+     * ApiMethod
+     */
     class ApiMethod
     {
         public const Info = 'miIO.info';
@@ -134,6 +201,10 @@ namespace Xiaomi\Device{
         public const SetProperties = 'set_properties';
         public const ExecuteAction = 'action';
     }
+
+    /**
+     * ApiError
+     */
     class ApiError
     {
         public const PaketError = 300;
@@ -155,6 +226,10 @@ namespace Xiaomi\Device{
             -704220043  => 'Property value invalid'
         ];
     }
+
+    /**
+     * SpecUrls
+     */
     class SpecUrls
     {
         public const Device = 'https://home.miot-spec.com/spec/';
@@ -164,6 +239,9 @@ namespace Xiaomi\Device{
 
 namespace Xiaomi\Cloud{
 
+    /**
+     * Attribute
+     */
     class Attribute
     {
         public const Username = 'Username';
@@ -179,6 +257,10 @@ namespace Xiaomi\Cloud{
         public const Location = 'Location';
         public const Sign = 'Sign';
     }
+
+    /**
+     * ApiUrl
+     */
     class ApiUrl
     {
         public const GetSign = 'https://account.xiaomi.com/pass/serviceLogin?sid=xiaomiio&_json=true';
@@ -189,11 +271,22 @@ namespace Xiaomi\Cloud{
         public const SetProperties = '/miotspec/prop/set';
         public const ExecuteAction = '/miotspec/action';
 
+        /**
+         * GetApiUrl
+         *
+         * @param  string $Country
+         * @param  string $Path
+         * @return string
+         */
         public static function GetApiUrl(string $Country, string $Path): string
         {
             return 'https://' . (($Country === 'cn') ? '' : $Country . '.') . self::Domain . $Path;
         }
     }
+
+    /**
+     * ApiError
+     */
     class ApiError
     {
         public static $CodeToText = [
@@ -202,6 +295,10 @@ namespace Xiaomi\Cloud{
 
         ];
     }
+
+    /**
+     * ApiHeader
+     */
     class ApiHeader
     {
         public const UserAgent = 'User-Agent: Android-7.1.1-1.0.0-ONEPLUS A3010-136-%sAPP/xiaomi.smarthome APPV/62830';
@@ -212,6 +309,14 @@ namespace Xiaomi\Cloud{
         public const Content = 'Content-Type: application/x-www-form-urlencoded';
         public const Encrypt = 'MIOT-ENCRYPT-ALGORITHM: ENCRYPT-RC4';
         public const Cookie = 'Cookie: ';
+
+        /**
+         * getLoginHeader
+         *
+         * @param  string $AgentID
+         * @param  string $Cookie
+         * @return array
+         */
         public static function getLoginHeader(string $AgentID, string $Cookie): array
         {
             return
@@ -224,6 +329,14 @@ namespace Xiaomi\Cloud{
                 self::Cookie . $Cookie
             ];
         }
+
+        /**
+         * getApiHeader
+         *
+         * @param  string $AgentID
+         * @param  string $Cookie
+         * @return array
+         */
         public static function getApiHeader(string $AgentID, string $Cookie): array
         {
             return
@@ -238,8 +351,20 @@ namespace Xiaomi\Cloud{
             ];
         }
     }
+
+    /**
+     * ApiData
+     */
     class ApiData
     {
+        /**
+         * getLoginPayload
+         *
+         * @param  string $Username
+         * @param  string $Password
+         * @param  string $Sign
+         * @return array
+         */
         public static function getLoginPayload(string $Username, string $Password, string $Sign): array
         {
             return [
@@ -253,6 +378,10 @@ namespace Xiaomi\Cloud{
             ];
         }
     }
+
+    /**
+     * ApiCookie
+     */
     class ApiCookie
     {
         public const SDKVersion = 'sdkVersion=accountsdk-18.8.15';
@@ -266,6 +395,12 @@ namespace Xiaomi\Cloud{
         public const DSTOffset = 'dst_offset=';
         public const Channel = 'channel=MI_APP_STORE';
 
+        /**
+         * getLoginCookie
+         *
+         * @param  string $ClientID
+         * @return string
+         */
         public static function getLoginCookie(string $ClientID): string
         {
             return implode(
@@ -277,6 +412,14 @@ namespace Xiaomi\Cloud{
             );
         }
 
+        /**
+         * getApiCookie
+         *
+         * @param  string $ClientID
+         * @param  string $UserId
+         * @param  string $ServiceToken
+         * @return string
+         */
         public static function getApiCookie(string $ClientID, string $UserId, string $ServiceToken): string
         {
             return implode(
@@ -296,6 +439,10 @@ namespace Xiaomi\Cloud{
             );
         }
     }
+
+    /**
+     * ApiVerifyIdentity
+     */
     class ApiVerifyIdentity
     {
         public const Phone = 4;
@@ -305,6 +452,13 @@ namespace Xiaomi\Cloud{
                 self::Phone => 'https://account.xiaomi.com/identity/auth/verifyPhone?',
                 self::Email => 'https://account.xiaomi.com/identity/auth/verifyEmail?',
             ];
+
+        /**
+         * getUrl
+         *
+         * @param  int $Type
+         * @return string
+         */
         public static function getUrl(int $Type): string
         {
             if (!array_key_exists($Type, self::$TypeToPath)) {
@@ -312,8 +466,34 @@ namespace Xiaomi\Cloud{
             }
             return self::$TypeToPath[$Type];
         }
+
+        /**
+         * getMessageTextAndIndex
+         *
+         * @param  int $Flag
+         * @return array
+         */
+        public static function getMessageTextAndIndex(int $Flag): array
+        {
+            switch ($Flag) {
+                case self::Email:
+                    return [
+                        'Send the confirmation code to the email address (%s).',
+                        'maskedEmail'
+                    ];
+                case self::Phone:
+                    return [
+                        'Send the confirmation code to the phone number (%s).',
+                        'maskedPhone'
+                    ];
+            }
+            return [];
+        }
     }
 
+    /**
+     * ApiCheckIdentity
+     */
     class ApiCheckIdentity
     {
         public const Phone = 4;
@@ -323,6 +503,13 @@ namespace Xiaomi\Cloud{
                 self::Phone => 'https://account.xiaomi.com/identity/auth/sendPhoneTicket?',
                 self::Email => 'https://account.xiaomi.com/identity/auth/sendEmailTicket?',
             ];
+
+        /**
+         * getUrl
+         *
+         * @param  int $Type
+         * @return string
+         */
         public static function getUrl(int $Type): string
         {
             if (!array_key_exists($Type, self::$TypeToPath)) {
@@ -331,12 +518,23 @@ namespace Xiaomi\Cloud{
             return self::$TypeToPath[$Type];
         }
     }
+
+    /**
+     * ForwardData
+     */
     class ForwardData
     {
         public const GUID = 'DataID';
         public const Uri = 'Uri';
         public const Params = 'Params';
 
+        /**
+         * ToJson
+         *
+         * @param  string $Uri
+         * @param  string $Params
+         * @return string
+         */
         public static function ToJson(string $Uri, string $Params = ''): string
         {
             return json_encode(
@@ -347,6 +545,13 @@ namespace Xiaomi\Cloud{
                 ]
             );
         }
+
+        /**
+         * FromJson
+         *
+         * @param  string $JSONString
+         * @return array
+         */
         public static function FromJson(string $JSONString): array
         {
             $Data = json_decode($JSONString, true);
@@ -356,6 +561,9 @@ namespace Xiaomi\Cloud{
 }
 
 namespace Xiaomi\Configurator{
+    /**
+     * Attribute
+     */
     class Attribute
     {
         public const ShowOffline = 'ShowOffline';
@@ -363,6 +571,10 @@ namespace Xiaomi\Configurator{
 }
 
 namespace Xiaomi\Roborock{
+
+    /**
+     * GUID
+     */
     class GUID
     {
         public const Module = '{CD3419DA-91F2-C5DA-7FEE-6EB452506C9F}';
@@ -370,6 +582,10 @@ namespace Xiaomi\Roborock{
         public const Device = '{E65614FB-B37A-219A-4876-E5676C948C33}';
         public const IO = '{4743ED9C-720B-D5EA-9B0C-0585803284F3}';
     }
+
+    /**
+     * Property
+     */
     class Property
     {
         public const Ip = 'ip';
@@ -378,6 +594,10 @@ namespace Xiaomi\Roborock{
         public const User = 'xiaomi_user';
         public const Password = 'xiaomi_password';
     }
+
+    /**
+     * Store
+     */
     class Store
     {
         public const BundleId = 'fonzo.ipsymconroborock';
@@ -388,6 +608,10 @@ namespace Xiaomi\Roborock{
             ]
         ];
     }
+
+    /**
+     * Models
+     */
     class Models
     {
         public const RoborockVacuum = 'roborock.vacuum';

@@ -7,6 +7,7 @@ eval('declare(strict_types=1);namespace XiaomiMiDevice {?>' . file_get_contents(
 eval('declare(strict_types=1);namespace XiaomiMiDevice {?>' . file_get_contents(__DIR__ . '/../libs/helper/VariableProfileHelper.php') . '}');
 eval('declare(strict_types=1);namespace XiaomiMiDevice {?>' . file_get_contents(__DIR__ . '/../libs/helper/SemaphoreHelper.php') . '}');
 require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
+
 /**
  * @method bool SendDebug(string $Message, mixed $Data, int $Format)
  * @method void RegisterAttributeArray(string $name, array $Value, int $Size = 0)
@@ -31,8 +32,18 @@ class XiaomiMIoTDevice extends IPSModule
 
     public const PORT_UDP = 54321;
 
+    /**
+     * Socket
+     *
+     * @var resource
+     */
     private $Socket = false;
 
+    /**
+     * __destruct
+     *
+     * @return void
+     */
     public function __destruct()
     {
         if ($this->Socket) {
@@ -41,11 +52,15 @@ class XiaomiMIoTDevice extends IPSModule
         }
     }
 
+    /**
+     * Create
+     *
+     * @return void
+     */
     public function Create()
     {
         //Never delete this line!
         parent::Create();
-
         $this->RegisterPropertyBoolean(\Xiaomi\Device\Property::Active, false);
         $this->RegisterPropertyString(\Xiaomi\Device\Property::Host, '');
         $this->RegisterPropertyString(\Xiaomi\Device\Property::DeviceId, '');
@@ -69,12 +84,11 @@ class XiaomiMIoTDevice extends IPSModule
         $this->Retries = 2;
     }
 
-    public function Destroy()
-    {
-        //Never delete this line!
-        parent::Destroy();
-    }
-
+    /**
+     * ApplyChanges
+     *
+     * @return void
+     */
     public function ApplyChanges()
     {
         $this->RegisterProfileEx(
@@ -99,6 +113,15 @@ class XiaomiMIoTDevice extends IPSModule
         $this->InitConnection();
     }
 
+    /**
+     * MessageSink
+     *
+     * @param  int $TimeStamp
+     * @param  int $SenderID
+     * @param  int $Message
+     * @param  array $Data
+     * @return void
+     */
     public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
     {
         switch ($Message) {
@@ -108,6 +131,13 @@ class XiaomiMIoTDevice extends IPSModule
         }
     }
 
+    /**
+     * RequestAction
+     *
+     * @param  string $Ident
+     * @param  mixed $Value
+     * @return void
+     */
     public function RequestAction($Ident, $Value)
     {
         switch ($Ident) {
@@ -204,6 +234,11 @@ class XiaomiMIoTDevice extends IPSModule
         trigger_error($this->Translate('Invalid Ident'), E_USER_NOTICE);
     }
 
+    /**
+     * RequestState
+     *
+     * @return bool
+     */
     public function RequestState(): bool
     {
         if ($this->GetStatus() != IS_ACTIVE) {
@@ -248,26 +283,63 @@ class XiaomiMIoTDevice extends IPSModule
         return true;
     }
 
+    /**
+     * WriteValueBoolean
+     *
+     * @param  int $ServiceId
+     * @param  int $PropertyId
+     * @param  bool $Value
+     * @return bool
+     */
     public function WriteValueBoolean(int $ServiceId, int $PropertyId, bool $Value): bool
     {
         return $this->WriteValue($ServiceId, $PropertyId, $Value);
     }
 
+    /**
+     * WriteValueInteger
+     *
+     * @param  int $ServiceId
+     * @param  int $PropertyId
+     * @param  int $Value
+     * @return bool
+     */
     public function WriteValueInteger(int $ServiceId, int $PropertyId, int $Value): bool
     {
         return $this->WriteValue($ServiceId, $PropertyId, $Value);
     }
 
+    /**
+     * WriteValueFloat
+     *
+     * @param  int $ServiceId
+     * @param  int $PropertyId
+     * @param  float $Value
+     * @return bool
+     */
     public function WriteValueFloat(int $ServiceId, int $PropertyId, float $Value): bool
     {
         return $this->WriteValue($ServiceId, $PropertyId, $Value);
     }
 
+    /**
+     * WriteValueString
+     *
+     * @param  int $ServiceId
+     * @param  int $PropertyId
+     * @param  string $Value
+     * @return bool
+     */
     public function WriteValueString(int $ServiceId, int $PropertyId, string $Value): bool
     {
         return $this->WriteValue($ServiceId, $PropertyId, $Value);
     }
 
+    /**
+     * GetConfigurationForm
+     *
+     * @return string
+     */
     public function GetConfigurationForm()
     {
         $Form = json_decode(file_get_contents(__DIR__ . '/form.json'), true);
@@ -368,7 +440,15 @@ class XiaomiMIoTDevice extends IPSModule
         return json_encode($Form);
     }
 
-    public function ExecuteAction(int $ServiceId, int $ActionId, array $Parameter)
+    /**
+     * ExecuteAction
+     *
+     * @param  int $ServiceId
+     * @param  int $ActionId
+     * @param  array $Parameter
+     * @return bool
+     */
+    public function ExecuteAction(int $ServiceId, int $ActionId, array $Parameter): bool
     {
         if ($this->GetStatus() != IS_ACTIVE) {
             trigger_error($this->Translate('Instance is not active'), E_USER_NOTICE);
@@ -400,6 +480,12 @@ class XiaomiMIoTDevice extends IPSModule
         return true;
     }
 
+    /**
+     * SetStatus
+     *
+     * @param  mixed $State
+     * @return void
+     */
     protected function SetStatus($State)
     {
         switch ($State) {
@@ -428,7 +514,12 @@ class XiaomiMIoTDevice extends IPSModule
         parent::SetStatus($State);
     }
 
-    private function InitConnection()
+    /**
+     * InitConnection
+     *
+     * @return void
+     */
+    private function InitConnection(): void
     {
         $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, 0);
         $this->SetTimerInterval(\Xiaomi\Device\Timer::Reconnect, 0);
@@ -468,6 +559,7 @@ class XiaomiMIoTDevice extends IPSModule
         } else {
             $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, false);
         }
+        $this->SetStatus(IS_ACTIVE);
         if ($this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud)) { //cloud an -> nur ein Versuch
             if (!$this->RequestState()) {
                 $this->SetStatus(\Xiaomi\Device\InstanceStatus::InCloudOffline);
@@ -486,17 +578,28 @@ class XiaomiMIoTDevice extends IPSModule
                 }
             }
         }
-        $this->SetStatus(IS_ACTIVE);
         $this->LogMessage($this->Translate('Connection established'), KL_MESSAGE);
         $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, $this->ReadPropertyInteger(\Xiaomi\Device\Property::RefreshInterval) * 1000);
     }
 
-    private function KernelReady()
+    /**
+     * KernelReady
+     *
+     * @return void
+     */
+    private function KernelReady(): void
     {
         $this->UnregisterMessage(0, IPS_KERNELSTARTED);
         $this->InitConnection();
     }
 
+    /**
+     * SendLocal
+     *
+     * @param  string $Method
+     * @param  array $Prams
+     * @return ?array
+     */
     private function SendLocal(string $Method, array $Prams = []): ?array
     {
         $Payload = json_encode(
@@ -523,6 +626,13 @@ class XiaomiMIoTDevice extends IPSModule
         return null;
     }
 
+    /**
+     * SendCloud
+     *
+     * @param  string $Uri
+     * @param  string $Params
+     * @return ?array
+     */
     private function SendCloud(string $Uri, string $Params): ?array
     {
         $this->SendDebug('Cloud Request Uri', $Uri, 0);
@@ -543,6 +653,14 @@ class XiaomiMIoTDevice extends IPSModule
         return $Result['result'];
     }
 
+    /**
+     * WriteValue
+     *
+     * @param  int $ServiceId
+     * @param  int $PropertyId
+     * @param  mixed $Value
+     * @return bool
+     */
     private function WriteValue(int $ServiceId, int $PropertyId, $Value): bool
     {
         if ($this->GetStatus() != IS_ACTIVE) {
@@ -581,6 +699,11 @@ class XiaomiMIoTDevice extends IPSModule
         return true;
     }
 
+    /**
+     * GetToken
+     *
+     * @return bool
+     */
     private function GetToken(): bool
     {
         $this->ConnectParent(\Xiaomi\GUID::CloudIO);
@@ -603,6 +726,11 @@ class XiaomiMIoTDevice extends IPSModule
         return true;
     }
 
+    /**
+     * GetPropertiesParams
+     *
+     * @return array
+     */
     private function GetPropertiesParams(): array
     {
         $PropList = [];
@@ -630,6 +758,14 @@ class XiaomiMIoTDevice extends IPSModule
         return $PropList;
     }
 
+    /**
+     * GetVariableData
+     *
+     * @param  int $Siid
+     * @param  array $Property
+     * @param  mixed $Locales
+     * @return array
+     */
     private function GetVariableData(int $Siid, array $Property, &$Locales): array
     {
         $Piid = $Property['iid'];
@@ -692,7 +828,12 @@ class XiaomiMIoTDevice extends IPSModule
         return [$IpsVarType, $Profile];
     }
 
-    private function CreateStateVariables()
+    /**
+     * CreateStateVariables
+     *
+     * @return void
+     */
+    private function CreateStateVariables(): void
     {
         $Specs = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::Specs);
         $Locales = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::Locales);
@@ -787,6 +928,14 @@ class XiaomiMIoTDevice extends IPSModule
         $this->WriteAttributeArray(\Xiaomi\Device\Attribute::ParamIdentsWrite, $ParamIdentsWrite);
     }
 
+    /**
+     * SocketSend
+     *
+     * @param  string $Data
+     * @param  int $State
+     * @param  bool $Retry
+     * @return ?array
+     */
     private function SocketSend(string $Data, int &$State = IS_ACTIVE, bool $Retry = true): ?array
     {
         if ($this->Socket) {
@@ -870,6 +1019,11 @@ class XiaomiMIoTDevice extends IPSModule
         return null;
     }
 
+    /**
+     * GetModelData
+     *
+     * @return bool
+     */
     private function GetModelData(): bool
     {
         // Info Paket laden
@@ -930,7 +1084,13 @@ class XiaomiMIoTDevice extends IPSModule
         return true;
     }
 
-    private function loadLocale(string $Urn)
+    /**
+     * loadLocale
+     *
+     * @param  string $Urn
+     * @return bool
+     */
+    private function loadLocale(string $Urn): bool
     {
         $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Locales, []);
         $locale = explode('_', IPS_GetSystemLanguage())[0];
@@ -951,6 +1111,11 @@ class XiaomiMIoTDevice extends IPSModule
         return true;
     }
 
+    /**
+     * SendHandshake
+     *
+     * @return bool
+     */
     private function SendHandshake(): bool
     {
         $Data = hex2bin('21310020ffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
@@ -968,6 +1133,12 @@ class XiaomiMIoTDevice extends IPSModule
         return true;
     }
 
+    /**
+     * EncryptMessage
+     *
+     * @param  string $data
+     * @return string
+     */
     private function EncryptMessage(string $data): string
     {
         list($TokenKey, $TokenIV) = $this->GetKeyAndIV();
@@ -992,6 +1163,13 @@ class XiaomiMIoTDevice extends IPSModule
         return $Payload;
     }
 
+    /**
+     * DecryptMessage
+     *
+     * @param  string $msg
+     * @param  int $DecodeError
+     * @return ?string
+     */
     private function DecryptMessage(string $msg, int &$DecodeError = 0): ?string
     {
         $Data = str_split($msg, 4);
@@ -1048,6 +1226,11 @@ class XiaomiMIoTDevice extends IPSModule
         return $Data;
     }
 
+    /**
+     * GetKeyAndIV
+     *
+     * @return array
+     */
     private function GetKeyAndIV(): array
     {
         $token = hex2bin($this->ReadAttributeString(\Xiaomi\Device\Attribute::Token));

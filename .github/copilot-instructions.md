@@ -76,6 +76,8 @@ JSON files must be validated using:
      3. Handle CAPTCHA or 2FA if required via `notificationUrl`
      4. Extract security tokens (`ssecurity`, `userId`, `location`)
      5. Generate service token for subsequent requests
+   - **2FA Support**: When `securityStatus` is 16, handles verification internally by calling `notificationUrl` within Symcon
+   - **CAPTCHA Support**: Handles CAPTCHA challenges during login process
    - Token management and refresh mechanism
    - Supports multiple regions via country code (default: 'de')
 

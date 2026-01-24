@@ -1,9 +1,9 @@
 [![SDK](https://img.shields.io/badge/Symcon-PHPModul-red.svg)](https://www.symcon.de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/)
-[![Version](https://img.shields.io/badge/Modul%20version-1.10-blue.svg)]()
-[![Version](https://img.shields.io/badge/Symcon%20Version-6.4%20%3E-green.svg)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v63-v64-q2-2023/)  
+[![Module Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FNall-chan%2FXiaomi%2Frefs%2Fheads%2Fmaster%2Flibrary.json&query=%24.version&label=Modul%20Version&color=blue)](https://community.symcon.de/t/modul-xiaomi-miot/135200/)
+[![Symcon Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FNall-chan%2FXiaomi%2Frefs%2Fheads%2Fmaster%2Flibrary.json&query=%24.compatibility.version&suffix=%3E&label=Symcon%20Version&color=green)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v63-v64-q2-2023/)  
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-green.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![Check Style](https://github.com/Nall-chan/Xiaomi/workflows/Check%20Style/badge.svg)](https://github.com/Nall-chan/Xiaomi/actions) [![Run Tests](https://github.com/Nall-chan/Xiaomi/workflows/Run%20Tests/badge.svg)](https://github.com/Nall-chan/Xiaomi/actions)  
-[![Spenden](https://www.paypalobjects.com/de_DE/DE/i/btn/btn_donate_SM.gif)](#2-spenden)
+[![PayPal.Me](https://img.shields.io/badge/PayPal-Me-lightblue.svg)](#2-spenden)
 [![Wunschliste](https://img.shields.io/badge/Wunschliste-Amazon-ff69fb.svg)](#2-spenden)  
 
 # Xiaomi MIoT Device <!-- omit in toc -->  
@@ -32,16 +32,16 @@
 
 ## 1. Funktionsumfang
 
-* Instanz für die Integration eines Xiaomi Gerätes in von Symcon.  
+- Instanz für die Integration eines Xiaomi Gerätes in von Symcon.  
 
 ## 2. Voraussetzungen
 
- - IPS 6.4 oder höher
- - Eingebundene Geräte in der Mi Home App
+- IPS 6.4 oder höher
+- Eingebundene Geräte in der Mi Home App
 
 ## 3. Software-Installation
 
-* Dieses Modul ist Bestandteil der [Xiaomi MIoT-Library](../README.md#4-software-installation).  
+- Dieses Modul ist Bestandteil der [Xiaomi MIoT-Library](../README.md#4-software-installation).  
 
 ## 4. Einrichten der Instanzen in IP-Symcon
 
@@ -63,13 +63,14 @@
 | ForceCloud      | Cloud-Verbindung erzwingen | Das Gerät ausschließlich über die Cloud ansprechen                         |
 | DeniedCloud     | Cloud-Verbindung verbieten | Auch im Fehlerfall niemals versuchen das Gerät über die Cloud zu erreichen |
 
-
-Da es diverse Geräte gibt, welche keine direkte Kommunikation im lokalen Netzwerk erlauben, versucht die Geräte-Instanz das Gerät dann über die Cloud anzusprechen.  
-
-Dieses Verhalten **kann** durch die beiden Einstellungen `Cloud-Verbindung erzwingen` bzw. `Cloud-Verbindung verbieten` verändert werden.  
-Es darf nur einer der beiden Einstellungen aktiv sein.  
-Bei `erzwingen` wird (nach dem Handshake mit dem Gerät, was immer lokal läuft) die gesamte weitere Kommunikation über die Cloud geführt.  
-Bei `verbieten` wird niemals automatisch auf die Cloud Verbindung umgeschaltet, wenn das Gerät auf lokale Anfragen nicht reagiert.  
+> [!IMPORTANT]  
+> Da es diverse Geräte gibt, welche keine direkte Kommunikation im lokalen Netzwerk erlauben, versucht die Geräte-Instanz das Gerät dann über die Cloud anzusprechen.  
+  
+> [!TIP]  
+> Dieses Verhalten **kann** durch die beiden Einstellungen `Cloud-Verbindung erzwingen` bzw. `Cloud-Verbindung verbieten` verändert werden.  
+> Es darf nur einer der beiden Einstellungen aktiv sein.  
+> Bei `erzwingen` wird (nach dem Handshake mit dem Gerät, was immer lokal läuft) die gesamte weitere Kommunikation über die Cloud geführt.  
+> Bei `verbieten` wird niemals automatisch auf die Cloud Verbindung umgeschaltet, wenn das Gerät auf lokale Anfragen nicht reagiert.  
 
 **Im Normalfall brauchen diese Einstellungen nicht verändert werden!**
 
@@ -114,16 +115,21 @@ Die direkte Darstellung im WebFront ist möglich; es wird aber empfohlen mit Lin
 ```php
 boolean XIAOMI_RequestState(integer $InstanzID);
 ```
-Erklärung der Funktion.
 
-Beispiel:
+Fragt den aktuellen Status ab.
+
+Beispiel:  
+
 ```php
 XIAOMI_RequestState(12345);
 ```
----
+
+---  
+
 ### Schreiben von Werten  
 
-**Es wird empfohlen Schaltaktionen mit dem universellen Befehl [`RequestAction(integer $VariableID, mixed $Value);` (Link zur Doku)](https://www.symcon.de/de/service/dokumentation/befehlsreferenz/variablenzugriff/requestaction/) auszuführen.**  
+> [!TIP]  
+> **Es wird empfohlen Schaltaktionen mit dem universellen Befehl [`RequestAction(integer $VariableID, mixed $Value);` (Link zur Doku)](https://www.symcon.de/de/service/dokumentation/befehlsreferenz/variablenzugriff/requestaction/) auszuführen.**  
 
 Sollte es dennoch erforderlich gezielt Werte an bestimme Services zu senden, so stehen folgende Befehle zur Verfügung.  
 Dabei sind `$ServiceID` und `$PropertyID` die nummerischen Indexes der MIoT Spezifikationen des Gerätes, welche in der Konfiguration der Instanz unter [`Spezifikationen`](#konfigurationsseite-status-und-bedienung) verlinkt sind.  
@@ -135,24 +141,30 @@ boolean XIAOMI_WriteValueFloat(integer $InstanzID, integer $ServiceID, integer $
 boolean XIAOMI_WriteValueString(integer $InstanzID, integer $ServiceID, integer $PropertyID, string $Value);
 ```
 
-Beispiel:
+Beispiel:  
+
 ```php
 XIAOMI_WriteValueBoolean(12345, 1, 1, true);
-```
----
+```  
+
+---  
+
 ### Ausführen einer Aktion  
 
-**Es wird empfohlen Schaltaktionen mit dem universellen Befehl [`RequestAction(integer $VariableID, mixed $Value);` (Link zur Doku)](https://www.symcon.de/de/service/dokumentation/befehlsreferenz/variablenzugriff/requestaction/) auszuführen.** 
+> [!TIP]  
+> **Es wird empfohlen Schaltaktionen mit dem universellen Befehl [`RequestAction(integer $VariableID, mixed $Value);` (Link zur Doku)](https://www.symcon.de/de/service/dokumentation/befehlsreferenz/variablenzugriff/requestaction/) auszuführen.** 
 
 Verfügbare Werte sind z.B. dem Variablenprofil zu entnehmen, oder bei Aktionen welche keine Parameter erwarten irrelevant.  
 Dabei sind `$ServiceID` und `$ActionID` die nummerischen Indexes der MIoT Spezifikationen des Gerätes, welche in der Konfiguration der Instanz unter [`Spezifikationen`](#konfigurationsseite-status-und-bedienung) verlinkt sind.  
 
 ```php
 boolean XIAOMI_ExecuteAction(integer $InstanzID, integer $ServiceID, integer $ActionID, array $Values);
-```
-Erklärung der Funktion.
+```  
 
-Beispiel:
+Ausführen einer Aktion.
+
+Beispiel:  
+
 ```php
 XIAOMI_ExecuteAction(12345, 5, 1, []);     //Aktion erfordert keinen Wert
 XIAOMI_ExecuteAction(12345, 5, 3, [4, 2]); //Aktion erfordert zwei Werte
@@ -160,7 +172,7 @@ XIAOMI_ExecuteAction(12345, 5, 3, [4, 2]); //Aktion erfordert zwei Werte
 
 ## 8. Aktionen
 
-Es gibt keine speziellen Aktionen für dieses Modul.  
+Es gibt keine speziellen Aktionen für Instanzen von dieses Modul.  
 
 ## 9. Anhang
 
@@ -170,12 +182,11 @@ Es gibt keine speziellen Aktionen für dieses Modul.
 
 ### 2. Spenden
 
-  Die Library ist für die nicht kommerzielle Nutzung kostenlos, Schenkungen als Unterstützung für den Autor werden hier akzeptiert:  
+Die Library ist für die nicht kommerzielle Nutzung kostenlos, Schenkungen als Unterstützung für den Autor werden hier akzeptiert:  
 
 [![PayPal.Me](https://img.shields.io/badge/PayPal-Me-lightblue.svg)](https://paypal.me/Nall4chan)  
 
-[![Wunschliste](https://img.shields.io/badge/Wunschliste-Amazon-ff69fb.svg)](https://www.amazon.de/hz/wishlist/ls/YU4AI9AQT9F?ref_=wl_share) 
-
+[![Wunschliste](https://img.shields.io/badge/Wunschliste-Amazon-ff69fb.svg)](https://www.amazon.de/hz/wishlist/ls/YU4AI9AQT9F?ref_=wl_share)  
 
 ## 10. Lizenz
 

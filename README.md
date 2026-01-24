@@ -1,11 +1,10 @@
 [![SDK](https://img.shields.io/badge/Symcon-PHPModul-red.svg)](https://www.symcon.de/service/dokumentation/entwicklerbereich/sdk-tools/sdk-php/)
-[![Version](https://img.shields.io/badge/Modul%20version-1.10-blue.svg)]()
-[![Version](https://img.shields.io/badge/Symcon%20Version-6.4%20%3E-green.svg)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v63-v64-q2-2023/)  
+[![Module Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FNall-chan%2FXiaomi%2Frefs%2Fheads%2Fmaster%2Flibrary.json&query=%24.version&label=Modul%20Version&color=blue)](https://community.symcon.de/t/modul-xiaomi-miot/135200/)
+[![Symcon Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FNall-chan%2FXiaomi%2Frefs%2Fheads%2Fmaster%2Flibrary.json&query=%24.compatibility.version&suffix=%3E&label=Symcon%20Version&color=green)](https://www.symcon.de/de/service/dokumentation/installation/migrationen/v63-v64-q2-2023/)  
 [![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-green.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![Check Style](https://github.com/Nall-chan/Xiaomi/workflows/Check%20Style/badge.svg)](https://github.com/Nall-chan/Xiaomi/actions) [![Run Tests](https://github.com/Nall-chan/Xiaomi/workflows/Run%20Tests/badge.svg)](https://github.com/Nall-chan/Xiaomi/actions)  
-[![Spenden](https://www.paypalobjects.com/de_DE/DE/i/btn/btn_donate_SM.gif)](#3-spenden)
+[![PayPal.Me](https://img.shields.io/badge/PayPal-Me-lightblue.svg)](#3-spenden)
 [![Wunschliste](https://img.shields.io/badge/Wunschliste-Amazon-ff69fb.svg)](#3-spenden)  
-
 
 # Xiaomi MIoT <!-- omit in toc -->  
 
@@ -27,47 +26,53 @@ Ermöglicht die Einbindung von Xiaomi Geräten in IP-Symcon.
 - [7. Lizenz](#7-lizenz)
 
 ----------
+
 ## 1. Vorbemerkungen
 
-### Zur Library
+### Zur Library  
+
 Diese Library enthält keine Gerätespezifischen Anpassungen für einzelne Gerätemodelle.  
 Stattdessen werden alle Fähigkeiten und Eigenschaften von Geräten einmalig aus der Xiaomi Cloud geladen.  
 Entsprechend können grundsätzlich alle Geräte, auch von Drittherstellern, eingebunden werden, sofern das Gerät in der `Mi Home App` vorhanden und angelernt ist.  
 
 Die Kommunikation der Geräte kann sowohl lokal (LAN/WLAN) als auch über die Cloud erfolgen.  
-**Jedoch unterstützt nicht jedes Gerät die lokale Kommunikation.**  
+
+> [!IMPORTANT]
+> **Jedoch unterstützt nicht jedes Gerät die lokale Kommunikation.**  
 
 ----------
+
 ### Zur Integration von Geräten  
 
 Es werden Instanzen zur Kommunikation mit der Cloud (Cloud IO), einrichten von Geräten in Symcon (Konfigurator) und die eigentlichen Geräte Instanzen bereitgestellt.  
 
 Für die Ersteinrichtung ist zwingend ein Internetzugang, sowie die Zugangsdaten des Account der Mi Cloud (Mi Account bzw. Konto der Mi Home App) nötig.  
 
-**Die Geräte müssen sich im gleichen Subnet wie Symcon befindet, da viele Geräte eine Verbindung sonst ablehnen und somit keine Kommunikation möglich ist.**  
+> [!IMPORTANT]  
+> **Die Geräte müssen sich im gleichen Subnet wie Symcon befindet, da viele Geräte eine Verbindung sonst ablehnen und somit keine Kommunikation möglich ist.**  
 
 ## 2. Voraussetzungen
 
- - IPS 6.4 oder höher
- - Eingebundene Geräte in der Mi Home App
+- IPS 6.4 oder höher
+- Eingebundene Geräte in der Mi Home App
 
 ## 3. Enthaltende Module
 
 Folgende Module beinhaltet das Xiaomi MIoT Repository:
 
-- __Xiaomi MIoT Cloud IO__ ([Dokumentation](Xiaomi%20MIoT%20Cloud%20IO/README.md))  
-	IO Instanz zur Kommunikation mit der Cloud.  
+- **Xiaomi MIoT Cloud IO** ([Dokumentation](Xiaomi%20MIoT%20Cloud%20IO/README.md))  
+IO Instanz zur Kommunikation mit der Cloud.  
 
-- __Xiaomi MIoT Configurator__ ([Dokumentation](Xiaomi%20MIoT%20Configurator/README.md))  
-	Konfigurator welche alle in der Cloud vorhandenen Geräte anzeigt und zum erstellen von Geräte Instanzen verwendet wird.
+- **Xiaomi MIoT Configurator** ([Dokumentation](Xiaomi%20MIoT%20Configurator/README.md))  
+Konfigurator welche alle in der Cloud vorhandenen Geräte anzeigt und zum erstellen von Geräte Instanzen verwendet wird.
 
-- __Xiaomi MIoT Device__ ([Dokumentation](Xiaomi%20MIoT%20Device/README.md))  
-	Geräte Instanz, welche die jeweils ein Gerät in Symcon abbildet.
+- **Xiaomi MIoT Device** ([Dokumentation](Xiaomi%20MIoT%20Device/README.md))  
+Geräte Instanz, welche die jeweils ein Gerät in Symcon abbildet.
 
 ## 4. Software-Installation
 
-  Über den `Module-Store` in IPS das Modul `Xiaomi MIot` hinzufügen.  
-   **Bei kommerzieller Nutzung (z.B. als Errichter oder Integrator) wenden Sie sich bitte an den Autor.**  
+Über den `Module-Store` in IPS das Modul `Xiaomi MIot` hinzufügen.  
+**Bei kommerzieller Nutzung (z.B. als Errichter oder Integrator) wenden Sie sich bitte an den Autor.**  
 
 ![Module-Store](imgs/install.png)  
 
@@ -85,9 +90,8 @@ Sind die Eingaben korrekt, so wird der [Xiaomi MIoT Configurator](Xiaomi%20MIoT%
 
 ## 6. Anhang
 
-###  1. GUID der Module
- 
- 
+### 1. GUID der Module
+
 | Modul                    | Typ          | Prefix | GUID                                   |
 | ------------------------ | ------------ | ------ | -------------------------------------- |
 | Xiaomi MIoT Cloud IO     | IO           | XIAOMI | {DF2248D9-FC17-4609-840D-BA52DBF9CEB6} |
@@ -96,30 +100,39 @@ Sind die Eingaben korrekt, so wird der [Xiaomi MIoT Configurator](Xiaomi%20MIoT%
 
 ### 2. Changelog
 
-  **Version 1.11:**  
-  - Token konnte nicht ermittelt werden  
-  
-  **Version 1.10:**  
-  - In den Geräte Instanzen können nicht genutzte Statusvariablen deaktiviert werden  
-  - Diverse Übersetzungen ergänzt  
-  
-  **Version 1.05:**  
- - Übersetzungen von Tagen, Stunden, Minuten, Sekunden fehlte  
- - Fehlende Übersetzungen der Systemsprache werden aus der englischen Übersetzung des Gerätes ergänzt  
- - Cloud IO zeigt den Benutzernamen in der Info Spalte an, damit mehrere Instanzen besser unterschieden werden können  
- - Konfigurator  berücksichtigt nur Instanzen welche am selben IO hängen (oder bei Roborock-Instanzen welche den gleichen Cloud Usernamen haben)  
- - Geräte Instanz zeigt das Modul in der Info Spalte an     
+**Version 1.20:**  
 
-  **Version 1.01:**  
- - Start der offenen Beta  
+- 2FA/MFA Unterstützung für Cloud Login hinzugefügt  
+- Fehlerbehebungen und Verbesserungen  
+
+**Version 1.11:**  
+
+- Token konnte nicht ermittelt werden  
+  
+**Version 1.10:**  
+
+- In den Geräte Instanzen können nicht genutzte Statusvariablen deaktiviert werden  
+- Diverse Übersetzungen ergänzt  
+  
+**Version 1.05:**  
+
+- Übersetzungen von Tagen, Stunden, Minuten, Sekunden fehlte  
+- Fehlende Übersetzungen der Systemsprache werden aus der englischen Übersetzung des Gerätes ergänzt  
+- Cloud IO zeigt den Benutzernamen in der Info Spalte an, damit mehrere Instanzen besser unterschieden werden können  
+- Konfigurator  berücksichtigt nur Instanzen welche am selben IO hängen (oder bei Roborock-Instanzen welche den gleichen Cloud Usernamen haben)  
+- Geräte Instanz zeigt das Modul in der Info Spalte an  
+
+**Version 1.01:**  
+
+- Start der offenen Beta  
 
 ### 3. Spenden  
   
-  Die Library ist für die nicht kommerzielle Nutzung kostenlos, Schenkungen als Unterstützung für den Autor werden hier akzeptiert:  
+Die Library ist für die nicht kommerzielle Nutzung kostenlos, Schenkungen als Unterstützung für den Autor werden hier akzeptiert:  
 
 [![PayPal.Me](https://img.shields.io/badge/PayPal-Me-lightblue.svg)](https://paypal.me/Nall4chan)  
 
-[![Wunschliste](https://img.shields.io/badge/Wunschliste-Amazon-ff69fb.svg)](https://www.amazon.de/hz/wishlist/ls/YU4AI9AQT9F?ref_=wl_share) 
+[![Wunschliste](https://img.shields.io/badge/Wunschliste-Amazon-ff69fb.svg)](https://www.amazon.de/hz/wishlist/ls/YU4AI9AQT9F?ref_=wl_share)  
 
 ## 7. Lizenz
 

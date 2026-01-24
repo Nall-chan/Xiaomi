@@ -89,20 +89,24 @@
                     {
                         "type": "Label",
                         "bold": true,
-                        "caption": "Verify Login",
-                        "name": "VerifyTitle"
+                        "name": "VerifyTitle",
+                        "caption": "Verify Login"
+                    },
+                    {
+                        "type": "Label",
+                        "name": "VerifyMessage",
+                        "caption": ""
                     },
                     {
                         "type": "Button",
-                        "caption": "Open Link",
-                        "link": true,
-                        "name": "VerifyUrl",
-                        "onClick": ""
+                        "caption": "Send",
+                        "name": "SendVerificationCodeButton",
+                        "onClick": "echo XIAOMI_SendVerificationCode($id);"
                     },
                     {
                         "type": "Label",
                         "bold": true,
-                        "caption": "After opening the link, please complete the verification on the website.\n\nOnce done, enter the verification code and click Submit to continue."
+                        "caption": "Enter the verification code below and click Submit to continue."
                     },
                     {
                         "type": "ValidationTextBox",
@@ -114,6 +118,7 @@
                     {
                         "type": "Button",
                         "caption": "Submit",
+                        "name": "SubmitVerificationCodeButton",
                         "onClick": "echo XIAOMI_SubmitVerificationCode($id, $VerifyCode);"
                     }
                 ]
