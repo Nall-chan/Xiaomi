@@ -46,7 +46,7 @@ Diese Instanz wird automatisch mit erzeugt, wenn eine neue Instanz vom [MIoT Con
 Besitzt die Instanz keine Verbindung zur Cloud, so wird beim öffnen der Konfiguration automatisch die Anmeldeseite angezeigt.
 ![Login](imgs/login.png)  
 
-Eventuelle muss eine 2FA (Zwei-Faktor-Authentifizierung) einmalig durchlaufen werden, um die Anmeldung abzuschließen.  
+Eventuell muss eine 2FA (Zwei-Faktor-Authentifizierung) einmalig durchlaufen werden, um die Anmeldung abzuschließen.  
 > [!WARNING]
 > Wird die Instanz gelöscht, so muss die Zwei-Faktor-Authentifizierung erneut durchlaufen werden!  
 
