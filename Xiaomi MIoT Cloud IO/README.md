@@ -43,18 +43,21 @@
 
 Diese Instanz wird automatisch mit erzeugt, wenn eine neue Instanz vom [MIoT Configurator-Modul](../Xiaomi%20MIoT%20Configurator/README.md) angelegt wird.  
 
-![Config](imgs/config.png)  
+Besitzt die Instanz keine Verbindung zur Cloud, so wird beim öffnen der Konfiguration automatisch die Anmeldeseite angezeigt.
+![Login](imgs/login.png)  
 
-### Konfigurationsseite <!-- omit in toc -->  
+Eventuelle muss eine 2FA (Zwei-Faktor-Authentifizierung) einmalig durchlaufen werden, um die Anmeldung abzuschließen.  
+> [!WARNING]
+> Wird die Instanz gelöscht, so muss die Zwei-Faktor-Authentifizierung erneut durchlaufen werden!  
 
-| Name     | Text         | Beschreibung                                                    |
-| -------- | ------------ | --------------------------------------------------------------- |
-| Username | Benutzername | eMail-Adresse, MI Konto-ID oder Rufnummer (inkl. Länderkennung) |
-| Password | Passwort     | Passwort des Account                                            |
-| Country  | Land         | Auswahl welche Cloud benutzt werden soll                        |
+![2FA](imgs/2fa.png)  
 
-Da es diverse Geräte gibt, welche keine direkte Kommunikation im lokalen Netzwerk erlauben, versucht die `Xiaomi MIoT Geräte`-Instanz das Gerät dann über die Cloud anzusprechen.  
-Dazu muss zwingend eine `Xiaomi MIoT Cloud IO`-Instanz als Gateway verbunden sein.  
+Hierzu ist zuerst die Schaltfläche 'Senden' zu betätigen, um den Code an die hinterlegte E-Mail-Adresse oder Telefonnummer zu senden.  
+Anschließend ist der erhaltene Code in das Feld `Verifizierungscode` einzutragen und mit 'Absenden' abzuschicken.
+
+> [!IMPORTANT]
+> Da es diverse Geräte gibt, welche keine direkte Kommunikation im lokalen Netzwerk erlauben, versucht die `Xiaomi MIoT Geräte`-Instanz das Gerät dann über die Cloud anzusprechen.  
+> Dazu muss zwingend eine `Xiaomi MIoT Cloud IO`-Instanz als Gateway verbunden sein.  
 
 ## 5. Statusvariablen
 

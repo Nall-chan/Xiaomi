@@ -83,9 +83,9 @@ Es wird empfohlen die Einrichtung mit der Konfigurator-Instanz zu starten [Xiaom
 Nach der installation aus dem Store wird diese Instanz auf Rückfrage automatisch angelegt.
 ![Module-Store](imgs/install2.png)  
 ![Module-Store](imgs/install3.png)  
- Dabei wird die Konfiguration bis zur [Xiaomi MIoT Cloud IO](Xiaomi%20MIoT%20Cloud%20IO/README.md) durchlaufen.  
+Anschließend muss über den Button `Konfigurieren` die Anmeldung in der [Xiaomi MIoT Cloud](Xiaomi%20MIoT%20Cloud%20IO/README.md) durchlaufen werden.  
 ![Module-Store](imgs/install4.png)  
-Sind die Eingaben korrekt, so wird der [Xiaomi MIoT Configurator](Xiaomi%20MIoT%20Configurator/README.md) geöffnet.
+Ist die [Xiaomi MIoT Cloud](Xiaomi%20MIoT%20Cloud%20IO/README.md) Instanz verbunden, so werden die Geräte im [Xiaomi MIoT Configurator](Xiaomi%20MIoT%20Configurator/README.md) angezeigt.
 ![Module-Store](imgs/install5.png)  
 
 ## 6. Anhang
