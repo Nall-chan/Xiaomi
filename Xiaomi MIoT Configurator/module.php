@@ -6,8 +6,6 @@ eval('declare(strict_types=1);namespace XiaomiConfigurator {?>' . file_get_conte
 require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
 
 /**
- * @property int ParentID
- *
  * @method bool SendDebug(string $Message, mixed $Data, int $Format)
  */
 class XiaomiMIoTConfigurator extends IPSModule
@@ -69,7 +67,7 @@ class XiaomiMIoTConfigurator extends IPSModule
         $InstanceIDList = $this->GetInstanceList(\Xiaomi\GUID::MiDevice, \Xiaomi\Device\Property::DeviceId);
         $RoborockInstanceIDList = [];
         if ($RoborockModulAvailable) {
-            $RoborockInstanceIDList = $this->GetInstanceList(\Xiaomi\Roborock\GUID::Device, \Xiaomi\Roborock\Property::Ip);
+            // todo $RoborockInstanceIDList = $this->GetInstanceList(\Xiaomi\Roborock\GUID::Device, \Xiaomi\Roborock\Property::Ip);
         }
         $Devices = [];
         if (IPS_GetInstance($this->InstanceID)['ConnectionID'] > 1) {
@@ -82,10 +80,12 @@ class XiaomiMIoTConfigurator extends IPSModule
             }, ARRAY_FILTER_USE_KEY);
 
             // Filter auf gleichen Username der Cloud
+            /* todo
             $RoborockInstanceIDList = array_filter($RoborockInstanceIDList, function ($InstanceIdDevice)
             {
                 return IPS_GetProperty($InstanceIdDevice, \Xiaomi\Roborock\Property::User) == IPS_GetProperty(IPS_GetInstance($this->InstanceID)['ConnectionID'], \Xiaomi\Cloud\Property::Username);
             }, ARRAY_FILTER_USE_KEY);
+             */
         }
         foreach ($Devices as $Device) {
             if (!array_key_exists('localip', $Device)) {
@@ -117,30 +117,32 @@ class XiaomiMIoTConfigurator extends IPSModule
                 continue;
             }
             if (in_array($Device['model'], \Xiaomi\Roborock\Models::DEVICELIST)) { // supported model in Roborock-Modul
-                if ($RoborockModulAvailable) {
-                    $InstanceIdDevice = array_search($Device['localip'], $RoborockInstanceIDList);
-                    if ($InstanceIdDevice !== false) {
-                        $AddDevice['name'] = IPS_GetName($InstanceIdDevice);
-                        $AddDevice['instanceID'] = $InstanceIdDevice;
-                        $AddDevice['host'] = $Device['localip'];
-                        unset($RoborockInstanceIDList[$InstanceIdDevice]);
+                /* todo
+                    if ($RoborockModulAvailable) {
+                        $InstanceIdDevice = array_search($Device['localip'], $RoborockInstanceIDList);
+                        if ($InstanceIdDevice !== false) {
+                            $AddDevice['name'] = IPS_GetName($InstanceIdDevice);
+                            $AddDevice['instanceID'] = $InstanceIdDevice;
+                            $AddDevice['host'] = $Device['localip'];
+                            unset($RoborockInstanceIDList[$InstanceIdDevice]);
+                        }
+                        $IOId = IPS_GetInstance($this->InstanceID)['ConnectionID'];
+                        $AddDevice['create'] = [
+                            'moduleID'      => \Xiaomi\Roborock\GUID::Device,
+                            'location'      => ((float) IPS_GetKernelVersion() < 7) ? [$this->Translate('Roborocks')] : [],
+                            'configuration' => [
+                                \Xiaomi\Roborock\Property::Ip          => $Device['localip'],
+                                \Xiaomi\Roborock\Property::Server      => IPS_GetProperty($IOId, \Xiaomi\Cloud\Property::Country),
+                                \Xiaomi\Roborock\Property::User        => IPS_GetProperty($IOId, \Xiaomi\Cloud\Property::Username),
+                                \Xiaomi\Roborock\Property::Password    => IPS_GetProperty($IOId, \Xiaomi\Cloud\Property::Password)
+                            ]
+                        ];
+                        $DeviceValues[] = $AddDevice;
+                        continue;
+                    } else {
+                        $ShowRoborockModuleHint = true;
                     }
-                    $IOId = IPS_GetInstance($this->InstanceID)['ConnectionID'];
-                    $AddDevice['create'] = [
-                        'moduleID'      => \Xiaomi\Roborock\GUID::Device,
-                        'location'      => ((float) IPS_GetKernelVersion() < 7) ? [$this->Translate('Roborocks')] : [],
-                        'configuration' => [
-                            \Xiaomi\Roborock\Property::Ip          => $Device['localip'],
-                            \Xiaomi\Roborock\Property::Server      => IPS_GetProperty($IOId, \Xiaomi\Cloud\Property::Country),
-                            \Xiaomi\Roborock\Property::User        => IPS_GetProperty($IOId, \Xiaomi\Cloud\Property::Username),
-                            \Xiaomi\Roborock\Property::Password    => IPS_GetProperty($IOId, \Xiaomi\Cloud\Property::Password)
-                        ]
-                    ];
-                    $DeviceValues[] = $AddDevice;
-                    continue;
-                } else {
-                    $ShowRoborockModuleHint = true;
-                }
+                 */
             }
             $AddDevice['create'] = [
                 'moduleID'      => \Xiaomi\GUID::MiDevice,
@@ -195,17 +197,6 @@ class XiaomiMIoTConfigurator extends IPSModule
     }
 
     /**
-     * FilterInstances
-     *
-     * @param  int $InstanceID
-     * @return bool
-     */
-    protected function FilterInstances(int $InstanceID): bool
-    {
-        return IPS_GetInstance($InstanceID)['ConnectionID'] == $this->ParentID;
-    }
-
-    /**
      * GetConfigParam
      *
      * @param  mixed $item1
@@ -236,7 +227,10 @@ class XiaomiMIoTConfigurator extends IPSModule
         $Result = $this->Request(\Xiaomi\Cloud\ApiUrl::Device_List, $Request);
         $this->SendDebug(__FUNCTION__, $Result, 0);
         if ($Result) {
-            return json_decode($Result, true)['result']['list'];
+            $Result = json_decode($Result, true);
+            if ($Result['code'] == 0) {
+                return $Result['result']['list'];
+            }
         }
         return [];
     }

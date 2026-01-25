@@ -213,6 +213,8 @@ class XiaomiMIoTCloudIO extends IPSModule
             case 'LoginPopup':
                 $this->UpdateFormField('LoginPopup', 'visible', true);
                 break;
+            case 'UpdateServiceToken':
+                break;
         }
     }
 
@@ -263,8 +265,27 @@ class XiaomiMIoTCloudIO extends IPSModule
             return '';
         }
         list($Uri, $Params) = \Xiaomi\Cloud\ForwardData::FromJson($JSONString);
-        $Result = $this->Request($Uri, $Params);
-        return is_null($Result) ? '' : $Result;
+        $Response = $this->Request($Uri, $Params);
+        if (is_null($Response)) {
+            return '';
+        }
+        $Result = json_decode($Response, true);
+        if ($Result === null) {
+            return '';
+        }
+        if ($Result['code'] == 2) {
+            if ($this->Login(
+                $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Username),
+                $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Password)
+            )) {
+                if ($this->UpdateServiceToken()) {
+                    $Response = $this->Request($Uri, $Params);
+                    return is_null($Response) ? '' : $Response;
+                }
+            }
+            $this->SetStatus(IS_EBASE + 1);
+        }
+        return is_null($Response) ? '' : $Response;
     }
 
     /**
@@ -660,6 +681,7 @@ class XiaomiMIoTCloudIO extends IPSModule
             $Cookie
         );
         $Result = $this->CurlCall($Response, $Url, $Headers, $Params);
+        $this->SendDebug('Cloud Response ', $Response, 0);
         if ($Result === null) {
             return null;
         }
@@ -711,12 +733,14 @@ class XiaomiMIoTCloudIO extends IPSModule
         $this->SendDebug('Cloud Response Header (' . $HttpCode . ')', $ResponseHeader, 0);
         $this->SendDebug('Cloud Response Body (' . $HttpCode . ')', $Result, 0);
         switch ($HttpCode) {
+            case 401:
+            case 403:
+                $this->SendDebug(self::$http_error[$HttpCode], $HttpCode, 0);
+                return $Result;
             case 0:
                 $this->SendDebug('CURL ERROR', self::$CURL_error_codes[$curl_errno], 0);
                 return null;
             case 400:
-            case 401:
-            case 403:
             case 404:
             case 405:
             case 500:

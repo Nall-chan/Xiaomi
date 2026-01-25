@@ -100,6 +100,11 @@ Ist die [Xiaomi MIoT Cloud](Xiaomi%20MIoT%20Cloud%20IO/README.md) Instanz verbun
 
 ### 2. Changelog
 
+**Version 1.21:**  
+
+- Konfigurator unterstützt aktuell keine Roborock Geräte mehr, da hier Fehler auftraten
+- Abgelaufener ServiceToken wird automatisch erneuert
+  
 **Version 1.20:**  
 
 - 2FA/MFA Unterstützung für Cloud Login hinzugefügt  

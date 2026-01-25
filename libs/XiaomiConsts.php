@@ -290,6 +290,7 @@ namespace Xiaomi\Cloud{
     class ApiError
     {
         public static $CodeToText = [
+            2   => 'Unauthorized',
             -4  => 'Device offline',
             -8  => 'Data type not valid'
 
