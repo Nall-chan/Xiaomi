@@ -48,14 +48,13 @@ namespace Xiaomi{
         /**
          * getProfileName
          *
-         * @param  string $Urn
-         * @param  string $Name
+         * @param  int $Piid
+         * @param  string $Type
          * @return string
          */
-        public static function getProfileName(string $Urn, string $Name): string
+        public static function getProfileName(int $Piid, string $Type, string $ProfileSuffix): string
         {
-            $Parts = explode(':', substr($Urn, strpos($Urn, ':' . $Name . ':') + strlen($Name) + 2));
-            return 'XIAOMI.' . $Name . '.' . $Parts[0] . '.' . $Parts[1];
+            return \sprintf('XIAOMI.%s.%08d.%s', $Type, $Piid, $ProfileSuffix);
         }
     }
 

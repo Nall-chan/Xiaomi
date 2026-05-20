@@ -476,7 +476,6 @@ class XiaomiMIoTCloudIO extends IPSModule
             $this->UpdateFormField('LoginButton', 'visible', false);
             $this->UpdateFormField('LoginPopup', 'visible', false);
 
-            //$this->UpdateFormField('VerifyUrl', 'onClick', 'echo "' . $Json['notificationUrl'] . '";');
             $this->UpdateFormField('VerifyMessage', 'caption', $VerifyMessage);
             if ($VerifyMessage != '') {
                 $this->UpdateFormField('VerifyMessage', 'caption', $VerifyMessage);
@@ -727,8 +726,9 @@ class XiaomiMIoTCloudIO extends IPSModule
         $Result = null;
         if (!is_bool($response)) {
             $Parts = explode("\r\n\r\n", $response);
-            $ResponseHeader = array_shift($Parts);
-            $Result = implode("\r\n\r\n", $Parts);
+            $Result = array_pop($Parts);
+            $ResponseHeader = implode("\r\n\r\n", $Parts);
+
         }
         $this->SendDebug('Cloud Response Header (' . $HttpCode . ')', $ResponseHeader, 0);
         $this->SendDebug('Cloud Response Body (' . $HttpCode . ')', $Result, 0);
