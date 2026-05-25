@@ -92,6 +92,25 @@ class XiaomiMIoTDevice extends IPSModule
     }
 
     /**
+     * Migrate
+     *
+     * @param  string $JSONData
+     * @return string
+     */
+    public function Migrate($JSONData)
+    {
+        // Prüfe Version diese Modul-Instanz
+        $j = json_decode($JSONData);
+        $Specs = json_decode($j->attributes->{\Xiaomi\Device\Attribute::Specs}, true);
+        if (!isset($Specs['services'][0]['i18nKey'])) {
+            $j->attributes->{\Xiaomi\Device\Attribute::Token} = '';
+            $j->attributes->{\Xiaomi\Device\Attribute::Specs} = '[]';
+            $this->LogMessage('Need to reload specs, delete token', KL_NOTIFY);
+        }
+        return json_encode($j);
+    }
+
+    /**
      * ApplyChanges
      *
      * @return void
@@ -119,6 +138,10 @@ class XiaomiMIoTDevice extends IPSModule
             return;
         }
         $this->RegisterParent();
+        if ((!$this->ReadPropertyBoolean(\Xiaomi\Device\Property::Active)) || (!$this->ReadPropertyString(\Xiaomi\Device\Property::Host))) {
+            $this->SetStatus(IS_INACTIVE);
+            return;
+        }
         if (!$this->ReadAttributeString(\Xiaomi\Device\Attribute::Token)) {
             if ($this->HasActiveParent()) {
                 // Kein Token -> Token aus Cloud holen.
@@ -628,10 +651,16 @@ class XiaomiMIoTDevice extends IPSModule
     private function KernelReady(): void
     {
         $this->UnregisterMessage(0, IPS_KERNELSTARTED);
-        if (!$this->ReadAttributeString(\Xiaomi\Device\Attribute::Token) && $this->HasActiveParent()) {
-            // Kein Token -> Token aus Cloud holen.
-            if (!$this->GetToken()) {
-                $this->SetStatus(\Xiaomi\Device\InstanceStatus::GetTokenFailed);
+        $this->RegisterParent();
+        if (!$this->ReadAttributeString(\Xiaomi\Device\Attribute::Token)) {
+            if ($this->HasActiveParent()) {
+                // Kein Token -> Token aus Cloud holen.
+                if (!$this->GetToken()) {
+                    $this->SetStatus(\Xiaomi\Device\InstanceStatus::GetTokenFailed);
+                    return;
+                }
+            } else {
+                $this->SetStatus(IS_INACTIVE);
                 return;
             }
         }

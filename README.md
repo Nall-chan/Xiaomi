@@ -100,6 +100,13 @@ Ist die [Xiaomi MIoT Cloud](Xiaomi%20MIoT%20Cloud%20IO/README.md) Instanz verbun
 
 ### 2. Changelog
 
+**Version 1.22:**  
+
+- Das anlegen von Geräte Instanzen über den Konfigurator ist wieder möglich  
+- Laden von Geräteinformationen über die Cloud wurde auf die geänderte MioT Cloud API angepasst  
+- Beim Update werden fehlende Attribute der Geräte Instanzen erkannt und neu aus der Cloud geladen  
+- Instanzen konnten den falschen Zustand annehmen, wenn die Cloud nicht erreichbar war  
+  
 **Version 1.21:**  
 
 - Konfigurator unterstützt aktuell keine Roborock Geräte mehr, da hier Fehler auftraten
