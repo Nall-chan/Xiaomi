@@ -909,6 +909,9 @@ class XiaomiMIoTDevice extends IPSModule
     private function CreateStateVariables(): void
     {
         $Specs = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::Specs);
+        if (!isset($Specs['urn'])) {
+            return;
+        }
         $ProfileSuffix = array_reverse(explode(':', $Specs['urn']))[1];
         $Locales = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::Locales);
         $DisabledStateVariables = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::LockedStateVariables);
