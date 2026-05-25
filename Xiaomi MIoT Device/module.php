@@ -1184,9 +1184,16 @@ class XiaomiMIoTDevice extends IPSModule
             return false;
         }
         $AllModels = json_decode($AllModels, true)['instances'];
-        $Models = array_column($AllModels, 'model');
-        $ModelIndex = array_search($Result['model'], $Models);
-        $Urn = $AllModels[$ModelIndex]['type'];
+        $Urn = '';
+        foreach ($AllModels as $Model) {
+            if ($Model == $Result['model']) {
+                $Urn = $Model['type'];
+                break;
+            }
+        }
+        if (!$Urn) {
+            return false;
+        }
         $Specs = @Sys_GetURLContentEx(\Xiaomi\Device\SpecUrls::MioTDevices . $Urn, ['Timeout'=>15000]);
         if (!$Specs) {
             $this->SendDebug('ERROR load Specs', \Xiaomi\Device\SpecUrls::MioTDevices . $Urn, 0);
