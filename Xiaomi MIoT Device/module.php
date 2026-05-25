@@ -301,11 +301,15 @@ class XiaomiMIoTDevice extends IPSModule
             trigger_error($this->Translate('Instance is not active'), E_USER_NOTICE);
             return false;
         }
+        $Params = $this->GetPropertiesParams();
+        if (empty($Params)) {
+            return false;
+        }
         if ($this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud)) {
-            $Params = json_encode(['params'=>$this->GetPropertiesParams()]);
+            $Params = json_encode(['params'=>$Params]);
             $Result = $this->SendCloud(\Xiaomi\Cloud\ApiUrl::GetProperties, $Params);
         } else {
-            $Result = $this->SendLocal(\Xiaomi\Device\ApiMethod::GetProperties, $this->GetPropertiesParams());
+            $Result = $this->SendLocal(\Xiaomi\Device\ApiMethod::GetProperties, $Params);
         }
         if (is_null($Result)) {
             return false;
@@ -810,6 +814,9 @@ class XiaomiMIoTDevice extends IPSModule
     {
         $PropList = [];
         $Specs = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::Specs);
+        if (!isset($Specs['services'])) {
+            return [];
+        }
         foreach ($Specs['services'] as $Service) {
             $Siid = $Service['iid'];
             if (!array_key_exists('properties', $Service)) {
