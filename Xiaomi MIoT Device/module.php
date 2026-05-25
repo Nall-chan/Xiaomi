@@ -1108,7 +1108,11 @@ class XiaomiMIoTDevice extends IPSModule
             return false;
         }
         $OldSpecs = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::Info);
-        $OldModel = array_key_exists('model', $OldSpecs) ? $OldSpecs['model'] : '';
+        $OldModel = array_key_exists('model', $OldSpecs) ? $OldSpecs['model'] : 'invalid';
+        $Specs = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::Specs);
+        if (!isset($Specs['urn'])) {
+            $OldModel = 'invalid';
+        }
         $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Info, $Result);
         $this->SendDebug('Model loaded', $Result['model'], 0);
         $this->SetSummary($this->ReadPropertyString(\Xiaomi\Device\Property::Host) . ' (' . $Result['model'] . ')');
