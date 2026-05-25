@@ -44,6 +44,17 @@ namespace Xiaomi{
             }
             return VARIABLETYPE_STRING;
         }
+        /**
+         * getProfileName
+         *
+         * @param  string $Urn
+         * @return string
+         */
+        public static function getProfileName(string $Urn): string
+        {
+            $Parts = explode(':', $Urn);
+            return 'XIAOMI.' . $Parts[3] . '.' . $Parts[4] . '.' . $Parts[5];
+        }
 
         /**
          * getProfileName
@@ -52,10 +63,12 @@ namespace Xiaomi{
          * @param  string $Type
          * @return string
          */
+        /*
         public static function getProfileName(int $Piid, string $Type, string $ProfileSuffix): string
         {
             return \sprintf('XIAOMI.%s.%08d.%s', $Type, $Piid, $ProfileSuffix);
         }
+         */
     }
 
     /**
@@ -232,6 +245,8 @@ namespace Xiaomi\Device{
     class SpecUrls
     {
         public const Device = 'https://home.miot-spec.com/spec/';
+        public const AllMioTSpecs = 'https://miot-spec.org/miot-spec-v2/instances?status=all';
+        public const MioTDevices = 'https://miot-spec.org/miot-spec-v2/instance?type=';
         public const Locales = 'https://miot-spec.org/instance/v2/multiLanguage?urn=';
     }
 }
