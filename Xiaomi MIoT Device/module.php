@@ -19,6 +19,7 @@ require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
  * @method bool lock(string $ident)
  * @method void unlock(string $ident)
  * @method int RegisterParent()
+ * @method bool IORequestAction(string $Ident, mixed $Value)
  * @property bool $ShowVariableWarning
  * @property int $Retries
  * @property int $ServerStamp
@@ -141,25 +142,7 @@ class XiaomiMIoTDevice extends IPSModule
             return;
         }
         $this->RegisterParent();
-        if ((!$this->ReadPropertyBoolean(\Xiaomi\Device\Property::Active)) || (!$this->ReadPropertyString(\Xiaomi\Device\Property::Host))) {
-            $this->SetStatus(IS_INACTIVE);
-            return;
-        }
-        if (!$this->ReadAttributeString(\Xiaomi\Device\Attribute::Token)) {
-            if ($this->HasActiveParent()) {
-                // Kein Token -> Token aus Cloud holen.
-                if (!$this->GetToken()) {
-                    $this->SetStatus(\Xiaomi\Device\InstanceStatus::GetTokenFailed);
-                    return;
-                }
-            } else {
-                $this->SetStatus(IS_INACTIVE);
-                return;
-            }
-        }
-        if ($this->ReadAttributeString(\Xiaomi\Device\Attribute::Token)) {
-            $this->InitConnection();
-        }
+        $this->InitConnection();
     }
 
     /**
@@ -197,7 +180,7 @@ class XiaomiMIoTDevice extends IPSModule
     public function RequestAction($Ident, $Value)
     {
         if ($this->IORequestAction($Ident, $Value)) {
-            return true;
+            return;
         }
         switch ($Ident) {
             case \Xiaomi\Device\Property::ForceCloud:
@@ -613,6 +596,20 @@ class XiaomiMIoTDevice extends IPSModule
             $this->SetStatus(\Xiaomi\Device\InstanceStatus::ConfigError);
             return;
         }
+
+        if (!$this->ReadAttributeString(\Xiaomi\Device\Attribute::Token)) {
+            if ($this->HasActiveParent()) {
+                // Kein Token -> Token aus Cloud holen.
+                if (!$this->GetToken()) {
+                    $this->SetStatus(\Xiaomi\Device\InstanceStatus::GetTokenFailed);
+                    return;
+                }
+            } else {
+                $this->SetStatus(IS_INACTIVE);
+                return;
+            }
+        }
+
         if (!$this->SendHandshake()) {
             return;
         }
@@ -660,21 +657,7 @@ class XiaomiMIoTDevice extends IPSModule
     {
         $this->UnregisterMessage(0, IPS_KERNELSTARTED);
         $this->RegisterParent();
-        if (!$this->ReadAttributeString(\Xiaomi\Device\Attribute::Token)) {
-            if ($this->HasActiveParent()) {
-                // Kein Token -> Token aus Cloud holen.
-                if (!$this->GetToken()) {
-                    $this->SetStatus(\Xiaomi\Device\InstanceStatus::GetTokenFailed);
-                    return;
-                }
-            } else {
-                $this->SetStatus(IS_INACTIVE);
-                return;
-            }
-        }
-        if ($this->ReadAttributeString(\Xiaomi\Device\Attribute::Token)) {
-            $this->InitConnection();
-        }
+        $this->InitConnection();
     }
 
     /**
@@ -1183,10 +1166,11 @@ class XiaomiMIoTDevice extends IPSModule
             $this->SendDebug('ERROR load AllDevices', \Xiaomi\Device\SpecUrls::AllMioTSpecs . $Result['model'], 0);
             return false;
         }
+        ini_set('memory_limit', '64M');
         $AllModels = json_decode($AllModels, true)['instances'];
         $Urn = '';
         foreach ($AllModels as $Model) {
-            if ($Model == $Result['model']) {
+            if ($Model['model'] == $Result['model']) {
                 $Urn = $Model['type'];
                 break;
             }
