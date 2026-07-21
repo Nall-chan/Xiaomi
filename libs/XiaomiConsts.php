@@ -44,17 +44,6 @@ namespace Xiaomi{
             }
             return VARIABLETYPE_STRING;
         }
-        /**
-         * getProfileName
-         *
-         * @param  string $Urn
-         * @return string
-         */
-        public static function getProfileName(string $Urn): string
-        {
-            $Parts = explode(':', $Urn);
-            return 'XIAOMI.' . $Parts[3] . '.' . $Parts[4] . '.' . $Parts[5];
-        }
 
         /**
          * getProfileName
@@ -63,12 +52,11 @@ namespace Xiaomi{
          * @param  string $Type
          * @return string
          */
-        /*
         public static function getProfileName(int $Piid, string $Type, string $ProfileSuffix): string
         {
             return \sprintf('XIAOMI.%s.%08d.%s', $Type, $Piid, $ProfileSuffix);
         }
-         */
+
     }
 
     /**

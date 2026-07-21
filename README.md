@@ -100,6 +100,10 @@ Ist die [Xiaomi MIoT Cloud](Xiaomi%20MIoT%20Cloud%20IO/README.md) Instanz verbun
 
 ### 2. Changelog
 
+**Version 1.23:**  
+
+- Einige Anpassungen wieder entfernt, nachdem die Quelle der Geräteeigenschaften wieder verfügbar ist.  
+
 **Version 1.22:**  
 
 - Das anlegen von Geräte Instanzen über den Konfigurator ist wieder möglich  
