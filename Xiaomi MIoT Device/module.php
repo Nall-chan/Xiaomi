@@ -969,7 +969,7 @@ class XiaomiMIoTDevice extends IPSModule
                     if (count($Action['in'])) { // ein Parameter -> Variable mit passendem Profil
                         $PropertyIndex = $Action['in'][0] - 1;
                         if (!in_array($Ident, $DisabledStateVariables)) {
-                            list($IpsVarType, $Profile) = $this->GetVariableData($Service['iid'], $Service['properties'][$PropertyIndex], $ProfileSuffix, $Locales);
+                            list($IpsVarType, $Profile) = $this->GetVariableData($Service['iid'], $Action, $ProfileSuffix, $Locales);
                             $this->MaintainVariable($Ident, $Name, $IpsVarType, $Profile, $Pos++, true);
                             $this->SetValue($Ident, -1);
                         }
