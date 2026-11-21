@@ -13,7 +13,7 @@
 - [1. Funktionsumfang](#1-funktionsumfang)
 - [2. Voraussetzungen](#2-voraussetzungen)
 - [3. Software-Installation](#3-software-installation)
-- [4. Einrichten der Instanzen in IP-Symcon](#4-einrichten-der-instanzen-in-ip-symcon)
+- [4. Einrichten der Instanzen in Symcon](#4-einrichten-der-instanzen-in-symcon)
 - [5. Statusvariablen](#5-statusvariablen)
 - [6. Visualisierung](#6-visualisierung)
 - [7. PHP-Befehlsreferenz](#7-php-befehlsreferenz)
@@ -29,14 +29,14 @@
 
 ## 2. Voraussetzungen
 
-- IPS 6.4 oder höher
+- Symcon 9.0 oder höher
 - Eingebundene Geräte in der Mi Home App
 
 ## 3. Software-Installation
 
 - Dieses Modul ist Bestandteil der [Xiaomi MIoT-Library](../README.md#4-software-installation).  
 
-## 4. Einrichten der Instanzen in IP-Symcon
+## 4. Einrichten der Instanzen in Symcon
 
 Unter `Instanz hinzufügen` ist das `Xiaomi MIoT Configurator`-Modul unter dem Hersteller `Xiaomi` aufgeführt.  
 ![Module](../imgs/module.png)  
@@ -81,5 +81,5 @@ Die Library ist für die nicht kommerzielle Nutzung kostenlos, Schenkungen als U
 
 ## 10. Lizenz
 
-  IPS-Modul:  
+  Symcon-Modul:  
   [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)  

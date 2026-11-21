@@ -1,6 +1,13 @@
 {
     "actions": [
         {
+            "type": "Label",
+            "name": "IOHint",
+            "bold": true,
+            "visible": false,
+            "caption": "The Xiaomi MIoT Cloud IO is not connected or not logged in. Please open the gateway configuration and log in."
+        },
+        {
             "type": "RowLayout",
             "items": [
                 {
@@ -44,42 +51,6 @@
                 }
             ],
             "values": []
-        },
-        {
-            "type": "PopupAlert",
-            "name": "AlertPopup",
-            "visible": false,
-            "popup": {
-                "closeCaption": "Close",
-                "buttons": [
-                    {
-                        "caption": "Install Roborock-Modul from Module-Store",
-                        "onClick": "IPS_RequestAction($id,'InstallRoborockModule',true);"
-                    }
-                ],
-                "items": [
-                    {
-                        "name": "AlertText",
-                        "type": "Label",
-                        "caption": "Note:\r\n    A Roborock was found which is supported by the Roborock module.\r\n    However, the Roborock module is not installed, so the configurator cannot create a Roborock instance."
-                    }
-                ]
-            }
-        },
-        {
-            "type": "PopupAlert",
-            "name": "WaitPopup",
-            "visible": false,
-            "popup": {
-                "closeCaption": "Please wait",
-                "items": [
-                    {
-                        "name": "WaitText",
-                        "type": "Label",
-                        "caption": "Please wait, installation in progress.\r\nConfigurator will reload automatically"
-                    }
-                ]
-            }
         },
         {
             "type": "Label",

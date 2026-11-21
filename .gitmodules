@@ -10,3 +10,6 @@
 [submodule ".style"]
 	path = .style
 	url = https://github.com/Nall-chan/StylePHP
+[submodule ".claude-rules"]
+	path = .claude-rules
+	url = https://github.com/Nall-chan/symcon-module-rules.git

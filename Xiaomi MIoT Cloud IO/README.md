@@ -13,7 +13,7 @@
 - [1. Funktionsumfang](#1-funktionsumfang)
 - [2. Voraussetzungen](#2-voraussetzungen)
 - [3. Software-Installation](#3-software-installation)
-- [4. Einrichten der Instanzen in IP-Symcon](#4-einrichten-der-instanzen-in-ip-symcon)
+- [4. Einrichten der Instanzen in Symcon](#4-einrichten-der-instanzen-in-symcon)
 - [5. Statusvariablen](#5-statusvariablen)
 - [6. Visualisierung](#6-visualisierung)
 - [7. PHP-Befehlsreferenz](#7-php-befehlsreferenz)
@@ -29,14 +29,14 @@
 
 ## 2. Voraussetzungen
 
-- IPS 6.4 oder höher
+- Symcon 9.0 oder höher
 - Eingebundene Geräte in der Mi Home App
 
 ## 3. Software-Installation
 
 - Dieses Modul ist Bestandteil der [Xiaomi MIoT-Library](../README.md#4-software-installation).  
 
-## 4. Einrichten der Instanzen in IP-Symcon
+## 4. Einrichten der Instanzen in Symcon
 
  Unter `Instanz hinzufügen` ist das `Xiaomi MIoT Cloud IO`-Modul unter dem Hersteller `Xiaomi` aufgeführt.  
 ![Module](../imgs/module.png)  
@@ -69,8 +69,92 @@ Dieses Modul ist nicht für die Visualisierung geeignet.
 
 ## 7. PHP-Befehlsreferenz
 
-Dieses Modul stellt keine Instanz-Funktionen bereit.
+> [!TIP]
+> Die Anmeldung erfolgt am einfachsten über die Konfiguration der Instanz (siehe [Einrichten der Instanzen](#4-einrichten-der-instanzen-in-symcon)). Die folgenden Funktionen werden von diesem Formular verwendet und können auch in Skripten genutzt werden.
 
+### Anmelden  
+
+```php
+string XIAOMI_SetCredentials(integer $InstanzID, string $Username, string $Password, string $Country);
+```
+
+Meldet die Instanz mit den Zugangsdaten des Mi Accounts (Konto der Mi Home App) an.  
+`$Username` ist die E-Mail-Adresse, Telefonnummer oder Konto-ID des Mi Accounts, `$Password` das zugehörige Passwort.  
+`$Country` ist der Server bzw. die Region, in welcher die Geräte in der Mi Home App angelernt sind:  
+
+| Wert | Region                   |
+| ---- | ------------------------ |
+| `cn` | China                    |
+| `de` | Deutschland (Europa)     |
+| `ru` | Russland                 |
+| `us` | Amerika                  |
+| `tw` | Taiwan                   |
+| `sg` | Singapur                 |
+| `in` | Indien                   |
+| `i2` | Indien (zweiter Server)  |
+
+Rückgabe: Ein leerer String, wenn die Anmeldung erfolgreich war oder eine Zwei-Faktor-Verifizierung gestartet wurde. Andernfalls die Fehlermeldung (z.B. `Nicht autorisiert`).  
+Ist eine Zwei-Faktor-Verifizierung erforderlich, bleibt die Instanz inaktiv, bis der Code mit `XIAOMI_SubmitVerificationCode` bestätigt wurde.  
+
+Beispiel:  
+
+```php
+$Result = XIAOMI_SetCredentials(12345, 'user@example.com', 'Passwort', 'de');
+if ($Result != '') {
+    echo $Result;
+}
+```
+
+---  
+
+### Verifizierungscode anfordern  
+
+```php
+string XIAOMI_SendVerificationCode(integer $InstanzID);
+```
+
+Lässt den Code für die Zwei-Faktor-Verifizierung an die im Mi Account hinterlegte E-Mail-Adresse bzw. Telefonnummer senden.  
+Nur nach einem `XIAOMI_SetCredentials`, welches eine Verifizierung gestartet hat, sinnvoll.  
+Rückgabe: Ein leerer String bei Erfolg, andernfalls die Fehlermeldung.  
+
+Beispiel:  
+
+```php
+XIAOMI_SendVerificationCode(12345);
+```
+
+---  
+
+### Verifizierungscode bestätigen  
+
+```php
+string XIAOMI_SubmitVerificationCode(integer $InstanzID, string $Code);
+```
+
+Bestätigt die Anmeldung mit dem per E-Mail bzw. SMS erhaltenen Code (`$Code`).  
+Rückgabe: Bei Erfolg der Text `MESSAGE:Verifizierung erfolgreich!` (das Präfix `MESSAGE:` sorgt im Formular für die Anzeige als Meldung), andernfalls die Fehlermeldung.  
+
+Beispiel:  
+
+```php
+echo XIAOMI_SubmitVerificationCode(12345, '123456');
+```
+
+---  
+
+### Abmelden  
+
+```php
+void XIAOMI_Logout(integer $InstanzID);
+```
+
+Löscht die gespeicherten Zugangsdaten und Token der Instanz. Die Instanz wird inaktiv, verbundene Geräte-Instanzen können anschließend nicht mehr über die Cloud kommunizieren.  
+
+Beispiel:  
+
+```php
+XIAOMI_Logout(12345);
+```
 ## 8. Aktionen
 
 Es gibt keine speziellen Aktionen für dieses Modul.  
@@ -91,5 +175,5 @@ Die Library ist für die nicht kommerzielle Nutzung kostenlos, Schenkungen als U
 
 ## 10. Lizenz
 
-  IPS-Modul:  
+  Symcon-Modul:  
   [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)  

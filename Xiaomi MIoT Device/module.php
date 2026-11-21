@@ -22,6 +22,7 @@ require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
  * @method bool IORequestAction(string $Ident, mixed $Value)
  * @property bool $ShowVariableWarning
  * @property int $Retries
+ * @property bool $Reconnecting
  * @property int $ServerStamp
  * @property int $ServerStampTime
  * @property int $ParentID
@@ -89,6 +90,7 @@ class XiaomiMIoTDevice extends IPSModule
         $this->RegisterTimer(\Xiaomi\Device\Timer::RefreshState, 0, 'IPS_RequestAction(' . $this->InstanceID . ',"' . \Xiaomi\Device\Timer::RefreshState . '",true);');
         $this->RegisterTimer(\Xiaomi\Device\Timer::Reconnect, 0, 'IPS_RequestAction(' . $this->InstanceID . ',"' . \Xiaomi\Device\Timer::Reconnect . '",true);');
         $this->Retries = 2;
+        $this->Reconnecting = false;
         $this->ParentID = 0;
     }
 
@@ -102,13 +104,21 @@ class XiaomiMIoTDevice extends IPSModule
     {
         // Prüfe Version diese Modul-Instanz
         $j = json_decode($JSONData);
-        $Specs = json_decode($j->attributes->{\Xiaomi\Device\Attribute::Specs}, true);
-        /*
-        if (!isset($Specs['services'][0]['i18nKey'])) {
-         */
-        if (!isset($Specs['urn'])) {
-            $j->attributes->{\Xiaomi\Device\Attribute::Token} = '';
-            $j->attributes->{\Xiaomi\Device\Attribute::Specs} = '[]';
+        if (!isset($j->attributes)) {
+            // Keine gespeicherten Attribute (neue Instanz): nichts zu migrieren.
+            return $JSONData;
+        }
+        $Specs = json_decode((string) ($j->attributes->{\Xiaomi\Device\Attribute::Specs} ?? '[]'), true);
+        // Nur Specs im alten Format (vorhanden, aber ohne 'urn') zurücksetzen.
+        // Leere oder fehlende Specs lädt GetModelData ohnehin, sobald die Instanz aktiv wird.
+        if (!is_array($Specs) || (count($Specs) == 0) || isset($Specs['urn'])) {
+            return $JSONData;
+        }
+        // Altes Format: Token löschen, damit Token und Specs neu geladen werden.
+        $Token = (string) ($j->attributes->{\Xiaomi\Device\Attribute::Token} ?? '');
+        $j->attributes->{\Xiaomi\Device\Attribute::Token} = '';
+        $j->attributes->{\Xiaomi\Device\Attribute::Specs} = '[]';
+        if ($Token !== '') {
             $this->LogMessage('Need to reload specs, delete token', KL_NOTIFY);
         }
         return json_encode($j);
@@ -195,9 +205,10 @@ class XiaomiMIoTDevice extends IPSModule
             case \Xiaomi\Device\Timer::Reconnect:
                 // Reconnect Timer abgelaufen. Verbindungsaufbau versuchen.
                 $this->SetTimerInterval(\Xiaomi\Device\Timer::Reconnect, 0);
-                $this->LogMessage($this->Translate('Try reconnecting'), KL_MESSAGE);
+                $this->SendDebug('Reconnect', 'try handshake', 0);
                 if ($this->SendHandshake()) {
-                    $this->Retries = 2;
+                    // Retries und Logmeldung erst nach der ersten erfolgreichen Abfrage (RequestState),
+                    // ein Handshake allein beweist bei instabilen Geräten noch keine Verbindung.
                     $this->SetStatus(IS_ACTIVE);
                     $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, $this->ReadPropertyInteger(\Xiaomi\Device\Property::RefreshInterval) * 1000);
                 }
@@ -273,7 +284,7 @@ class XiaomiMIoTDevice extends IPSModule
                 }
                 break;
         }
-        trigger_error($this->Translate('Invalid Ident'), E_USER_NOTICE);
+        echo $this->Translate('Invalid Ident') . PHP_EOL;
     }
 
     /**
@@ -284,7 +295,7 @@ class XiaomiMIoTDevice extends IPSModule
     public function RequestState(): bool
     {
         if ($this->GetStatus() != IS_ACTIVE) {
-            trigger_error($this->Translate('Instance is not active'), E_USER_NOTICE);
+            echo $this->Translate('Instance is not active') . PHP_EOL;
             return false;
         }
         $Params = $this->GetPropertiesParams();
@@ -316,7 +327,7 @@ class XiaomiMIoTDevice extends IPSModule
                     $this->SendDebug((string) $Value['siid'] . '_' . (string) $Value['piid'], $this->Translate(\Xiaomi\Device\ApiError::$CodeToText[$Value['code']]), 0);
                     continue;
                 } elseif ($Value['code'] != 0) {
-                    $Message = $this->Translate(\Xiaomi\Device\ApiError::$CodeToText[$Value['code']] ?? $this->Translate('Unknown error: ') . $Value['code']);
+                    $Message = $this->GetErrorText(\Xiaomi\Device\ApiError::$CodeToText, (int) $Value['code']);
                     $this->LogMessage($Message . ' - ' . $this->GetIDForIdent($Ident) . ' ' . IPS_GetName($this->GetIDForIdent($Ident)), KL_ERROR);
                     continue;
                 }
@@ -326,6 +337,12 @@ class XiaomiMIoTDevice extends IPSModule
             }
             $this->SendDebug((string) $Value['siid'] . '_' . (string) $Value['piid'], $Value['value'], 0);
             $this->SetValue($Ident, $Value['value']);
+        }
+        if ($this->Reconnecting && ($this->GetStatus() == IS_ACTIVE)) {
+            // Erst jetzt gilt die Verbindung als wiederhergestellt (siehe SetStatus)
+            $this->Reconnecting = false;
+            $this->Retries = 2;
+            $this->LogMessage($this->Translate('Reconnect successfully'), KL_MESSAGE);
         }
         return true;
     }
@@ -414,7 +431,7 @@ class XiaomiMIoTDevice extends IPSModule
             ],
             [
                 'type'      => 'Label',
-                'caption'   => 'Token: ' . $this->ReadAttributeString(\Xiaomi\Device\Attribute::Token)
+                'caption'   => 'Token: ' . \Xiaomi\Sensitive::preview($this->ReadAttributeString(\Xiaomi\Device\Attribute::Token))
             ],
             [
                 'type'      => 'Label',
@@ -493,12 +510,12 @@ class XiaomiMIoTDevice extends IPSModule
      * @param  int $ServiceId
      * @param  int $ActionId
      * @param  array $Parameter
-     * @return bool
+     * @return mixed false bei Fehler, sonst die Rückgabewerte der Aktion (out) als Array oder true, wenn das Gerät keine liefert
      */
-    public function ExecuteAction(int $ServiceId, int $ActionId, array $Parameter): bool
+    public function ExecuteAction(int $ServiceId, int $ActionId, array $Parameter): mixed
     {
         if ($this->GetStatus() != IS_ACTIVE) {
-            trigger_error($this->Translate('Instance is not active'), E_USER_NOTICE);
+            echo $this->Translate('Instance is not active') . PHP_EOL;
             return false;
         }
         $Params = [
@@ -516,11 +533,13 @@ class XiaomiMIoTDevice extends IPSModule
         if (is_null($Result)) {
             return false;
         }
-        $this->SendDebug('ActionResult', $Result, 0);
-        if ($Result['code'] < 0) {
-            echo $this->Translate(\Xiaomi\Device\ApiError::$CodeToText[$Result['code']]);
+        $this->SendDebug('ActionResult', \Xiaomi\Sensitive::mask($Result), 0);
+        $Code = (int) ($Result['code'] ?? 0);
+        if ($Code < 0) {
+            echo $this->GetErrorText(\Xiaomi\Device\ApiError::$CodeToText, $Code) . PHP_EOL;
             return false;
         }
+        // Liefert die Aktion Rückgabewerte (out), werden diese zurückgegeben.
         if (array_key_exists('out', $Result)) {
             return $Result['out'];
         }
@@ -537,24 +556,32 @@ class XiaomiMIoTDevice extends IPSModule
     {
         switch ($State) {
             case IS_ACTIVE:
-                $this->Retries = 2;
-                if ($this->GetStatus() > IS_EBASE) {
-                    $this->LogMessage($this->Translate('Reconnect successfully'), KL_MESSAGE);
-                }
+                // „Wiederverbinden erfolgreich“ meldet RequestState nach der ersten erfolgreichen Abfrage.
                 break;
             case IS_INACTIVE:
                 $this->Retries = 2;
-                $this->LogMessage($this->Translate('disconnected'), KL_MESSAGE);
+                $this->Reconnecting = false;
+                // Nur melden, wenn vorher eine Verbindung bestand (nicht bei jedem ApplyChanges inaktiver Instanzen)
+                if ($this->GetStatus() == IS_ACTIVE) {
+                    $this->LogMessage($this->Translate('disconnected'), KL_MESSAGE);
+                }
                 break;
             default:
+                // Keine zyklischen Abfragen im Fehlerzustand, der Reconnect-Timer übernimmt.
+                $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, 0);
                 if (!$this->ReadPropertyBoolean(\Xiaomi\Device\Property::Active)) { // Zwischen senden und empfangen wurde die Instanz auf inactik gesetzt
                     return;
                 }
-                $this->LogMessage($this->Translate('Reconnect failed'), KL_MESSAGE);
                 if ($this->Retries < 3600) {
                     $this->Retries++;
                 }
-                $this->LogMessage(sprintf($this->Translate('Try to reconnect in %d seconds'), $this->Retries), KL_MESSAGE);
+                // Nur den Verbindungsverlust ins Log, weitere Versuche nur ins Debug (keine Log-Flut bei instabilen Geräten)
+                if ($this->Reconnecting) {
+                    $this->SendDebug('Reconnect', sprintf('failed, next try in %d seconds', $this->Retries), 0);
+                } else {
+                    $this->Reconnecting = true;
+                    $this->LogMessage($this->Translate('Connection failed, trying to reconnect'), KL_MESSAGE);
+                }
                 $this->SetTimerInterval(\Xiaomi\Device\Timer::Reconnect, $this->Retries * 1000);
                 break;
         }
@@ -620,28 +647,43 @@ class XiaomiMIoTDevice extends IPSModule
             return;
         }
         $this->CreateStateVariables();
-        if ($this->ReadPropertyBoolean(\Xiaomi\Device\Property::ForceCloud)) {
-            $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, true);
+        $ForceCloud = $this->ReadPropertyBoolean(\Xiaomi\Device\Property::ForceCloud);
+        $DeniedCloud = $this->ReadPropertyBoolean(\Xiaomi\Device\Property::DeniedCloud);
+        if ($ForceCloud) {
+            $UseCloud = true;
+        } elseif ($DeniedCloud) {
+            $UseCloud = false;
         } else {
-            $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, false);
+            // Zuletzt funktionierenden Weg zuerst versuchen. Das erspart Geräten,
+            // die lokal nicht antworten, bei jedem ApplyChanges den lokalen Timeout.
+            $UseCloud = $this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud);
+        }
+        $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, $UseCloud);
+        if ($UseCloud && !$this->HasActiveParent()) {
+            // Cloud IO (noch) nicht aktiv, z.B. beim Systemstart: warten, IOChangeState verbindet neu.
+            // Ein Fallback auf lokal würde sonst den falschen Weg merken.
+            $this->SendDebug(__FUNCTION__, 'waiting for active Cloud IO', 0);
+            $this->SetStatus(IS_INACTIVE);
+            return;
         }
         $this->SetStatus(IS_ACTIVE);
-        if ($this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud)) { //cloud an -> nur ein Versuch
-            if (!$this->RequestState()) {
-                $this->SetStatus(\Xiaomi\Device\InstanceStatus::InCloudOffline);
+        if (!$this->RequestState()) {
+            if ($ForceCloud || $DeniedCloud) { // nur ein Weg erlaubt
+                $this->SetStatus($UseCloud ? \Xiaomi\Device\InstanceStatus::InCloudOffline : \Xiaomi\Device\InstanceStatus::TimeoutError);
                 return;
             }
-        } else {
-            if (!$this->RequestState()) { // wenn erster Versuch fehlschlägt
-                if ($this->ReadPropertyBoolean(\Xiaomi\Device\Property::DeniedCloud)) { // und Cloud verboten
-                    $this->SetStatus(\Xiaomi\Device\InstanceStatus::TimeoutError);
-                    return;
+            if ($this->GetStatus() != IS_ACTIVE) { // Fehlerzustand wurde schon gesetzt (z.B. Handshake), Reconnect-Timer läuft
+                return;
+            }
+            // Anderen Weg versuchen (SocketSend kann bereits selbst auf Cloud umgeschaltet haben)
+            if ($this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud) == $UseCloud) {
+                $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, !$UseCloud);
+            }
+            if (!$this->RequestState()) {
+                if ($this->GetStatus() == IS_ACTIVE) {
+                    $this->SetStatus($this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud) ? \Xiaomi\Device\InstanceStatus::InCloudOffline : \Xiaomi\Device\InstanceStatus::TimeoutError);
                 }
-                $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, true); // umschalten auf Cloud
-                if (!$this->RequestState()) {
-                    $this->SetStatus(\Xiaomi\Device\InstanceStatus::InCloudOffline);
-                    return;
-                }
+                return;
             }
         }
         $this->LogMessage($this->Translate('Connection established'), KL_MESSAGE);
@@ -678,9 +720,13 @@ class XiaomiMIoTDevice extends IPSModule
         );
         if ($this->lock(__FUNCTION__)) {
             $this->SendDebug('Send', $Payload, 0);
-            $Data = $this->EncryptMessage($Payload);
             $State = IS_ACTIVE;
-            $Result = $this->SocketSend($Data, $State);
+            $Result = $this->SocketSend($this->EncryptMessage($Payload), $State);
+            if (($State == \Xiaomi\Device\ApiError::ChecksumError) && $this->RefreshToken()) {
+                // Token hat sich geändert (z.B. Gerät neu angelernt): einmal mit neuem Token wiederholen
+                $State = IS_ACTIVE;
+                $Result = $this->SocketSend($this->EncryptMessage($Payload), $State);
+            }
             if ($State == \Xiaomi\Device\InstanceStatus::TimeoutError) {
                 if ($this->ReadPropertyBoolean(\Xiaomi\Device\Property::DeniedCloud)) { // und verboten
                     $this->SetStatus(\Xiaomi\Device\InstanceStatus::TimeoutError);
@@ -689,7 +735,7 @@ class XiaomiMIoTDevice extends IPSModule
             $this->unlock(__FUNCTION__);
             return $Result;
         }
-        trigger_error($this->Translate('Send blocked'), E_USER_NOTICE);
+        echo $this->Translate('Send blocked') . PHP_EOL;
         return null;
     }
 
@@ -705,7 +751,7 @@ class XiaomiMIoTDevice extends IPSModule
         $this->SendDebug('Cloud Request Uri', $Uri, 0);
         $this->SendDebug('Cloud Request Data', $Params, 0);
         $Response = $this->SendDataToParent(\Xiaomi\Cloud\ForwardData::ToJson($Uri, $Params));
-        $this->SendDebug('Cloud Response', $Response, 0);
+        $this->SendDebug('Cloud Response', \Xiaomi\Sensitive::mask((string) $Response), 0);
         if (($Response == '') || ($Response == false)) {
             return null;
         }
@@ -713,11 +759,29 @@ class XiaomiMIoTDevice extends IPSModule
         if ($Result === null) {
             return null;
         }
-        if ($Result['code'] != 0) {
-            echo $this->Translate(\Xiaomi\Cloud\ApiError::$CodeToText[$Result['code']]);
+        $Code = (int) ($Result['code'] ?? 0);
+        if ($Code != 0) {
+            echo $this->GetErrorText(\Xiaomi\Cloud\ApiError::$CodeToText, $Code) . PHP_EOL;
             return null;
         }
-        return $Result['result'];
+        return $Result['result'] ?? null;
+    }
+
+    /**
+     * GetErrorText
+     *
+     * Liefert den übersetzten Text zu einem Fehlercode, auch für unbekannte Codes.
+     *
+     * @param  array $CodeToText Zuordnung Fehlercode => Text
+     * @param  int $Code Fehlercode aus der Antwort von Gerät oder Cloud
+     * @return string
+     */
+    private function GetErrorText(array $CodeToText, int $Code): string
+    {
+        if (array_key_exists($Code, $CodeToText)) {
+            return $this->Translate($CodeToText[$Code]);
+        }
+        return $this->Translate('Unknown error: ') . $Code;
     }
 
     /**
@@ -731,12 +795,7 @@ class XiaomiMIoTDevice extends IPSModule
     private function WriteValue(int $ServiceId, int $PropertyId, $Value): bool
     {
         if ($this->GetStatus() != IS_ACTIVE) {
-            trigger_error($this->Translate('Instance is not active'), E_USER_NOTICE);
-            return false;
-        }
-        //todo prüfen ob in Specs
-        if (false) {
-            trigger_error($this->Translate('Invalid ServiceId oder PropertyId'), E_USER_NOTICE);
+            echo $this->Translate('Instance is not active') . PHP_EOL;
             return false;
         }
         $Params = [];
@@ -755,8 +814,10 @@ class XiaomiMIoTDevice extends IPSModule
         if (is_null($Result)) {
             return false;
         }
-        if ($Result[0]['code'] > 1) {
-            echo $this->Translate(\Xiaomi\Device\ApiError::$CodeToText[$Result[0]['code']]);
+        // Fehlercodes sind negativ, 0 = ok, 1 = angenommen (wird ausgeführt).
+        $Code = (int) ($Result[0]['code'] ?? 0);
+        if ($Code < 0) {
+            echo $this->GetErrorText(\Xiaomi\Device\ApiError::$CodeToText, $Code) . PHP_EOL;
             return false;
         }
         $Ident = \Xiaomi\IdentPrefix::Property . '_' . (string) $ServiceId . '_' . (string) $PropertyId; // . '_' . $Property['prop'];
@@ -785,10 +846,35 @@ class XiaomiMIoTDevice extends IPSModule
         if (is_null($Result)) {
             return false;
         }
-        if (is_null($Result['list'])) {
+        if (empty($Result['list'][0]['token'])) {
+            $this->SendDebug(__FUNCTION__, 'no token in result', 0);
             return false;
         }
         $this->WriteAttributeString(\Xiaomi\Device\Attribute::Token, $Result['list'][0]['token']);
+        return true;
+    }
+
+    /**
+     * RefreshToken
+     *
+     * Holt nach einem Prüfsummenfehler den Token erneut aus der Cloud.
+     *
+     * @return bool true, wenn ein neuer (geänderter) Token geladen wurde
+     */
+    private function RefreshToken(): bool
+    {
+        if (!$this->HasActiveParent()) {
+            return false;
+        }
+        $OldToken = $this->ReadAttributeString(\Xiaomi\Device\Attribute::Token);
+        if (!$this->GetToken()) {
+            return false;
+        }
+        if ($this->ReadAttributeString(\Xiaomi\Device\Attribute::Token) === $OldToken) {
+            $this->SendDebug(__FUNCTION__, 'token unchanged', 0);
+            return false;
+        }
+        $this->LogMessage($this->Translate('Device token has changed and was reloaded from the cloud'), KL_MESSAGE);
         return true;
     }
 
@@ -971,7 +1057,18 @@ class XiaomiMIoTDevice extends IPSModule
                         if (!in_array($Ident, $DisabledStateVariables)) {
                             list($IpsVarType, $Profile) = $this->GetVariableData($Service['iid'], $Service['properties'][$PropertyKey], $ProfileSuffix, $Locales);
                             $this->MaintainVariable($Ident, $Name, $IpsVarType, $Profile, $Pos++, true);
-                            $this->SetValue($Ident, -1);
+                            // Aktionen haben keinen Zustand: neutralen Wert passend zum Variablentyp setzen
+                            switch ($IpsVarType) {
+                                case VARIABLETYPE_BOOLEAN:
+                                    $this->SetValue($Ident, false);
+                                    break;
+                                case VARIABLETYPE_STRING:
+                                    $this->SetValue($Ident, '');
+                                    break;
+                                default:
+                                    $this->SetValue($Ident, -1);
+                                    break;
+                            }
                         }
                         $ActionsIdentsWithValue[$Ident] = $Name;
                     } else { // kein Parameter, nur 'Execute' Profile
@@ -1031,7 +1128,7 @@ class XiaomiMIoTDevice extends IPSModule
             $DecodeError = 0;
             $JSONResult = $this->DecryptMessage($Response, $DecodeError);
             if (is_null($JSONResult)) {
-                if ($DecodeError == \Xiaomi\Device\InstanceStatus::DidNotMatch) {
+                if (($DecodeError == \Xiaomi\Device\InstanceStatus::DidNotMatch) || ($DecodeError == \Xiaomi\Device\ApiError::ChecksumError)) {
                     $State = $DecodeError;
                 }
                 return null;
@@ -1039,19 +1136,23 @@ class XiaomiMIoTDevice extends IPSModule
             if ($JSONResult === '') { //handshake
                 return [];
             }
-            $this->SendDebug('Receive', $JSONResult, 0);
+            $this->SendDebug('Receive', \Xiaomi\Sensitive::mask($JSONResult), 0);
             $Result = json_decode(trim($JSONResult), true);
+            if (!is_array($Result)) {
+                $this->SendDebug('Receive', 'invalid JSON', 0);
+                return null;
+            }
             if (array_key_exists('error', $Result)) {
                 if ((($Result['error']['code'] == -32601) || ($Result['error']['code'] == -9999)) && !$this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud)) {
                     if ($this->ReadPropertyBoolean(\Xiaomi\Device\Property::DeniedCloud)) { // und cloud verboten
-                        trigger_error('Error: ' . $Result['error']['code'] . PHP_EOL . $Result['error']['message'], E_USER_NOTICE);
+                        echo sprintf($this->Translate('Device error %d: %s'), (int) $Result['error']['code'], (string) ($Result['error']['message'] ?? '')) . PHP_EOL;
                         $this->SetStatus(\Xiaomi\Device\InstanceStatus::ApiError);
                         $State = \Xiaomi\Device\InstanceStatus::ApiError;
                     } else { // cloud erlaubt
                         $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, true);
                     }
                 } else {
-                    trigger_error('Error: ' . $Result['error']['code'] . PHP_EOL . $Result['error']['message'], E_USER_NOTICE);
+                    echo sprintf($this->Translate('Device error %d: %s'), (int) $Result['error']['code'], (string) ($Result['error']['message'] ?? '')) . PHP_EOL;
                     $this->SetStatus(\Xiaomi\Device\InstanceStatus::ApiError);
                     $State = \Xiaomi\Device\InstanceStatus::ApiError;
                 }
@@ -1059,7 +1160,8 @@ class XiaomiMIoTDevice extends IPSModule
             }
             if (array_key_exists('params', $Result)) {
                 if ($this->ReadPropertyBoolean(\Xiaomi\Device\Property::DeniedCloud)) { // und cloud verboten
-                    trigger_error('Error: receive params index' . PHP_EOL . json_encode($Result['params']), E_USER_NOTICE);
+                    $this->SendDebug('Receive', 'unexpected params: ' . json_encode($Result['params']), 0);
+                    echo $this->Translate('Unexpected response from device') . PHP_EOL;
                     $this->SetStatus(\Xiaomi\Device\InstanceStatus::ApiError);
                     $State = \Xiaomi\Device\InstanceStatus::ApiError;
                 } else {
@@ -1067,7 +1169,7 @@ class XiaomiMIoTDevice extends IPSModule
                 }
                 return null;
             }
-            return $Result['result'];
+            return $Result['result'] ?? null;
         }
         $this->SendDebug('Receive Timeout', '', 0);
         if ($Retry) {
@@ -1089,7 +1191,7 @@ class XiaomiMIoTDevice extends IPSModule
     {
         // Info Paket laden
         $Result = $this->SendLocal(\Xiaomi\Device\ApiMethod::Info);
-        $this->SendDebug('GetModelData', $Result, 0);
+        $this->SendDebug('GetModelData', \Xiaomi\Sensitive::mask($Result), 0);
         if (is_null($Result)) {
             $this->SendDebug('Error get model', '', 0);
             return false;
@@ -1287,6 +1389,11 @@ class XiaomiMIoTDevice extends IPSModule
         }
         list($TokenKey, $TokenIV) = $this->GetKeyAndIV();
         $Data = openssl_decrypt($encryptedMsg, 'aes-128-cbc', $TokenKey, OPENSSL_RAW_DATA, $TokenIV);
+        if ($Data === false) {
+            $this->SendDebug('Error on decrypt', 'decryption failed', 0);
+            $DecodeError = \Xiaomi\Device\ApiError::PaketError;
+            return null;
+        }
         return $Data;
     }
 

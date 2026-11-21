@@ -273,7 +273,7 @@ class XiaomiMIoTCloudIO extends IPSModule
         if ($Result === null) {
             return '';
         }
-        if ($Result['code'] == 2) {
+        if (($Result['code'] ?? 0) == 2) {
             if ($this->Login(
                 $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Username),
                 $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Password)
@@ -323,6 +323,10 @@ class XiaomiMIoTCloudIO extends IPSModule
             $this->ReloadForm();
             return '';
         }
+        if ($this->VerifyUrl != '') {
+            // Zwei-Faktor-Verifizierung erforderlich, der Dialog dazu ist bereits geöffnet.
+            return '';
+        }
         return $this->Translate('Unauthorized');
     }
 
@@ -350,17 +354,17 @@ class XiaomiMIoTCloudIO extends IPSModule
         $ResponseHeader = '';
         $Result = $this->CurlCall($ResponseHeader, $VerifyUrl, $Headers, $Data);
         if ($Result === null) {
-            return 'Error in request to send verification code';
+            return $this->Translate('Error in request to send verification code');
         }
         $Json = self::parseJson($Result);
         if ($Json === null) {
-            return 'Error in parsing result from send verification request';
+            return $this->Translate('Error in parsing result from send verification request');
         }
-        if ($Json['code'] !== 0) {
+        if (($Json['code'] ?? -1) !== 0) {
             if (isset($Json['tips'])) {
-                return $Json['tips'];
+                return (string) $Json['tips'];
             }
-            return 'Error in request to send verification code';
+            return $this->Translate('Error in request to send verification code');
         }
         $this->UpdateFormField('SendVerificationCodeButton', 'enabled', false);
         $this->UpdateFormField('SendVerificationCodeButton', 'caption', $this->Translate('Code sent'));
@@ -379,7 +383,7 @@ class XiaomiMIoTCloudIO extends IPSModule
         if ($Result == '') {
             return $this->Translate('MESSAGE:Verification successful!');
         }
-        return $Result;
+        return $this->Translate($Result);
     }
 
     /**
@@ -390,7 +394,8 @@ class XiaomiMIoTCloudIO extends IPSModule
     private function KernelReady()
     {
         $this->UnregisterMessage(0, IPS_KERNELSTARTED);
-        $this->UpdateServiceToken();
+        // Gleiche Prüfungen wie beim Übernehmen der Einstellungen (z.B. kein Login vorhanden -> inaktiv).
+        $this->ApplyChanges();
     }
 
     /**
@@ -548,9 +553,9 @@ class XiaomiMIoTCloudIO extends IPSModule
         if ($Json === null) {
             return ['', 'Error on parsing verification message'];
         }
-        if ($Json['code'] !== 0) {
+        if (($Json['code'] ?? -1) !== 0) {
             if (isset($Json['tips'])) {
-                return $Json['tips'];
+                return ['', (string) $Json['tips']];
             }
             return ['', 'Error on fetching verification message'];
         }
@@ -567,7 +572,7 @@ class XiaomiMIoTCloudIO extends IPSModule
      */
     private function VerifyDevice(string $Code): string
     {
-        $this->SendDebug(__FUNCTION__, $Code, 0);
+        $this->SendDebug(__FUNCTION__, 'code length ' . strlen($Code), 0);
         $Cookie = \Xiaomi\Cloud\ApiCookie::getLoginCookie($this->ReadAttributeString(\Xiaomi\Cloud\Attribute::ClientID));
         $VerifyUrl = \Xiaomi\Cloud\ApiVerifyIdentity::getUrl($this->Flag) . http_build_query([
             '_dc'   => (int) (time() * 1000)
@@ -591,36 +596,42 @@ class XiaomiMIoTCloudIO extends IPSModule
         if ($Json === null) {
             return 'Error on parsing verification result';
         }
-        if ($Json['code'] !== 0) {
+        if (($Json['code'] ?? -1) !== 0) {
             if (isset($Json['tips'])) {
-                return $Json['tips'];
+                return (string) $Json['tips'];
             }
             return 'Error on submit verification code';
         }
-        $LoginUrl = $Json['location'];
-        $ResponseHeader = '';
-        $Result = $this->CurlCall($ResponseHeader, $LoginUrl, $Headers);
-        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::ServiceToken, self::parseCookies($Result, 'serviceToken'));
-        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::UserId, (string) self::parseCookies($Result, 'userId'));
-        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::cUserId, (string) self::parseCookies($Result, 'cUserId'));
-        $Lines = explode("\r\n", $Result);
-        foreach ($Lines as $Line) {
-            $line_array = explode(':', $Line);
-            $Field = strtolower(trim(array_shift($line_array)));
-            if ($Field == 'location') {
-                $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::Location, trim(implode(':', $line_array)));
-                continue;
-            }
-            if ($Field == 'extension-pragma') {
-                $Data = json_decode(trim(implode(':', $line_array)), true);
-                $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::SSecurity, $Data['ssecurity']);
-                $this->SendDebug('Cloud Login', 'Device verification successful', 0);
-                $this->SetStatus(IS_ACTIVE);
-                $this->VerifyUrl = '';
-                return '';
-            }
+        if (empty($Json['location'])) {
+            return 'Error on finalizing verification';
         }
-        return 'Error on finalizing verification';
+        $ResponseHeader = '';
+        $Result = $this->CurlCall($ResponseHeader, $Json['location'], $Headers);
+        if ($Result === null) {
+            return 'Error on finalizing verification';
+        }
+        // Cookies und Header stehen im Header aller Weiterleitungen, nicht im Body.
+        $Data = self::parseVerifyResponse($ResponseHeader);
+        if (($Data['ssecurity'] === '') || ($Data['location'] === '')) {
+            return 'Error on finalizing verification';
+        }
+        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::SSecurity, $Data['ssecurity']);
+        $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::Location, $Data['location']);
+        if ($Data['userId'] !== '') {
+            $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::UserId, $Data['userId']);
+        }
+        if ($Data['cUserId'] !== '') {
+            $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::cUserId, $Data['cUserId']);
+        }
+        $this->VerifyUrl = '';
+        if ($Data['serviceToken'] !== '') {
+            $this->WriteAttributeString(\Xiaomi\Cloud\Attribute::ServiceToken, $Data['serviceToken']);
+            $this->SetStatus(IS_ACTIVE);
+        } elseif (!$this->UpdateServiceToken()) {
+            return 'Error on finalizing verification';
+        }
+        $this->SendDebug('Cloud Login', 'Device verification successful', 0);
+        return '';
     }
 
     /**
@@ -674,13 +685,13 @@ class XiaomiMIoTCloudIO extends IPSModule
             $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::UserId),
             $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::ServiceToken)
         );
-        $this->SendDebug('Cloud Request (Cookie)', $Cookie, 0);
+        $this->SendDebug('Cloud Request (Cookie)', \Xiaomi\Sensitive::mask($Cookie), 0);
         $Headers = \Xiaomi\Cloud\ApiHeader::getApiHeader(
             $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::AgentID),
             $Cookie
         );
         $Result = $this->CurlCall($Response, $Url, $Headers, $Params);
-        $this->SendDebug('Cloud Response ', $Response, 0);
+        $this->SendDebug('Cloud Response ', \Xiaomi\Sensitive::mask((string) $Response), 0);
         if ($Result === null) {
             return null;
         }
@@ -688,7 +699,7 @@ class XiaomiMIoTCloudIO extends IPSModule
             return $Result;
         }
         $Result = substr(self::rc4(base64_decode($SignedNonce), str_repeat("\x0", 1024) . base64_decode($Result)), 1024);
-        $this->SendDebug('Cloud Response Decoded', $Result, 0);
+        $this->SendDebug('Cloud Response Decoded', \Xiaomi\Sensitive::mask($Result), 0);
         return $Result;
     }
 
@@ -703,9 +714,9 @@ class XiaomiMIoTCloudIO extends IPSModule
      */
     private function CurlCall(?string &$ResponseHeader, string $Url, array $Headers = [], ?array $Data = null): ?string
     {
-        $this->SendDebug('Cloud Request Url', $Url, 0);
-        $this->SendDebug('Cloud Request Header', $Headers, 0);
-        $this->SendDebug('Cloud Request Data', $Data, 0);
+        $this->SendDebug('Cloud Request Url', \Xiaomi\Sensitive::mask($Url), 0);
+        $this->SendDebug('Cloud Request Header', \Xiaomi\Sensitive::mask($Headers), 0);
+        $this->SendDebug('Cloud Request Data', \Xiaomi\Sensitive::mask($Data), 0);
         $ch = curl_init($Url);
         curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -730,8 +741,8 @@ class XiaomiMIoTCloudIO extends IPSModule
             $ResponseHeader = implode("\r\n\r\n", $Parts);
 
         }
-        $this->SendDebug('Cloud Response Header (' . $HttpCode . ')', $ResponseHeader, 0);
-        $this->SendDebug('Cloud Response Body (' . $HttpCode . ')', $Result, 0);
+        $this->SendDebug('Cloud Response Header (' . $HttpCode . ')', \Xiaomi\Sensitive::mask($ResponseHeader), 0);
+        $this->SendDebug('Cloud Response Body (' . $HttpCode . ')', \Xiaomi\Sensitive::mask($Result), 0);
         switch ($HttpCode) {
             case 401:
             case 403:
@@ -769,13 +780,53 @@ class XiaomiMIoTCloudIO extends IPSModule
                 continue;
             }
             $CookieString = explode(';', trim(implode(':', $line_array)))[0];
-            [$Cookie, $Value] = explode('=', $CookieString, 2);
-            if ($Cookie !== $CookieName) {
+            $CookieParts = explode('=', $CookieString, 2);
+            if ((count($CookieParts) != 2) || ($CookieParts[0] !== $CookieName)) {
                 continue;
             }
-            return $Value;
+            return $CookieParts[1];
         }
         return '';
+    }
+
+    /**
+     * parseVerifyResponse
+     *
+     * Wertet die Header der Antworten nach erfolgreicher 2FA aus.
+     * ssecurity steht im Header extension-pragma, die zugehörige Weiterleitung (sts) im Location-Header
+     * derselben Antwort. Cookies können in jeder Antwort der Weiterleitungskette gesetzt werden.
+     *
+     * @param  string $Header Alle Header-Blöcke der Weiterleitungskette (getrennt durch Leerzeile)
+     * @return array ['location', 'ssecurity', 'serviceToken', 'userId', 'cUserId'], fehlende Werte als ''
+     */
+    private static function parseVerifyResponse(string $Header): array
+    {
+        $Result = ['location' => '', 'ssecurity' => ''];
+        foreach (explode("\r\n\r\n", $Header) as $Block) {
+            $Location = '';
+            $Pragma = null;
+            foreach (explode("\r\n", $Block) as $Line) {
+                $Parts = explode(':', $Line, 2);
+                if (count($Parts) != 2) {
+                    continue;
+                }
+                $Field = strtolower(trim($Parts[0]));
+                if ($Field == 'location') {
+                    $Location = trim($Parts[1]);
+                } elseif ($Field == 'extension-pragma') {
+                    $Pragma = json_decode(trim($Parts[1]), true);
+                }
+            }
+            if (is_array($Pragma) && !empty($Pragma['ssecurity'])) {
+                $Result['location'] = $Location;
+                $Result['ssecurity'] = (string) $Pragma['ssecurity'];
+                break;
+            }
+        }
+        $Result['serviceToken'] = self::parseCookies($Header, 'serviceToken');
+        $Result['userId'] = self::parseCookies($Header, 'userId');
+        $Result['cUserId'] = self::parseCookies($Header, 'cUserId');
+        return $Result;
     }
 
     /**

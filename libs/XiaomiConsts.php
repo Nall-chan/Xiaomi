@@ -127,10 +127,97 @@ namespace Xiaomi{
     class SpecTypes
     {
         public const Gateway = 'urn:miot-spec-v2:device:gateway';
-        public const Roborocks = [
-            'urn:miot-spec-v2:device:vacuum:0000A006:roborock',
-            'urn:miot-spec-v2:device:vacuum:0000A006:rockrobo'
+    }
+
+    /**
+     * Sensitive
+     *
+     * Maskiert Schlüsselmaterial und Zugangsdaten (Token, ssecurity, Passwort-Hash, Codes) für Debug-Ausgaben.
+     * Statt des Wertes wird nur seine Länge ausgegeben.
+     */
+    class Sensitive
+    {
+        public const Keys = [
+            'token',
+            'serviceToken',
+            'yetAnotherServiceToken',
+            'ssecurity',
+            'psecurity',
+            'passToken',
+            'hash',
+            'ticket',
+            'password',
+            // Sitzungsschlüssel der Zwei-Faktor-Anmeldung
+            'identity_session',
+            'applyToken',
+            'identityToken',
+            '_authenticationToken',
+            '_signature',
+            '_sign'
         ];
+
+        /**
+         * mask
+         *
+         * @param  mixed $Data String (JSON, Header, Cookie, Query) oder Array
+         * @return mixed Daten mit maskierten Werten
+         */
+        public static function mask(mixed $Data): mixed
+        {
+            if (is_array($Data)) {
+                foreach ($Data as $Key => $Value) {
+                    if (is_string($Key) && in_array(strtolower($Key), array_map('strtolower', self::Keys), true)) {
+                        $Data[$Key] = self::hide($Value);
+                    } else {
+                        $Data[$Key] = self::mask($Value);
+                    }
+                }
+                return $Data;
+            }
+            if (!is_string($Data)) {
+                return $Data;
+            }
+            $Pattern = '/(\b(?:' . implode('|', self::Keys) . ')\b"?\s*[:=]\s*"?)([^";&,\s}\]]+)/i';
+            $Result = preg_replace_callback($Pattern, function (array $Match): string
+            {
+                return $Match[1] . self::hide($Match[2]);
+            }, $Data) ?? $Data;
+            // Stream-URLs (z.B. Kamera-Aktionen) enthalten im Pfad einen Sitzungsschlüssel: nur Schema und Host zeigen.
+            // Erkennt auch JSON-maskierte Schrägstriche (rtsp:\/\/host\/...).
+            $Result = preg_replace_callback('/\b(rtsps?|rtmps?)(:(?:\\\\?\/){2}[^\/\\\\"\s]+)([^"\s,\]]*)/i', function (array $Match): string
+            {
+                return $Match[1] . $Match[2] . ($Match[3] === '' ? '' : '/' . self::hide($Match[3]));
+            }, $Result) ?? $Result;
+            return $Result;
+        }
+
+        /**
+         * preview
+         *
+         * Zeigt nur den Anfang und die Länge eines sensiblen Wertes (z.B. Token im Konfigurationsformular).
+         *
+         * @param  string $Value
+         * @param  int $Visible Anzahl sichtbarer Zeichen am Anfang
+         * @return string
+         */
+        public static function preview(string $Value, int $Visible = 4): string
+        {
+            if ($Value === '') {
+                return '';
+            }
+            return substr($Value, 0, $Visible) . '…(' . strlen($Value) . ')';
+        }
+
+        /**
+         * hide
+         *
+         * @param  mixed $Value
+         * @return string
+         */
+        private static function hide(mixed $Value): string
+        {
+            return is_string($Value) ? '***(' . strlen($Value) . ')' : '***';
+        }
     }
 }
 
@@ -219,8 +306,8 @@ namespace Xiaomi\Device{
             -4007       => 'DeviceId error',
             -9999       => 'user ack timeout',
             -704010000  => 'Unknown error',
-            -704040002  => 'Unknown error', //Gateway offline?
-            -704040003  => 'Unknown error',
+            -704040002  => 'Service does not exist', // live geprüft (siid 99)
+            -704040003  => 'Property does not exist', // live geprüft (piid 99)
             -704040005  => 'Invalid action',
             -704042011  => 'Device offline',
             -704220043  => 'Property value invalid'
@@ -433,7 +520,7 @@ namespace Xiaomi\Cloud{
                     self::UserId . $UserId,
                     self::YAST . $ServiceToken,
                     self::ServiceToken . $ServiceToken,
-                    self::Locale . IPS_GetSystemLanguage() .
+                    self::Locale . IPS_GetSystemLanguage(),
                     self::Timezone . date('P'),
                     self::IsDaylight . date('I'),
                     self::DSTOffset . (string) ((int) date('I') * 60 * 60 * 1000),
@@ -570,65 +657,5 @@ namespace Xiaomi\Configurator{
     class Attribute
     {
         public const ShowOffline = 'ShowOffline';
-    }
-}
-
-namespace Xiaomi\Roborock{
-
-    /**
-     * GUID
-     */
-    class GUID
-    {
-        public const Module = '{CD3419DA-91F2-C5DA-7FEE-6EB452506C9F}';
-        public const Store = '{F45B5D1F-56AE-4C61-9AB2-C87C63149EC3}';
-        public const Device = '{E65614FB-B37A-219A-4876-E5676C948C33}';
-        public const IO = '{4743ED9C-720B-D5EA-9B0C-0585803284F3}';
-    }
-
-    /**
-     * Property
-     */
-    class Property
-    {
-        public const Ip = 'ip';
-        public const Model = 'model';
-        public const Server = 'Server';
-        public const User = 'xiaomi_user';
-        public const Password = 'xiaomi_password';
-    }
-
-    /**
-     * Store
-     */
-    class Store
-    {
-        public const BundleId = 'fonzo.ipsymconroborock';
-        public static $Opts = [
-            'http' => [
-                'method' => 'GET',
-                'header' => "User-Agent: Awesome-PHP\r\n"
-            ]
-        ];
-    }
-
-    /**
-     * Models
-     */
-    class Models
-    {
-        public const RoborockVacuum = 'roborock.vacuum';
-        public const DEVICELIST = [
-            self::RoborockVacuum,
-            self::RoborockVacuum . '.m1s',
-            'rockrobo.vacuum.v1',
-            self::RoborockVacuum . '.s5',
-            self::RoborockVacuum . '.s5e',
-            self::RoborockVacuum . '.s6',
-            self::RoborockVacuum . '.a10',
-            self::RoborockVacuum . '.a15',
-            self::RoborockVacuum . '.a27',
-            self::RoborockVacuum . '.a51'
-        ];
     }
 }

@@ -13,7 +13,7 @@
 - [1. Funktionsumfang](#1-funktionsumfang)
 - [2. Voraussetzungen](#2-voraussetzungen)
 - [3. Software-Installation](#3-software-installation)
-- [4. Einrichten der Instanzen in IP-Symcon](#4-einrichten-der-instanzen-in-ip-symcon)
+- [4. Einrichten der Instanzen in Symcon](#4-einrichten-der-instanzen-in-symcon)
   - [Konfigurationsseite (Parameter)](#konfigurationsseite-parameter)
   - [Konfigurationsseite (Status und Bedienung)](#konfigurationsseite-status-und-bedienung)
 - [5. Statusvariablen und Profile](#5-statusvariablen-und-profile)
@@ -36,14 +36,14 @@
 
 ## 2. Voraussetzungen
 
-- IPS 6.4 oder höher
+- Symcon 9.0 oder höher
 - Eingebundene Geräte in der Mi Home App
 
 ## 3. Software-Installation
 
 - Dieses Modul ist Bestandteil der [Xiaomi MIoT-Library](../README.md#4-software-installation).  
 
-## 4. Einrichten der Instanzen in IP-Symcon
+## 4. Einrichten der Instanzen in Symcon
 
  Unter `Instanz hinzufügen` ist das `Xiaomi MIoT Device`-Modul unter dem Hersteller `Xiaomi` aufgeführt.  
 ![Module](../imgs/module.png)  
@@ -102,7 +102,7 @@ Während Eigenschaften/Werte den jeweiligen Zustand darstellen und auch abgefrag
 ### Profile
 
 Die Profile inklusive der Übersetzungen, Maßeinheiten usw. werden automatisch auf Basis der Gerätefähigkeiten erzeugt.
-Statusvariablen welche Aktionen abbilden und keine Parameter erwarten, erhalten einheitlich das Profil `XIAOMI.Execute` mit der einzigen Assoziation `Ausführen`.  
+Statusvariablen welche Aktionen abbilden und keine Parameter erwarten, erhalten einheitlich das Profil `XIAOMI.ExecuteAction` mit der einzigen Assoziation `Ausführen`.  
 
 ## 6. WebFront
 
@@ -158,10 +158,11 @@ Verfügbare Werte sind z.B. dem Variablenprofil zu entnehmen, oder bei Aktionen 
 Dabei sind `$ServiceID` und `$ActionID` die nummerischen Indexes der MIoT Spezifikationen des Gerätes, welche in der Konfiguration der Instanz unter [`Spezifikationen`](#konfigurationsseite-status-und-bedienung) verlinkt sind.  
 
 ```php
-boolean XIAOMI_ExecuteAction(integer $InstanzID, integer $ServiceID, integer $ActionID, array $Values);
+mixed XIAOMI_ExecuteAction(integer $InstanzID, integer $ServiceID, integer $ActionID, array $Values);
 ```  
 
-Ausführen einer Aktion.
+Ausführen einer Aktion.  
+Rückgabe: `false` im Fehlerfall, sonst die Rückgabewerte der Aktion (`out`) als Array oder `true`, wenn das Gerät keine Rückgabewerte liefert.
 
 Beispiel:  
 
@@ -190,5 +191,5 @@ Die Library ist für die nicht kommerzielle Nutzung kostenlos, Schenkungen als U
 
 ## 10. Lizenz
 
-  IPS-Modul:  
+  Symcon-Modul:  
   [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)  
