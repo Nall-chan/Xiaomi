@@ -11,7 +11,7 @@ require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
  * @property string $IdentitySession
  * @property int $Flag
  */
-class XiaomiMIoTCloudIO extends IPSModule
+class XiaomiMIoTCloudIO extends IPSModuleStrict
 {
     use \XiaomiCloudIO\DebugHelper;
     use \XiaomiCloudIO\BufferHelper;
@@ -113,7 +113,7 @@ class XiaomiMIoTCloudIO extends IPSModule
      *
      * @return void
      */
-    public function Create()
+    public function Create(): void
     {
         //Never delete this line!
         parent::Create();
@@ -138,7 +138,7 @@ class XiaomiMIoTCloudIO extends IPSModule
      * @param  string $JSONData
      * @return string
      */
-    public function Migrate($JSONData)
+    public function Migrate(string $JSONData): string
     {
         //Never delete this line!
         parent::Migrate($JSONData);
@@ -165,7 +165,7 @@ class XiaomiMIoTCloudIO extends IPSModule
      *
      * @return void
      */
-    public function ApplyChanges()
+    public function ApplyChanges(): void
     {
         //Never delete this line!
         parent::ApplyChanges();
@@ -199,7 +199,7 @@ class XiaomiMIoTCloudIO extends IPSModule
      * @param  mixed $Data
      * @return void
      */
-    public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
+    public function MessageSink(int $TimeStamp, int $SenderID, int $Message, array $Data): void
     {
         switch ($Message) {
             case IPS_KERNELSTARTED:
@@ -215,7 +215,7 @@ class XiaomiMIoTCloudIO extends IPSModule
      * @param  mixed $Value
      * @return void
      */
-    public function RequestAction($Ident, $Value)
+    public function RequestAction(string $Ident, mixed $Value): void
     {
         switch ($Ident) {
             case 'LoginPopup':
@@ -266,7 +266,7 @@ class XiaomiMIoTCloudIO extends IPSModule
      * @param  mixed $JSONString
      * @return string
      */
-    public function ForwardData($JSONString)
+    public function ForwardData(string $JSONString): string
     {
         if ($this->GetStatus() != IS_ACTIVE) {
             $this->SendDebug('ForwardData', 'Instance not active', 0);
@@ -399,7 +399,7 @@ class XiaomiMIoTCloudIO extends IPSModule
      *
      * @return void
      */
-    private function KernelReady()
+    private function KernelReady(): void
     {
         $this->UnregisterMessage(0, IPS_KERNELSTARTED);
         // Gleiche Prüfungen wie beim Übernehmen der Einstellungen (z.B. kein Login vorhanden -> inaktiv).

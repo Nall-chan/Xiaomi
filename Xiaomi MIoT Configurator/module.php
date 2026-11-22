@@ -10,7 +10,7 @@ require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
  *
  * @method bool SendDebug(string $Message, mixed $Data, int $Format)
  */
-class XiaomiMIoTConfigurator extends IPSModule
+class XiaomiMIoTConfigurator extends IPSModuleStrict
 {
     use \XiaomiConfigurator\DebugHelper;
 
@@ -19,12 +19,26 @@ class XiaomiMIoTConfigurator extends IPSModule
      *
      * @return void
      */
-    public function Create()
+    public function Create(): void
     {
         //Never delete this line!
         parent::Create();
-        $this->RequireParent(\Xiaomi\GUID::CloudIO);
         $this->RegisterAttributeBoolean(\Xiaomi\Configurator\Attribute::ShowOffline, true);
+    }
+
+    /**
+     * GetCompatibleParents
+     *
+     * Je Konfigurator eine eigene Cloud IO (ersetzt RequireParent, das es in IPSModuleStrict nicht gibt).
+     *
+     * @return string
+     */
+    public function GetCompatibleParents(): string
+    {
+        return json_encode([
+            'type'      => 'require',
+            'moduleIDs' => [\Xiaomi\GUID::CloudIO]
+        ]);
     }
 
     /**
@@ -32,7 +46,7 @@ class XiaomiMIoTConfigurator extends IPSModule
      *
      * @return void
      */
-    public function ApplyChanges()
+    public function ApplyChanges(): void
     {
         //Never delete this line!
         parent::ApplyChanges();
@@ -50,7 +64,7 @@ class XiaomiMIoTConfigurator extends IPSModule
      * @param  array $Data
      * @return void
      */
-    public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
+    public function MessageSink(int $TimeStamp, int $SenderID, int $Message, array $Data): void
     {
         switch ($Message) {
             case FM_CONNECT:
@@ -67,7 +81,7 @@ class XiaomiMIoTConfigurator extends IPSModule
      * @param  mixed $Value
      * @return void
      */
-    public function RequestAction($Ident, $Value)
+    public function RequestAction(string $Ident, mixed $Value): void
     {
         switch ($Ident) {
             case \Xiaomi\Configurator\Attribute::ShowOffline:
@@ -83,7 +97,7 @@ class XiaomiMIoTConfigurator extends IPSModule
      *
      * @return string
      */
-    public function GetConfigurationForm()
+    public function GetConfigurationForm(): string
     {
         $Form = json_decode(file_get_contents(__DIR__ . '/form.json'), true);
         if ($this->GetStatus() == IS_CREATING) {

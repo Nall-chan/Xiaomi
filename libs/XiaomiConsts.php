@@ -397,6 +397,8 @@ namespace Xiaomi\Device{
         public const MaxMessageId = 9999;
         /** Sprung der Nachrichten-ID nach einer Zeitüberschreitung (späte Antworten nicht zuordnen) */
         public const MessageIdSkip = 100;
+        /** Max. verworfene verspätete Antworten (fremde ID) je Anfrage */
+        public const MaxLateAnswers = 3;
         /** Pause vor der Wiederholung, wenn das Gerät beschäftigt ist (µs) */
         public const BusyRetryDelay = 500000;
     }

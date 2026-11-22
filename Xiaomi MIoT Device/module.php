@@ -7,6 +7,7 @@ eval('declare(strict_types=1);namespace XiaomiMiDevice {?>' . file_get_contents(
 eval('declare(strict_types=1);namespace XiaomiMiDevice {?>' . file_get_contents(__DIR__ . '/../libs/helper/VariableProfileHelper.php') . '}');
 eval('declare(strict_types=1);namespace XiaomiMiDevice {?>' . file_get_contents(__DIR__ . '/../libs/helper/ParentIOHelper.php') . '}');
 require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
+require_once dirname(__DIR__) . '/libs/MiioProtocol.php';
 
 /**
  * @method bool SendDebug(string $Message, mixed $Data, int $Format)
@@ -25,7 +26,7 @@ require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
  * @property int $ParentID
  * @property int $MessageId
  */
-class XiaomiMIoTDevice extends IPSModule
+class XiaomiMIoTDevice extends IPSModuleStrict
 {
     use \XiaomiMiDevice\DebugHelper;
     use \XiaomiMiDevice\BufferHelper;
@@ -62,7 +63,7 @@ class XiaomiMIoTDevice extends IPSModule
      *
      * @return void
      */
-    public function Create()
+    public function Create(): void
     {
         //Never delete this line!
         parent::Create();
@@ -98,7 +99,7 @@ class XiaomiMIoTDevice extends IPSModule
      * @param  string $JSONData
      * @return string
      */
-    public function Migrate($JSONData)
+    public function Migrate(string $JSONData): string
     {
         //Never delete this line!
         parent::Migrate($JSONData);
@@ -131,11 +132,26 @@ class XiaomiMIoTDevice extends IPSModule
     }
 
     /**
+     * GetCompatibleParents
+     *
+     * Geräte nutzen eine vorhandene oder neue Cloud IO (ersetzt ConnectParent, das es in IPSModuleStrict nicht gibt).
+     *
+     * @return string
+     */
+    public function GetCompatibleParents(): string
+    {
+        return json_encode([
+            'type'      => 'connect',
+            'moduleIDs' => [\Xiaomi\GUID::CloudIO]
+        ]);
+    }
+
+    /**
      * ApplyChanges
      *
      * @return void
      */
-    public function ApplyChanges()
+    public function ApplyChanges(): void
     {
         $this->RegisterProfileEx(
             VARIABLETYPE_INTEGER,
@@ -171,7 +187,7 @@ class XiaomiMIoTDevice extends IPSModule
      * @param  array $Data
      * @return void
      */
-    public function MessageSink($TimeStamp, $SenderID, $Message, $Data)
+    public function MessageSink(int $TimeStamp, int $SenderID, int $Message, array $Data): void
     {
         $myState = IPS_GetInstance($this->InstanceID)['InstanceStatus']; // NICHT $this->GetStatus benutzen, da MessageSink auch aufgerufen wird, wenn die Instanz noch nicht erstellt wurde (z.B. beim Modul Update)
         if ($myState == IS_CREATING || $myState == IS_DELETING) {
@@ -194,7 +210,7 @@ class XiaomiMIoTDevice extends IPSModule
      * @param  mixed $Value
      * @return void
      */
-    public function RequestAction($Ident, $Value)
+    public function RequestAction(string $Ident, mixed $Value): void
     {
         if ($this->IORequestAction($Ident, $Value)) {
             return;
@@ -420,7 +436,7 @@ class XiaomiMIoTDevice extends IPSModule
      *
      * @return string
      */
-    public function GetConfigurationForm()
+    public function GetConfigurationForm(): string
     {
         $Form = json_decode(file_get_contents(__DIR__ . '/form.json'), true);
         if ($this->GetStatus() == IS_CREATING) {
@@ -568,7 +584,7 @@ class XiaomiMIoTDevice extends IPSModule
      * @param  mixed $State
      * @return void
      */
-    protected function SetStatus($State)
+    protected function SetStatus(int $State): bool
     {
         switch ($State) {
             case IS_ACTIVE:
@@ -585,8 +601,8 @@ class XiaomiMIoTDevice extends IPSModule
             default:
                 // Keine zyklischen Abfragen im Fehlerzustand, der Reconnect-Timer übernimmt.
                 $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, 0);
-                if (!$this->ReadPropertyBoolean(\Xiaomi\Device\Property::Active)) { // Zwischen senden und empfangen wurde die Instanz auf inactik gesetzt
-                    return;
+                if (!$this->ReadPropertyBoolean(\Xiaomi\Device\Property::Active)) { // Zwischen senden und empfangen wurde die Instanz auf inaktiv gesetzt
+                    return false;
                 }
                 if ($this->GetTimerInterval(\Xiaomi\Device\Timer::Reconnect) > 0) {
                     // Fehlschlag dieses Versuchs ist bereits gezählt und gemeldet (z.B. Handshake und Anfrage)
@@ -607,13 +623,13 @@ class XiaomiMIoTDevice extends IPSModule
                 $this->SetTimerInterval(\Xiaomi\Device\Timer::Reconnect, $this->Retries * 1000);
                 break;
         }
-        parent::SetStatus($State);
+        return parent::SetStatus($State);
     }
 
     /**
      * Wird ausgeführt wenn sich der Status vom Parent ändert.
      */
-    protected function IOChangeState($State)
+    protected function IOChangeState(int $State): void
     {
         switch ($State) {
             case IS_ACTIVE:
@@ -749,16 +765,17 @@ class XiaomiMIoTDevice extends IPSModule
         }
         $Retry = true;
         while (true) {
+            $Id = $this->NextMessageId();
             $Payload = json_encode(
                 [
-                    'id'    => $this->NextMessageId(),
+                    'id'    => $Id,
                     'method'=> $Method,
                     'params'=> $Prams
                 ]
             );
             $this->SendDebug('Send', $Payload, 0);
             $State = IS_ACTIVE;
-            $Result = $this->SocketSend($this->EncryptMessage($Payload), $State);
+            $Result = $this->SocketSend($this->EncryptMessage($Payload), $State, true, \Xiaomi\Device\LocalProtocol::ReceiveTimeout, $Id);
             if ($Retry && ($State == \Xiaomi\Device\ApiError::ChecksumError) && $this->RefreshToken()) {
                 // Token hat sich geändert (z.B. Gerät neu angelernt): einmal mit neuem Token wiederholen
                 $Retry = false;
@@ -1188,9 +1205,10 @@ class XiaomiMIoTDevice extends IPSModule
      * @param  int $State
      * @param  bool $Retry
      * @param  int $Timeout Antwortzeit in Sekunden
+     * @param  int $ExpectedId Nachrichten-ID der Anfrage (0 = nicht prüfen, z.B. Handshake)
      * @return ?array
      */
-    private function SocketSend(string $Data, int &$State = IS_ACTIVE, bool $Retry = true, int $Timeout = \Xiaomi\Device\LocalProtocol::ReceiveTimeout): ?array
+    private function SocketSend(string $Data, int &$State = IS_ACTIVE, bool $Retry = true, int $Timeout = \Xiaomi\Device\LocalProtocol::ReceiveTimeout, int $ExpectedId = 0): ?array
     {
         if ($this->Socket) {
             $this->SendDebug('Socket', 'already created', 0);
@@ -1218,7 +1236,11 @@ class XiaomiMIoTDevice extends IPSModule
         $Response = '';
         $RemoteIp = '';
         $RemotePort = 0;
-        if (($bytes = @socket_recvfrom($this->Socket, $Response, 4096, 0, $RemoteIp, $RemotePort)) !== false) {
+        // Verspätete Antworten früherer Anfragen (fremde ID) verwerfen und weiter auf die eigene warten
+        for ($Late = 0; $Late <= \Xiaomi\Device\LocalProtocol::MaxLateAnswers; $Late++) {
+            if (@socket_recvfrom($this->Socket, $Response, 4096, 0, $RemoteIp, $RemotePort) === false) {
+                break;
+            }
             $this->SendDebug('Receive [' . $RemoteIp . ':' . (string) $RemotePort . ']', $Response, 1);
             $DecodeError = 0;
             $JSONResult = $this->DecryptMessage($Response, $DecodeError);
@@ -1236,6 +1258,10 @@ class XiaomiMIoTDevice extends IPSModule
             if (!is_array($Result)) {
                 $this->SendDebug('Receive', 'invalid JSON', 0);
                 return null;
+            }
+            if (($ExpectedId > 0) && isset($Result['id']) && ((int) $Result['id'] !== $ExpectedId)) {
+                $this->SendDebug('Receive', sprintf('discard late answer (id %d, expected %d)', (int) $Result['id'], $ExpectedId), 0);
+                continue;
             }
             if (array_key_exists('error', $Result)) {
                 if ($Result['error']['code'] == \Xiaomi\Device\ApiError::DeviceBusy) {
@@ -1275,7 +1301,7 @@ class XiaomiMIoTDevice extends IPSModule
         if ($Retry) {
             $this->SendDebug('Retry', '', 0);
             if ($this->SendHandshake()) {
-                return $this->SocketSend($Data, $State, false);
+                return $this->SocketSend($Data, $State, false, $Timeout, $ExpectedId);
             }
         }
         $State = \Xiaomi\Device\InstanceStatus::TimeoutError;
@@ -1384,7 +1410,7 @@ class XiaomiMIoTDevice extends IPSModule
      */
     private function SendHandshake(): bool
     {
-        $Data = hex2bin('21310020ffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
+        $Data = \Xiaomi\Miio\Packet::Handshake();
         $this->SendDebug('Send Handshake', $Data, 1);
         $State = IS_ACTIVE;
         $Result = $this->SocketSend($Data, $State, false, \Xiaomi\Device\LocalProtocol::HandshakeTimeout);
@@ -1407,24 +1433,14 @@ class XiaomiMIoTDevice extends IPSModule
      */
     private function EncryptMessage(string $data): string
     {
-        list($TokenKey, $TokenIV) = $this->GetKeyAndIV();
-        $Encrypted = openssl_encrypt($data, 'aes-128-cbc', $TokenKey, OPENSSL_RAW_DATA, $TokenIV);
-        $Payload = "\x21\x31";
-        $Payload .= pack('n', 32 + strlen($Encrypted));
-        $Payload .= "\x00\x00\x00\x00";
-        $Payload .= pack('N', (int) $this->ReadPropertyString(\Xiaomi\Device\Property::DeviceId));
-        if ($this->ServerStampTime) {
-            $SecondsPassed = time() - $this->ServerStampTime;
-            $Payload .= pack('N', $this->ServerStamp + $SecondsPassed);
-        } else {
-            $Payload .= "\xff\xff\xff\xff";
-        }
-        $Payload .= hex2bin($this->ReadAttributeString(\Xiaomi\Device\Attribute::Token));
-        $Payload .= $Encrypted;
-        $Checksum = md5($Payload, true);
-        for ($i = 0; $i < 16; $i++) {
-            $Payload[$i + 16] = $Checksum[$i];
-        }
+        // Ohne bekannten Gerätezeitstempel (vor dem ersten Handshake) 0xFFFFFFFF senden
+        $Stamp = $this->ServerStampTime ? \Xiaomi\Miio\Packet::NextStamp($this->ServerStamp, time() - $this->ServerStampTime) : 0xFFFFFFFF;
+        $Payload = \Xiaomi\Miio\Packet::Encode(
+            $data,
+            (string) hex2bin($this->ReadAttributeString(\Xiaomi\Device\Attribute::Token)),
+            (int) $this->ReadPropertyString(\Xiaomi\Device\Property::DeviceId),
+            $Stamp
+        );
         $this->SendDebug('Encrypted', $Payload, 1);
         return $Payload;
     }
@@ -1438,75 +1454,30 @@ class XiaomiMIoTDevice extends IPSModule
      */
     private function DecryptMessage(string $msg, int &$DecodeError = 0): ?string
     {
-        $Data = str_split($msg, 4);
-        if (substr($Data[0], 0, 2) != "\x21\x31") {
-            $this->SendDebug('Error on decrypt', 'header wrong', 0);
+        $Packet = \Xiaomi\Miio\Packet::Decode($msg, (string) hex2bin($this->ReadAttributeString(\Xiaomi\Device\Attribute::Token)));
+        if ($Packet['error'] == \Xiaomi\Miio\Packet::ErrorPacket) {
+            $this->SendDebug('Error on decrypt', 'invalid packet', 0);
             $DecodeError = \Xiaomi\Device\ApiError::PaketError;
             return null;
         }
-        $len = unpack('n', $Data[0], 2)[1];
-        if (strlen($msg) != $len) {
-            $this->SendDebug('Error on decrypt', 'Paket should ' . $len . ' bytes', 0);
-            $DecodeError = \Xiaomi\Device\ApiError::PaketError;
-            return null;
-        }
-        if (count($Data) < 8) {
-            $this->SendDebug('Error on decrypt', 'Paket to short', 0);
-            $DecodeError = \Xiaomi\Device\ApiError::PaketError;
-            return null;
-        }
-        $DeviceId = unpack('N', $Data[2])[1];
-        $this->SendDebug('Receive DeviceID', $DeviceId, 0);
-        $Stamp = unpack('N', $Data[3])[1];
-        $this->SendDebug('Receive Stamp', $Stamp, 0);
-
-        $recvChecksum = $Data[4] . $Data[5] . $Data[6] . $Data[7];
-        $encryptedMsg = substr($msg, 32);
-
-        if ($Stamp > 0) {
-            $this->ServerStamp = $Stamp;
+        $this->SendDebug('Receive DeviceID', $Packet['deviceId'], 0);
+        $this->SendDebug('Receive Stamp', $Packet['stamp'], 0);
+        if ($Packet['stamp'] > 0) {
+            $this->ServerStamp = $Packet['stamp'];
             $this->ServerStampTime = time();
         }
-
-        if (strlen($encryptedMsg) === 0) {           // handshake
-            if ($this->ReadPropertyString(\Xiaomi\Device\Property::DeviceId) == (string) $DeviceId) {
+        if ($Packet['error'] == \Xiaomi\Miio\Packet::ErrorChecksum) {
+            $this->SendDebug('Error in checksum', 'token does not match', 0);
+            $DecodeError = \Xiaomi\Device\ApiError::ChecksumError;
+            return null;
+        }
+        if ($Packet['payload'] === '') { // Handshake
+            if ($this->ReadPropertyString(\Xiaomi\Device\Property::DeviceId) == (string) $Packet['deviceId']) {
                 return '';
             }
             $DecodeError = \Xiaomi\Device\InstanceStatus::DidNotMatch;
             return null;
         }
-        $calcChecksum = md5(
-            substr($msg, 0, 16) .
-            hex2bin($this->ReadAttributeString(\Xiaomi\Device\Attribute::Token)) .
-            $encryptedMsg,
-            true
-        );
-
-        if ($calcChecksum != $recvChecksum) {
-            $this->SendDebug('Error in checksum', 'Received: ' . bin2hex($recvChecksum) . ' Calc: ' . bin2hex($calcChecksum), 0);
-            $DecodeError = \Xiaomi\Device\ApiError::ChecksumError;
-            return null;
-        }
-        list($TokenKey, $TokenIV) = $this->GetKeyAndIV();
-        $Data = openssl_decrypt($encryptedMsg, 'aes-128-cbc', $TokenKey, OPENSSL_RAW_DATA, $TokenIV);
-        if ($Data === false) {
-            $this->SendDebug('Error on decrypt', 'decryption failed', 0);
-            $DecodeError = \Xiaomi\Device\ApiError::PaketError;
-            return null;
-        }
-        return $Data;
-    }
-
-    /**
-     * GetKeyAndIV
-     *
-     * @return array
-     */
-    private function GetKeyAndIV(): array
-    {
-        $token = hex2bin($this->ReadAttributeString(\Xiaomi\Device\Attribute::Token));
-        $TokenKey = md5($token, true);
-        $TokenIV = md5($TokenKey . $token, true);
-        return [$TokenKey, $TokenIV];
+        return $Packet['payload'];
     }
 }
