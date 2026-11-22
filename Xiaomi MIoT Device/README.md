@@ -6,7 +6,7 @@
 [![PayPal.Me](https://img.shields.io/badge/PayPal-Me-lightblue.svg)](#2-spenden)
 [![Wunschliste](https://img.shields.io/badge/Wunschliste-Amazon-ff69fb.svg)](#2-spenden)  
 
-# Xiaomi MIoT Device <!-- omit in toc -->  
+# Xiaomi MIoT Gerät <!-- omit in toc -->  
 
 ## Inhaltsverzeichnis <!-- omit in toc -->  
 
@@ -52,12 +52,12 @@
 
 ## 4. Einrichten der Instanzen in Symcon
 
-Unter `Instanz hinzufügen` ist das `Xiaomi MIoT Device`-Modul unter dem Hersteller `Xiaomi` aufgeführt.  
+Unter `Instanz hinzufügen` ist das `Xiaomi MIoT Gerät`-Modul unter dem Hersteller `Xiaomi` aufgeführt.  
 
 ![Module](../imgs/module.png)  
 
 > [!TIP]
-> Die Instanz am einfachsten über den [Xiaomi MIoT Configurator](../Xiaomi%20MIoT%20Configurator/README.md) anlegen. Er trägt Geräte-ID, IP-Adresse und die passenden Cloud-Einstellungen selbst ein.
+> Die Instanz am einfachsten über den [Xiaomi MIoT Konfigurator](../Xiaomi%20MIoT%20Configurator/README.md) anlegen. Er trägt Geräte-ID, IP-Adresse und die passenden Cloud-Einstellungen selbst ein.
 
 ![Config](imgs/config.png)  
 
@@ -92,7 +92,7 @@ Nicht jedes Gerät erlaubt die Kommunikation im lokalen Netzwerk. Antwortet ein 
 
 Geräte ohne lokale IP-Adresse in der Cloud (z.B. über ein Gateway oder Bluetooth angebundene Geräte) legt der Konfigurator ohne `Host` und mit `Cloud-Verbindung erzwingen` an.  
 
-Kann ein Gerät nicht erreicht werden, steht ein Fehler mit dem Abstand bis zum nächsten Versuch im Log. Der Abstand beginnt bei 15 Sekunden und verdoppelt sich bis höchstens 32 Minuten. Speichern der Konfiguration setzt ihn zurück.  
+Kann ein Gerät nicht erreicht werden, steht ein Fehler mit dem Abstand bis zum nächsten Versuch im Log. Der Abstand beginnt bei 15 Sekunden und verdoppelt sich bis höchstens 32 Minuten. Speichern der Konfiguration oder herstellen einer Verbindung setzt ihn zurück auf 15 Sekunden.  
 
 ### Konfigurationsseite (Status und Bedienung)  
 
@@ -105,11 +105,13 @@ Der Bereich `Geräteinformationen` zeigt die Daten des Gerätes, z.B. Modell, UR
 Im Bereich `Aktivierte Variablen` können nicht benötigte Statusvariablen abgewählt werden.  
 
 > [!WARNING]
-> Das Abwählen einer Variable löscht sie sofort. Wird sie wieder angewählt, entsteht eine neue Variable mit neuer Objekt-ID.
+> Das Abwählen einer Variable löscht sie **sofort**.  
+> Wird sie wieder angewählt, entsteht eine neue Variable mit neuer Objekt-ID.
 
 ## 5. Statusvariablen
 
-Die Statusvariablen werden automatisch aus der Gerätebeschreibung erzeugt. Jede Variable erhält eine [Darstellung](https://www.symcon.de/de/service/dokumentation/grundlagen/variablen/variablendarstellung/) passend zur Eigenschaft:  
+Die Statusvariablen werden automatisch aus der Gerätebeschreibung erzeugt.  
+Jede Variable erhält eine [Darstellung](https://www.symcon.de/de/service/dokumentation/grundlagen/variablen/variablendarstellung/) passend zur Eigenschaft:  
 
 | Eigenschaft des Gerätes                     | Bedienbar               | Nur lesbar                     |
 | ------------------------------------------- | ----------------------- | ------------------------------ |
@@ -124,15 +126,18 @@ Die Statusvariablen werden automatisch aus der Gerätebeschreibung erzeugt. Jede
 
 Aktionen mit mehreren Parametern erhalten keine Statusvariable, sie sind nur per [`XIAOMI_CallAction`](#ausführen-einer-aktion) erreichbar.  
 
-Namen, Texte der Wertelisten und Einheiten kommen in der Sprache des Systems aus der Gerätebeschreibung und den Begriffen der Mi Home App, sonst in Englisch. Herstellereigene Erweiterungen (z.B. zusätzliche Services von Saugrobotern) sind in keiner Quelle übersetzt, ihre Namen werden lesbar gemacht (z.B. `do-not-disturb` → `Do Not Disturb`) und können umbenannt werden.  
+Namen, Texte der Wertelisten und Einheiten kommen in der Sprache des Systems aus der Gerätebeschreibung und den Begriffen der Mi Home App, sonst in Englisch. Herstellereigene Erweiterungen (z.B. zusätzliche Services von Saugrobotern) sind leider **in keiner Quelle übersetzt**, ihre Namen werden lesbar gemacht (z.B. `do-not-disturb` → `Do Not Disturb`) und können umbenannt werden.  
 
-Bestehende Variablen behalten ihren Namen. Die Darstellung wird bei Änderungen der Gerätebeschreibung nachgezogen, eigene Anpassungen an der Variable bleiben erhalten.  
+Bestehende Variablen behalten ihren Namen.  
+Die Darstellung wird bei Änderungen der Gerätebeschreibung nachgezogen, eigene Anpassungen an der Variable bleiben erhalten.  
 
 **Ident der Variablen:**  
 Der Ident hat das Format `<Typ>_<Service>_<Eigenschaft bzw. Aktion>`, z.B. `P_2_1`. Der Typ `P` steht für eine Eigenschaft (Wert des Gerätes), `A` für eine ausführbare Aktion. Eigenschaften stellen einen Zustand dar und werden abgefragt. Aktionen sind nicht lesbar und zeigen keinen Zustand.  
 
 > [!NOTE]
-> Bis Version 1.30 verwendete das Modul eigene Variablenprofile `XIAOMI.*`. Beim Update erhalten die Variablen Darstellungen, nicht mehr benötigte Profile werden entfernt. Profile, die noch an anderer Stelle verwendet werden, bleiben erhalten; die Cloud IO zeigt sie in den [Experteneinstellungen](../Xiaomi%20MIoT%20Cloud%20IO/README.md#experteneinstellungen) an.
+> Bis Version 1.30 verwendete das Modul eigene Variablenprofile `XIAOMI.*`.  
+> Beim Update erhalten die Variablen Darstellungen, nicht mehr benötigte Profile werden entfernt.  
+> Profile, die noch an anderer Stelle verwendet werden, bleiben erhalten; die Cloud IO zeigt sie in den [Experteneinstellungen](../Xiaomi%20MIoT%20Cloud%20IO/README.md#experteneinstellungen) an.
 
 ## 6. Visualisierung
 
@@ -234,7 +239,8 @@ mixed XIAOMI_ExecuteAction(integer $InstanzID, integer $ServiceID, integer $Acti
 ```  
 
 > [!WARNING]
-> `XIAOMI_ExecuteAction` ist abgekündigt und entfällt frühestens mit Version 2.10. Jeder Aufruf erzeugt eine Warnung im Log. Bitte auf `XIAOMI_CallAction` umstellen.
+> `XIAOMI_ExecuteAction` ist abgekündigt und entfällt frühestens mit Version 2.10.  
+> Jeder Aufruf erzeugt eine Warnung im Log. Bitte auf `XIAOMI_CallAction` umstellen.
 
 Wie `XIAOMI_CallAction`, liefert die Rückgabewerte aber wie bis Version 1.30 als Liste ohne Namen (z.B. `[1, 0]`).  
 

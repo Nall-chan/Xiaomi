@@ -1,6 +1,7 @@
 {
     "translations": {
         "de": {
+            "Xiaomi MIoT Device": "Xiaomi MIoT Gerät",
             "Open": "Aktiv",
             "Device ID": "Geräte ID",
             "Refresh Interval": "Aktualisierungsintervall",

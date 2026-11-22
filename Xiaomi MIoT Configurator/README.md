@@ -6,7 +6,7 @@
 [![PayPal.Me](https://img.shields.io/badge/PayPal-Me-lightblue.svg)](#2-spenden)
 [![Wunschliste](https://img.shields.io/badge/Wunschliste-Amazon-ff69fb.svg)](#2-spenden)  
 
-# Xiaomi MIoT Configurator <!-- omit in toc -->  
+# Xiaomi MIoT Konfigurator <!-- omit in toc -->  
 
 ## Inhaltsverzeichnis <!-- omit in toc -->  
 
@@ -44,7 +44,7 @@
 
 ## 4. Einrichten der Instanzen in Symcon
 
-Unter `Instanz hinzufügen` ist das `Xiaomi MIoT Configurator`-Modul unter dem Hersteller `Xiaomi` aufgeführt.  
+Unter `Instanz hinzufügen` ist das `Xiaomi MIoT Konfigurator`-Modul unter dem Hersteller `Xiaomi` aufgeführt.  
 
 ![Module](../imgs/module.png)  
 
@@ -85,7 +85,7 @@ Ist die Library nicht installiert und die Cloud liefert ein passendes Gerät, ze
 
 ### Mehrere Mi Accounts
 
-Hat jedes Familienmitglied ein eigenes Konto mit eigener Cloud IO und eigenem Konfigurator, zeigt jeder Konfigurator nur die Geräte, die noch keine Instanz haben oder deren Instanz an seiner Cloud IO hängt. Ein Gerät, das bereits über ein anderes Konto eingerichtet ist (z.B. ein freigegebenes Gerät), wird ausgeblendet. Die Zusammenfassung des Konfigurators zeigt den Namen der verbundenen Cloud IO.  
+Hat jedes Familienmitglied ein eigenes Konto mit eigener Cloud IO und eigenem Konfigurator, zeigt jeder Konfigurator nur die Geräte, die noch keine Instanz haben oder deren Instanz an seiner Cloud IO hängt. Ein Gerät, das bereits über ein anderes Konto eingerichtet ist (z.B. ein freigegebenes Gerät), wird ausgeblendet. Die Zusammenfassung des Konfigurators zeigt den Anmeldenamen der verbundenen Cloud IO.  
 
 ## 5. Statusvariablen
 

@@ -570,6 +570,9 @@ class XiaomiMIoTCloudIO extends IPSModuleStrict
                 return json_encode(['result' => $Product]);
             case \Xiaomi\Cloud\Command::GetTerms:
                 return json_encode(['result' => $this->GetTerms()]);
+            case \Xiaomi\Cloud\Command::GetAccount:
+                // Wie die eigene Zusammenfassung: Benutzername des angemeldeten Kontos (Unterscheidung mehrerer Konten)
+                return json_encode(['result' => $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Username)]);
         }
         return json_encode(['error' => 'Unknown command']);
     }

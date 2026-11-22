@@ -242,14 +242,21 @@ class XiaomiMIoTConfigurator extends IPSModuleStrict
     /**
      * UpdateSummary
      *
-     * Zeigt den Namen der verbundenen Cloud IO in der Zusammenfassung (Unterscheidung mehrerer Accounts).
+     * Zeigt das angemeldete Konto der verbundenen Cloud IO in der Zusammenfassung (Unterscheidung mehrerer Accounts).
+     * Die Cloud IO hält den Benutzernamen in einem Attribut, daher Abfrage über den Datenfluss statt IPS_GetProperty.
      *
      * @return void
      */
     private function UpdateSummary(): void
     {
-        $IOId = IPS_GetInstance($this->InstanceID)['ConnectionID'];
-        $this->SetSummary(($IOId > 1) ? IPS_GetName($IOId) : '');
+        $Account = '';
+        if ($this->HasActiveParent()) {
+            $Result = json_decode((string) $this->SendDataToParent(\Xiaomi\Cloud\Command::ToJson(\Xiaomi\Cloud\Command::GetAccount, [])), true);
+            if (is_array($Result) && is_string($Result['result'] ?? null)) {
+                $Account = $Result['result'];
+            }
+        }
+        $this->SetSummary($Account);
     }
 
     /**

@@ -1,6 +1,7 @@
 {
     "translations": {
         "de": {
+            "Xiaomi MIoT Configurator": "Xiaomi MIoT Konfigurator",
             "Devices": "Geräte",
             "Model": "Modell",
             "IP-Address": "IP-Adresse",

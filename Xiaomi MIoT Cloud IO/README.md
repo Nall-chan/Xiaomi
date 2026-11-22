@@ -55,7 +55,7 @@ Unter `Instanz hinzufügen` ist das `Xiaomi MIoT Cloud IO`-Modul unter dem Herst
 
 ![Module](../imgs/module.png)  
 
-Diese Instanz wird automatisch mit erzeugt, wenn eine neue Instanz vom [MIoT Configurator-Modul](../Xiaomi%20MIoT%20Configurator/README.md) angelegt wird.  
+Diese Instanz wird automatisch mit erzeugt, wenn eine neue Instanz vom [MIoT Konfigurator-Modul](../Xiaomi%20MIoT%20Configurator/README.md) angelegt wird.  
 
 > [!IMPORTANT]
 > Jede [Geräte-Instanz](../Xiaomi%20MIoT%20Device/README.md) benötigt eine angemeldete Cloud IO, auch wenn das Gerät lokal kommuniziert: Gerätedaten, Token und Gerätebeschreibung kommen aus der Cloud.

@@ -677,6 +677,8 @@ namespace Xiaomi\Cloud{
         public const CatalogAppVersion = 11090704;
         /** Geräteliste in der Cloud IO höchstens so lange zwischenspeichern (Sekunden) */
         public const DeviceListMaxAge = 300;
+        /** Angemeldetes Konto (Benutzername) für die Zusammenfassung des Konfigurators, ohne Params */
+        public const GetAccount = 'GetAccount';
 
         /**
          * ToJson

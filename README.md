@@ -74,16 +74,18 @@ Es werden Instanzen zur Kommunikation mit der Cloud (Cloud IO), zum Einrichten v
 ![Module-Store](imgs/install.png)  
 
 > [!TIP]
-> Die Einrichtung am besten mit dem [Xiaomi MIoT Configurator](Xiaomi%20MIoT%20Configurator/README.md) beginnen. Nach der Installation aus dem Store wird diese Instanz auf Rückfrage automatisch angelegt.
+> Die Einrichtung am besten mit dem [Xiaomi MIoT Konfigurator](Xiaomi%20MIoT%20Configurator/README.md) beginnen. Nach der Installation aus dem Store wird diese Instanz auf Rückfrage automatisch angelegt.
 
 ![Module-Store](imgs/install2.png)  
 ![Module-Store](imgs/install3.png)  
 
-Anschließend muss über die Schaltfläche `Konfigurieren` die Anmeldung in der [Xiaomi MIoT Cloud IO](Xiaomi%20MIoT%20Cloud%20IO/README.md) durchlaufen werden.  
+Anschließend muss über die Schaltfläche `Konfigurieren` oder `Cloud IO öffnen` die Anmeldung in der [Xiaomi MIoT Cloud IO](Xiaomi%20MIoT%20Cloud%20IO/README.md) durchlaufen werden.  
 
 ![Module-Store](imgs/install4.png)  
 
-Ist die [Xiaomi MIoT Cloud IO](Xiaomi%20MIoT%20Cloud%20IO/README.md) angemeldet, so werden die Geräte im [Xiaomi MIoT Configurator](Xiaomi%20MIoT%20Configurator/README.md) angezeigt und können dort angelegt werden.  
+Ist die [Xiaomi MIoT Cloud IO](Xiaomi%20MIoT%20Cloud%20IO/README.md) angemeldet, so werden die Geräte im [Xiaomi MIoT Konfigurator](Xiaomi%20MIoT%20Configurator/README.md) angezeigt und können dort angelegt werden.  
+
+![Konfigurator](Xiaomi%20MIoT%20Configurator/imgs/config.png)  
 
 ## 4. Enthaltende Module
 
@@ -92,10 +94,10 @@ Folgende Module beinhaltet das Xiaomi MIoT Repository:
 - **Xiaomi MIoT Cloud IO** ([Dokumentation](Xiaomi%20MIoT%20Cloud%20IO/README.md))  
 IO-Instanz zur Anmeldung und Kommunikation mit der Xiaomi Cloud. Liefert Geräteliste, Gerätedaten und Gerätebeschreibungen.  
 
-- **Xiaomi MIoT Configurator** ([Dokumentation](Xiaomi%20MIoT%20Configurator/README.md))  
+- **Xiaomi MIoT Konfigurator** ([Dokumentation](Xiaomi%20MIoT%20Configurator/README.md))  
 Konfigurator, der alle Geräte des Mi Accounts anzeigt und zum Anlegen von Geräte-Instanzen verwendet wird.  
 
-- **Xiaomi MIoT Device** ([Dokumentation](Xiaomi%20MIoT%20Device/README.md))  
+- **Xiaomi MIoT Gerät** ([Dokumentation](Xiaomi%20MIoT%20Device/README.md))  
 Geräte-Instanz, die jeweils ein Gerät in Symcon abbildet.  
 
 ## 5. Anhang
@@ -114,13 +116,13 @@ Geräte-Instanz, die jeweils ein Gerät in Symcon abbildet.
 
 > [!IMPORTANT]
 > - Jede Geräte-Instanz benötigt jetzt eine angemeldete [Cloud IO](Xiaomi%20MIoT%20Cloud%20IO/README.md), auch bei lokaler Kommunikation.  
-> - Statusvariablen nutzen [Darstellungen](https://www.symcon.de/de/service/dokumentation/grundlagen/variablen/variablendarstellung/) statt der Variablenprofile `XIAOMI.*`. Die Umstellung erfolgt beim Update automatisch, nicht mehr benötigte Profile werden entfernt. Skripte oder Visualisierungen, die diese Profile direkt verwenden, müssen angepasst werden; die [Experteneinstellungen der Cloud IO](Xiaomi%20MIoT%20Cloud%20IO/README.md#experteneinstellungen) zeigen, wo sie noch genutzt werden.  
+> - Statusvariablen nutzen [Darstellungen](https://www.symcon.de/de/service/dokumentation/grundlagen/variablen/variablendarstellung/) statt der Variablenprofile `XIAOMI.*`. Die Umstellung erfolgt beim Update automatisch, nicht mehr genutzte Profile werden entfernt. Skripte oder Visualisierungen, die diese Profile direkt verwenden, müssen angepasst werden; die [Experteneinstellungen der Cloud IO](Xiaomi%20MIoT%20Cloud%20IO/README.md#experteneinstellungen) zeigen, wo sie noch genutzt werden.  
 > - `XIAOMI_ExecuteAction` ist abgekündigt und entfällt frühestens mit Version 2.10. Jeder Aufruf erzeugt eine Warnung im Log. Ersatz ist [`XIAOMI_CallAction`](Xiaomi%20MIoT%20Device/README.md#ausführen-einer-aktion), die Rückgabewerte mit Namen liefert (z.B. `stream-address`).  
 > - Bestehende Variablen behalten ihren Namen. Neue Variablen erhalten Namen aus der neuen Quelle der Gerätebeschreibung und können von früheren Versionen abweichen.  
 
 **Neue Funktionen und Aktionen**  
 
-- Geräte: `XIAOMI_CallAction` liefert die Rückgabewerte einer Aktion mit den Namen aus der Gerätebeschreibung.  
+- Geräte: `XIAOMI_CallAction` liefert die Rückgabewerte einer Aktion als Name-Wert-Paare mit den Namen aus der Gerätebeschreibung.  
 - Cloud IO: Experteneinstellungen zum Löschen nicht mehr verwendeter Xiaomi-Profile und zur Anzeige der Variablen, die noch Xiaomi-Profile nutzen (mit Schaltfläche zum Öffnen der Variable).  
 
 **Geändertes Verhalten**  
@@ -130,13 +132,14 @@ Geräte-Instanz, die jeweils ein Gerät in Symcon abbildet.
 - Geräte: Nach dem Schreiben eines Wertes oder dem Ausführen einer Aktion wird der Status ca. eine Sekunde später neu gelesen, damit Folgeänderungen des Gerätes sichtbar werden.  
 - Geräte: `Host` ist optional. Ohne IP-Adresse wird das Gerät nur über die Cloud angesprochen.  
 - Geräte: Das Konfigurationsformular zeigt Produktname und Bild aus dem Katalog der Mi Home App, die URN der Gerätebeschreibung und einen Link auf die Geräteübersicht von home.miot-spec.com.  
-- Geräte: `Geräteinformationen neu laden` behält die bisherigen Daten, bis die neuen erfolgreich geladen sind. Bisher war das Gerät bei einem Ausfall der Quelle unbrauchbar.  
+- Geräte: `Geräteinformationen neu laden` behält die bisherigen Daten, bis die neuen erfolgreich geladen sind. Bisher war das Gerät bei einem Ausfall der Internet-Quellen unbrauchbar.  
 - Geräte: Bei Konfigurationsfehlern wird nicht mehr zyklisch neu verbunden.  
-- Konfigurator: Zeigt auch Geräte, die andere Konten freigegeben haben (Spalte `Herkunft`), und Geräte ohne lokale IP-Adresse (`Nur Cloud`, Anlage mit `Cloud-Verbindung erzwingen`).  
+- Konfigurator: Zeigt auch Geräte, die andere Konten freigegeben haben (Spalte `Herkunft`), und Geräte ohne lokale IP-Adresse (`Nur Cloud`, Anlage erfolgt dann mit `Cloud-Verbindung erzwingen`).  
 - Konfigurator: Neue Spalte `Status` (online/offline mit Symbol) ersetzt den Schalter `Zeige offline Geräte`; die Spalte MAC entfällt. Offline-Geräte werden inaktiv angelegt.  
-- Konfigurator: Instanzen, die an einer anderen Cloud IO hängen, werden ausgeblendet.  
+- Konfigurator: Instanzen, die an einer anderen Cloud IO hängen, werden ausgeblendet, auch wenn eine Freigabe aus einem anderen Konto erfolgt ist.  
 - Konfigurator: Für Yeelight-Leuchten und Roborock-Sauger weist er auf die passende Library im Module Store hin und kann sie installieren. Ist sie installiert, werden diese Geräte ausgeblendet (vorhandene Instanzen bleiben sichtbar).  
-- Konfigurator: Schaltfläche `Cloud IO öffnen`, wenn die verbundene Cloud IO nicht angemeldet ist. Wechsel oder Statusänderung der Cloud IO lädt die Liste neu. Beim Wechsel der Cloud IO werden vorhandene Cloud IOs zur Auswahl angeboten.  
+- Konfigurator: Wechsel oder Statusänderung der Cloud IO lädt die Liste neu. Beim Wechsel der Cloud IO werden vorhandene Cloud IOs zur Auswahl angeboten.  
+- Konfigurator: Die Zusammenfassung zeigt das angemeldete Konto der verbundenen Cloud IO statt ihres Namens.  
 
 **Fehlerbehebungen**  
 
@@ -144,6 +147,7 @@ Geräte-Instanz, die jeweils ein Gerät in Symcon abbildet.
 - Geräte: Speichern und Statuswechsel der Cloud IO konnten gleichzeitig einen Verbindungsaufbau starten.  
 - Geräte: Gleiche Eigenschaften in verschiedenen Services (z.B. Restlaufzeit von Haupt- und Seitenbürste) teilten sich ein Profil mit falschem Wertebereich.  
 - Konfigurator: Die Spalte `Modell` war nicht übersetzt.  
+- Die Modulnamen waren in der Konsole nicht übersetzt (jetzt `Xiaomi MIoT Konfigurator` und `Xiaomi MIoT Gerät`).  
 
 **Version 1.30:**  
 
