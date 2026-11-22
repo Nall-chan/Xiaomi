@@ -9,14 +9,14 @@ eval('declare(strict_types=1);namespace XiaomiMiDevice {?>' . file_get_contents(
 require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
 require_once dirname(__DIR__) . '/libs/MiioProtocol.php';
 require_once dirname(__DIR__) . '/libs/MiotSpec.php';
+require_once dirname(__DIR__) . '/libs/MiotPresentation.php';
 
 /**
  * @method bool SendDebug(string $Message, mixed $Data, int $Format)
  * @method void RegisterAttributeArray(string $name, array $Value, int $Size = 0)
  * @method array ReadAttributeArray(string $name)
  * @method void WriteAttributeArray(string $name, mixed $value)
- * @method void RegisterProfileEx(int $VarTyp, string $Name, string $Icon, string $Prefix, string $Suffix, int|array $Associations, float $MaxValue = -1, float $StepSize = 0, int $Digits = 0)
- * @method void RegisterProfile(int $VarTyp, string $Name, string $Icon, string $Prefix, string $Suffix, float $MinValue, float $MaxValue, float $StepSize, int $Digits = 0)
+ * @method void UnregisterProfile(string $Name)
  * @method int RegisterParent()
  * @method bool IORequestAction(string $Ident, mixed $Value)
  * @property bool $ShowVariableWarning
@@ -85,6 +85,7 @@ class XiaomiMIoTDevice extends IPSModuleStrict
         $this->RegisterAttributeArray(\Xiaomi\Device\Attribute::ParamIdentsRead, []);
         $this->RegisterAttributeArray(\Xiaomi\Device\Attribute::ParamIdentsWrite, []);
         $this->RegisterAttributeArray(\Xiaomi\Device\Attribute::LockedStateVariables, []);
+        $this->RegisterAttributeArray(\Xiaomi\Device\Attribute::ObsoleteProfiles, []);
         $this->RegisterTimer(\Xiaomi\Device\Timer::RefreshState, 0, 'IPS_RequestAction(' . $this->InstanceID . ',"' . \Xiaomi\Device\Timer::RefreshState . '",true);');
         $this->RegisterTimer(\Xiaomi\Device\Timer::Reconnect, 0, 'IPS_RequestAction(' . $this->InstanceID . ',"' . \Xiaomi\Device\Timer::Reconnect . '",true);');
         $this->Retries = 0;
@@ -113,6 +114,26 @@ class XiaomiMIoTDevice extends IPSModuleStrict
                     $Changed = true;
                 }
             }
+        }
+        // Ab 2.0 Darstellungen statt Profile: bisher genutzte XIAOMI.*-Profile der eigenen Variablen merken,
+        // ApplyChanges entfernt sie, sobald keine Variable sie mehr nutzt (CleanupProfiles).
+        $Profiles = [];
+        foreach (IPS_GetChildrenIDs($this->InstanceID) as $ChildId) {
+            if (IPS_VariableExists($ChildId)) {
+                $Profile = IPS_GetVariable($ChildId)['VariableProfile'];
+                if (str_starts_with($Profile, \Xiaomi\Cloud\ProfilePrefix::Name)) {
+                    $Profiles[] = $Profile;
+                }
+            }
+        }
+        if (count($Profiles)) {
+            $Profiles[] = 'XIAOMI.ExecuteAction';
+            if (!isset($j->attributes)) {
+                $j->attributes = new \stdClass();
+            }
+            $Known = json_decode((string) ($j->attributes->{\Xiaomi\Device\Attribute::ObsoleteProfiles} ?? '[]'), true);
+            $j->attributes->{\Xiaomi\Device\Attribute::ObsoleteProfiles} = json_encode(array_values(array_unique(array_merge(is_array($Known) ? $Known : [], $Profiles))));
+            $Changed = true;
         }
         // Specs im alten Format (vorhanden, aber ohne 'urn') zurücksetzen, damit Token und Specs neu geladen werden.
         if (isset($j->attributes)) {
@@ -153,18 +174,8 @@ class XiaomiMIoTDevice extends IPSModuleStrict
      */
     public function ApplyChanges(): void
     {
-        $this->RegisterProfileEx(
-            VARIABLETYPE_INTEGER,
-            'XIAOMI.ExecuteAction',
-            'Execute',
-            '',
-            '',
-            [
-                [0, 'Execute', '', -1]
-            ]
-        );
-
         //Never delete this line!
+
         parent::ApplyChanges();
         $this->MessageId = random_int(1, \Xiaomi\Device\LocalProtocol::MaxMessageId);
         $this->RegisterMessage($this->InstanceID, FM_CONNECT);
@@ -1166,25 +1177,16 @@ class XiaomiMIoTDevice extends IPSModuleStrict
      * Variablentyp und Profil einer Eigenschaft (Gerätebeschreibung im eigenen Format, libs/MiotSpec.php).
      *
      * @param  array $Property Eigenschaft
-     * @param  string $ProfileSuffix Modellteil der URN (z.B. xiaomi-p76)
-     * @return array [Variablentyp, Profil]
+     * @param  bool $Writable Variable bekommt eine Aktion
+     * @return array [Variablentyp, Darstellung]
      */
-    private function GetVariableData(array $Property, string $ProfileSuffix): array
+    private function GetVariableData(array $Property, bool $Writable): array
     {
-        $IpsVarType = \Xiaomi\Convert::ToIPSVar($Property[\Xiaomi\Spec\Key::Format]);
-        $Profile = \Xiaomi\Convert::getProfileName($Property[\Xiaomi\Spec\Key::Iid], $Property[\Xiaomi\Spec\Key::Type], $ProfileSuffix);
-        $this->SendDebug(__FUNCTION__, $Profile, 0);
-        $Suffix = '';
-        $Min = 0;
-        $Max = 0;
-        $Step = 0;
-        $Assoziation = [];
         switch ($Property[\Xiaomi\Spec\Key::Unit]) {
             case '':
             case 'none':
-                break;
             case 'rgb':
-                $Profile = '~HexColor';
+                $Suffix = '';
                 break;
             case 'percentage':
                 $Suffix = ' %';
@@ -1193,32 +1195,18 @@ class XiaomiMIoTDevice extends IPSModuleStrict
                 $Suffix = ' °';
                 break;
             case 'kelvin':
-                $Profile = '~TWColor';
+                $Suffix = ' K';
                 break;
             default:
                 $Suffix = ' ' . \Xiaomi\Translate::getLocaleUnit($Property[\Xiaomi\Spec\Key::Unit]);
                 break;
         }
-        foreach ($Property[\Xiaomi\Spec\Key::Values] as $Value) {
-            $Assoziation[] = [$Value[\Xiaomi\Spec\Key::Value], \Xiaomi\Translate::getLocaleName((string) $Value[\Xiaomi\Spec\Key::Name]), '', -1];
+        // Werte ohne Übersetzung der Spec über die Begriffstabelle
+        foreach ($Property[\Xiaomi\Spec\Key::Values] as &$Value) {
+            $Value[\Xiaomi\Spec\Key::Name] = \Xiaomi\Translate::getLocaleName((string) $Value[\Xiaomi\Spec\Key::Name]);
         }
-        if (is_array($Property[\Xiaomi\Spec\Key::Range])) {
-            [$Min, $Max] = $Property[\Xiaomi\Spec\Key::Range];
-            $Step = $Property[\Xiaomi\Spec\Key::Range][2] ?? 0;
-        }
-        if ($IpsVarType == VARIABLETYPE_BOOLEAN) {
-            if (($Suffix == '') && (count($Assoziation) == 0)) {
-                $Profile = (in_array('write', $Property[\Xiaomi\Spec\Key::Access]) ? '~Switch' : '');
-            }
-        }
-        if (($Profile) && ($Profile[0] != '~')) {
-            if (count($Assoziation)) {
-                $this->RegisterProfileEx($IpsVarType, $Profile, '', '', $Suffix, $Assoziation);
-            } else {
-                $this->RegisterProfile($IpsVarType, $Profile, '', '', $Suffix, (float) $Min, (float) $Max, (float) $Step);
-            }
-        }
-        return [$IpsVarType, $Profile];
+        unset($Value);
+        return \Xiaomi\Presentation\Builder::ForProperty($Property, $Writable, $Suffix);
     }
 
     /**
@@ -1250,7 +1238,6 @@ class XiaomiMIoTDevice extends IPSModuleStrict
         if (($Specs[\Xiaomi\Spec\Key::Schema] ?? 0) != \Xiaomi\Spec\Normalizer::SchemaVersion) {
             return;
         }
-        $ProfileSuffix = explode(':', $Specs[\Xiaomi\Spec\Key::Urn])[5] ?? '';
         $DisabledStateVariables = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::LockedStateVariables);
         $ActionsIdentsWithValue = [];
         $ActionsIdents = [];
@@ -1272,7 +1259,7 @@ class XiaomiMIoTDevice extends IPSModuleStrict
                 $Ident = \Xiaomi\IdentPrefix::Property . '_' . (string) $Siid . '_' . (string) $Property[\Xiaomi\Spec\Key::Iid];
                 $Name = $ServiceName . ': ' . $this->ElementName($Property);
                 if (!in_array($Ident, $DisabledStateVariables)) {
-                    [$IpsVarType, $Profile] = $this->GetVariableData($Property, $ProfileSuffix);
+                    [$IpsVarType, $Profile] = $this->GetVariableData($Property, in_array('write', $Access));
                     $this->MaintainVariable($Ident, $Name, $IpsVarType, $Profile, $Pos++, true);
                     if (in_array('write', $Access)) {
                         $this->EnableAction($Ident);
@@ -1297,7 +1284,7 @@ class XiaomiMIoTDevice extends IPSModuleStrict
                     if (!isset($PropertiesByIid[$In[0]])) {
                         continue;
                     }
-                    [$IpsVarType, $Profile] = $this->GetVariableData($PropertiesByIid[$In[0]], $ProfileSuffix);
+                    [$IpsVarType, $Profile] = $this->GetVariableData($PropertiesByIid[$In[0]], true);
                     $this->MaintainVariable($Ident, $Name, $IpsVarType, $Profile, $Pos++, true);
                     // Aktionen haben keinen Zustand: neutralen Wert passend zum Variablentyp setzen
                     switch ($IpsVarType) {
@@ -1312,8 +1299,9 @@ class XiaomiMIoTDevice extends IPSModuleStrict
                             break;
                     }
                     $ActionsIdentsWithValue[$Ident] = $Name;
-                } else { // kein Parameter, nur 'Execute' Profile
-                    $this->MaintainVariable($Ident, $Name, VARIABLETYPE_INTEGER, 'XIAOMI.ExecuteAction', $Pos++, true);
+                } else { // kein Parameter: Aufzählung mit einer Option „Ausführen“
+                    [$IpsVarType, $Presentation] = \Xiaomi\Presentation\Builder::ForExecuteAction($this->Translate('Execute'));
+                    $this->MaintainVariable($Ident, $Name, $IpsVarType, $Presentation, $Pos++, true);
                     $ActionsIdents[$Ident] = $Name;
                 }
                 $this->EnableAction($Ident);
@@ -1323,6 +1311,32 @@ class XiaomiMIoTDevice extends IPSModuleStrict
         $this->WriteAttributeArray(\Xiaomi\Device\Attribute::ActionIdents, $ActionsIdents);
         $this->WriteAttributeArray(\Xiaomi\Device\Attribute::ParamIdentsRead, $ParamIdentsRead);
         $this->WriteAttributeArray(\Xiaomi\Device\Attribute::ParamIdentsWrite, $ParamIdentsWrite);
+        $this->CleanupProfiles();
+    }
+
+    /**
+     * CleanupProfiles
+     *
+     * Entfernt früher genutzte XIAOMI.*-Profile (Liste aus Migrate), sobald sie außerhalb dieser Instanz unbenutzt sind.
+     * Noch genutzte bleiben in der Liste; die letzte umgestellte Instanz entfernt sie.
+     *
+     * @return void
+     */
+    private function CleanupProfiles(): void
+    {
+        $Profiles = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::ObsoleteProfiles);
+        if (count($Profiles) == 0) {
+            return;
+        }
+        $Remaining = [];
+        foreach ($Profiles as $Profile) {
+            $this->UnregisterProfile($Profile);
+            if (IPS_VariableProfileExists($Profile)) {
+                $Remaining[] = $Profile;
+            }
+        }
+        $this->SendDebug(__FUNCTION__, sprintf('%d removed, %d still in use', count($Profiles) - count($Remaining), count($Remaining)), 0);
+        $this->WriteAttributeArray(\Xiaomi\Device\Attribute::ObsoleteProfiles, $Remaining);
     }
 
     /**

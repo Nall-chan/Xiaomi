@@ -240,6 +240,17 @@ class XiaomiMIoTCloudIO extends IPSModuleStrict
                 break;
             case 'UpdateServiceToken':
                 break;
+            case 'DeleteUnusedProfiles':
+                // Bestätigung erfolgt über den Dialog des Knopfes (confirm)
+                foreach ($this->GetUnusedProfiles() as $Profile) {
+                    IPS_DeleteVariableProfile($Profile);
+                }
+                $this->ReloadForm();
+                break;
+            case 'ShowProfileUsage':
+                $this->UpdateFormField('ProfileUsageList', 'values', json_encode($this->GetProfileUsage()));
+                $this->UpdateFormField('ProfileUsagePopup', 'visible', true);
+                break;
         }
     }
 
@@ -254,6 +265,10 @@ class XiaomiMIoTCloudIO extends IPSModuleStrict
         if ($this->GetStatus() == IS_CREATING) {
             return json_encode($Form);
         }
+        // Experteneinstellungen: Anzahl nicht mehr verwendeter Xiaomi-Profile (ab 2.0 nutzen die Geräte Darstellungen)
+        $Unused = count($this->GetUnusedProfiles());
+        $Form['actions'][4]['items'][0]['caption'] = sprintf($this->Translate($Form['actions'][4]['items'][0]['caption']), $Unused);
+        $Form['actions'][4]['items'][0]['enabled'] = ($Unused > 0);
         if ($this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Username)) {
             $Form['actions'][0]['visible'] = true;
             if ($this->VerifyUrl) {
@@ -393,6 +408,48 @@ class XiaomiMIoTCloudIO extends IPSModuleStrict
             return $this->Translate('MESSAGE:Verification successful!');
         }
         return $this->Translate($Result);
+    }
+
+    /**
+     * GetUnusedProfiles
+     *
+     * XIAOMI.*-Profile (bis 1.30 von den Geräten angelegt), die keine Variable mehr nutzt.
+     *
+     * @return array Profilnamen
+     */
+    private function GetUnusedProfiles(): array
+    {
+        $Profiles = array_filter(IPS_GetVariableProfileList(), fn (string $Name): bool => str_starts_with($Name, \Xiaomi\Cloud\ProfilePrefix::Name));
+        if (count($Profiles) == 0) {
+            return [];
+        }
+        $Used = [];
+        foreach (IPS_GetVariableList() as $VariableId) {
+            $Variable = IPS_GetVariable($VariableId);
+            $Used[$Variable['VariableProfile']] = true;
+            $Used[$Variable['VariableCustomProfile']] = true;
+        }
+        return array_values(array_filter($Profiles, fn (string $Name): bool => !isset($Used[$Name])));
+    }
+
+    /**
+     * GetProfileUsage
+     *
+     * @return array Variablen, die noch ein XIAOMI.*-Profil nutzen (als Profil oder eigenes Profil)
+     */
+    private function GetProfileUsage(): array
+    {
+        $Rows = [];
+        foreach (IPS_GetVariableList() as $VariableId) {
+            $Variable = IPS_GetVariable($VariableId);
+            foreach ([$Variable['VariableCustomProfile'], $Variable['VariableProfile']] as $Profile) {
+                if (str_starts_with($Profile, \Xiaomi\Cloud\ProfilePrefix::Name)) {
+                    $Rows[] = ['VariableID' => $VariableId, 'Location' => IPS_GetLocation($VariableId), 'Profile' => $Profile];
+                    break;
+                }
+            }
+        }
+        return $Rows;
     }
 
     /**

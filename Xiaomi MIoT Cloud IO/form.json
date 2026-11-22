@@ -126,6 +126,57 @@
             "visible": false
         },
         {
+            "type": "ExpansionPanel",
+            "caption": "Expert settings",
+            "items": [
+                {
+                    "type": "Button",
+                    "name": "DeleteProfilesButton",
+                    "caption": "Delete unused Xiaomi profiles (%d)",
+                    "confirm": "Delete all Xiaomi profiles that are no longer used by any variable? This cannot be undone.",
+                    "onClick": "IPS_RequestAction($id, 'DeleteUnusedProfiles', '');"
+                },
+                {
+                    "type": "Button",
+                    "caption": "Which variables still use Xiaomi profiles?",
+                    "onClick": "IPS_RequestAction($id, 'ShowProfileUsage', '');"
+                },
+                {
+                    "type": "PopupAlert",
+                    "name": "ProfileUsagePopup",
+                    "visible": false,
+                    "popup": {
+                        "caption": "Variables with Xiaomi profiles",
+                        "items": [
+                            {
+                                "type": "List",
+                                "name": "ProfileUsageList",
+                                "rowCount": 15,
+                                "columns": [
+                                    {
+                                        "caption": "Variable",
+                                        "name": "VariableID",
+                                        "width": "90px"
+                                    },
+                                    {
+                                        "caption": "Location",
+                                        "name": "Location",
+                                        "width": "auto"
+                                    },
+                                    {
+                                        "caption": "Profile",
+                                        "name": "Profile",
+                                        "width": "380px"
+                                    }
+                                ],
+                                "values": []
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
             "type": "Label",
             "caption": "This module is free for non-commercial use,\r\nDonations in support of the author are accepted here:"
         },

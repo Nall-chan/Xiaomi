@@ -1,0 +1,782 @@
+{
+    "{05CC3CC2-A0B2-5837-A4A7-A07EA0B9DDFB}": {
+        "caption": "Color",
+        "restrictions": {
+            "objectType": [
+                2
+            ],
+            "variableType": [
+                1,
+                3
+            ]
+        },
+        "parameters": {
+            "COLOR_CURVE": {
+                "type": 1,
+                "values": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                ]
+            },
+            "COLOR_SPACE": {
+                "type": 1,
+                "values": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                ]
+            },
+            "CUSTOM_COLOR_CURVE": {
+                "type": 3,
+                "parameters": {
+                    "x": {
+                        "type": 2
+                    },
+                    "y": {
+                        "type": 2
+                    }
+                }
+            },
+            "CUSTOM_COLOR_SPACE": {
+                "type": 3,
+                "parameters": {
+                    "x": {
+                        "type": 2
+                    },
+                    "y": {
+                        "type": 2
+                    }
+                }
+            },
+            "ENCODING": {
+                "type": 1,
+                "values": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4
+                ]
+            },
+            "PRESET_VALUES": {
+                "type": 3,
+                "parameters": {
+                    "Color": {
+                        "type": 1
+                    }
+                }
+            },
+            "SELECTION": {
+                "type": 1,
+                "values": [
+                    0,
+                    1
+                ]
+            }
+        }
+    },
+    "{08A6AF76-394E-D354-48D5-BFC690488E4E}": {
+        "caption": "Duration",
+        "restrictions": {
+            "objectType": [
+                2
+            ],
+            "requestAction": false,
+            "variableType": [
+                1,
+                2
+            ]
+        },
+        "parameters": {
+            "COUNTDOWN_TYPE": {
+                "type": 1,
+                "values": [
+                    0,
+                    1,
+                    2
+                ]
+            },
+            "FORMAT": {
+                "type": 1,
+                "values": [
+                    0,
+                    1,
+                    2,
+                    3
+                ]
+            },
+            "MILLISECONDS": {
+                "type": 0
+            }
+        }
+    },
+    "{2F0FF5B0-FC86-117B-DDAA-2D2D33C3F8AC}": {
+        "caption": "Playback",
+        "restrictions": {
+            "objectType": [
+                2
+            ],
+            "variableType": [
+                1,
+                2
+            ]
+        },
+        "parameters": {}
+    },
+    "{3319437D-7CDE-699D-750A-3C6A3841FA75}": {
+        "caption": "Value Presentation",
+        "restrictions": {
+            "objectType": [
+                2
+            ],
+            "requestAction": false
+        },
+        "parameters": {
+            "COLOR": {
+                "type": 1
+            },
+            "CONTENT_COLOR": {
+                "type": 1
+            },
+            "DISPLAY_TYPE": {
+                "type": 1,
+                "values": [
+                    0,
+                    1
+                ]
+            },
+            "ICON": {
+                "type": 3
+            },
+            "PERCENTAGE": {
+                "type": 0
+            },
+            "PREFIX": {
+                "type": 3
+            },
+            "PREVIEW_STYLE": {
+                "type": 1,
+                "values": [
+                    0,
+                    1,
+                    2
+                ]
+            },
+            "SHOW_PREVIEW": {
+                "type": 0
+            },
+            "SUFFIX": {
+                "type": 3
+            },
+            "USAGE_TYPE": {
+                "type": 1,
+                "values": [
+                    0,
+                    1
+                ]
+            }
+        },
+        "groups": [
+            {
+                "name": "Boolean",
+                "variableType": [
+                    0
+                ],
+                "parameters": {
+                    "OPTIONS": {
+                        "type": 3,
+                        "parameters": {
+                            "Caption": {
+                                "type": 3
+                            },
+                            "ColorActive": {
+                                "type": 0
+                            },
+                            "ColorValue": {
+                                "type": 1
+                            },
+                            "ContentColorActive": {
+                                "type": 0
+                            },
+                            "ContentColorValue": {
+                                "type": 1
+                            },
+                            "IconActive": {
+                                "type": 0
+                            },
+                            "IconValue": {
+                                "type": 3
+                            },
+                            "Value": {
+                                "type": 0
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "name": "Numeric",
+                "variableType": [
+                    1,
+                    2
+                ],
+                "parameters": {
+                    "DECIMAL_SEPARATOR": {
+                        "type": 3
+                    },
+                    "DIGITS": {
+                        "type": 1
+                    },
+                    "INTERVALS": {
+                        "type": 3,
+                        "parameters": {
+                            "ColorActive": {
+                                "type": 0
+                            },
+                            "ColorValue": {
+                                "type": 1
+                            },
+                            "ConstantActive": {
+                                "type": 0
+                            },
+                            "ConstantValue": {
+                                "type": 3
+                            },
+                            "ContentColorActive": {
+                                "type": 0
+                            },
+                            "ContentColorValue": {
+                                "type": 1
+                            },
+                            "ConversionFactor": {
+                                "type": 2
+                            },
+                            "DigitsActive": {
+                                "type": 0
+                            },
+                            "DigitsValue": {
+                                "type": 1
+                            },
+                            "IconActive": {
+                                "type": 0
+                            },
+                            "IconValue": {
+                                "type": 3
+                            },
+                            "IntervalMaxValue": {
+                                "type": "variableType"
+                            },
+                            "IntervalMinValue": {
+                                "type": "variableType"
+                            },
+                            "PrefixActive": {
+                                "type": 0
+                            },
+                            "PrefixValue": {
+                                "type": 3
+                            },
+                            "SuffixActive": {
+                                "type": 0
+                            },
+                            "SuffixValue": {
+                                "type": 3
+                            }
+                        }
+                    },
+                    "INTERVALS_ACTIVE": {
+                        "type": 0
+                    },
+                    "MAX": {
+                        "type": "variableType"
+                    },
+                    "MIN": {
+                        "type": "variableType"
+                    },
+                    "THOUSANDS_SEPARATOR": {
+                        "type": 3
+                    }
+                }
+            },
+            {
+                "name": "String",
+                "variableType": [
+                    3
+                ],
+                "parameters": {
+                    "MULTILINE": {
+                        "type": 0
+                    },
+                    "OPTIONS": {
+                        "type": 3,
+                        "parameters": {
+                            "Caption": {
+                                "type": 3
+                            },
+                            "ColorActive": {
+                                "type": 0
+                            },
+                            "ColorValue": {
+                                "type": 1
+                            },
+                            "ContentColorActive": {
+                                "type": 0
+                            },
+                            "ContentColorValue": {
+                                "type": 1
+                            },
+                            "IconActive": {
+                                "type": 0
+                            },
+                            "IconValue": {
+                                "type": 3
+                            },
+                            "Value": {
+                                "type": 3
+                            }
+                        }
+                    }
+                }
+            }
+        ]
+    },
+    "{4153A8D4-5C33-C65F-C1F3-7B61AAF99B1C}": {
+        "caption": "Legacy Profile",
+        "restrictions": {
+            "objectType": [
+                2
+            ]
+        },
+        "parameters": {
+            "PROFILE": {
+                "type": 3
+            }
+        }
+    },
+    "{497C4845-27FA-6E4F-AE37-5D951D3BDBF9}": {
+        "caption": "Date/Time",
+        "restrictions": {
+            "objectType": [
+                2
+            ],
+            "variableType": [
+                1,
+                2
+            ]
+        },
+        "parameters": {
+            "DATE": {
+                "type": 1,
+                "values": [
+                    0,
+                    1,
+                    2,
+                    3
+                ]
+            },
+            "DAY_OF_THE_WEEK": {
+                "type": 0
+            },
+            "MONTH_TEXT": {
+                "type": 0
+            },
+            "TIME": {
+                "type": 1,
+                "values": [
+                    0,
+                    1,
+                    2
+                ]
+            }
+        }
+    },
+    "{52D9E126-D7D2-2CBB-5E62-4CF7BA7C5D82}": {
+        "caption": "Enumeration",
+        "restrictions": {
+            "objectType": [
+                2
+            ],
+            "requestAction": true
+        },
+        "parameters": {
+            "DISPLAY": {
+                "type": 1,
+                "values": [
+                    0,
+                    1,
+                    2
+                ]
+            },
+            "ICON": {
+                "type": 3
+            },
+            "LAYOUT": {
+                "type": 1,
+                "values": [
+                    0,
+                    1,
+                    2
+                ]
+            }
+        },
+        "groups": [
+            {
+                "name": "Boolean",
+                "variableType": [
+                    0
+                ],
+                "parameters": {
+                    "OPTIONS": {
+                        "type": 3,
+                        "parameters": {
+                            "Caption": {
+                                "type": 3
+                            },
+                            "Color": {
+                                "type": 1
+                            },
+                            "IconActive": {
+                                "type": 0
+                            },
+                            "IconValue": {
+                                "type": 3
+                            },
+                            "Value": {
+                                "type": 0
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "name": "Numeric",
+                "variableType": [
+                    1,
+                    2
+                ],
+                "parameters": {
+                    "OPTIONS": {
+                        "type": 3,
+                        "parameters": {
+                            "Caption": {
+                                "type": 3
+                            },
+                            "Color": {
+                                "type": 1
+                            },
+                            "IconActive": {
+                                "type": 0
+                            },
+                            "IconValue": {
+                                "type": 3
+                            },
+                            "Value": {
+                                "type": "variableType"
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "name": "String",
+                "variableType": [
+                    3
+                ],
+                "parameters": {
+                    "OPTIONS": {
+                        "type": 3,
+                        "parameters": {
+                            "Caption": {
+                                "type": 3
+                            },
+                            "Color": {
+                                "type": 1
+                            },
+                            "IconActive": {
+                                "type": 0
+                            },
+                            "IconValue": {
+                                "type": 3
+                            },
+                            "Value": {
+                                "type": 3
+                            }
+                        }
+                    }
+                }
+            }
+        ]
+    },
+    "{56696857-92B2-1780-16B8-EB6F09D4AEF7}": {
+        "caption": "Text Box",
+        "restrictions": {
+            "objectType": [
+                2
+            ],
+            "requestAction": true,
+            "variableType": [
+                3
+            ]
+        },
+        "parameters": {}
+    },
+    "{6075FC22-69AF-B110-3749-C24138883082}": {
+        "caption": "Shutter",
+        "restrictions": {
+            "objectType": [
+                2
+            ],
+            "requestAction": true,
+            "variableType": [
+                1,
+                2
+            ]
+        },
+        "parameters": {
+            "CLOSE_INSIDE_VALUE": {
+                "type": "variableType"
+            },
+            "MAX_ROTATION_INSIDE": {
+                "type": "variableType"
+            },
+            "MAX_ROTATION_OUTSIDE": {
+                "type": "variableType"
+            },
+            "OPEN_OUTSIDE_VALUE": {
+                "type": "variableType"
+            },
+            "SUN_POSITION": {
+                "type": 1,
+                "values": [
+                    0,
+                    1,
+                    2
+                ]
+            },
+            "USAGE_TYPE": {
+                "type": 1,
+                "values": [
+                    0,
+                    1
+                ]
+            }
+        }
+    },
+    "{60AE6B26-B3E2-BDB1-A3A1-BE232940664B}": {
+        "caption": "Switch",
+        "restrictions": {
+            "objectType": [
+                2
+            ],
+            "requestAction": true,
+            "variableType": [
+                0
+            ]
+        },
+        "parameters": {
+            "GLOW_COLOR": {
+                "type": 1
+            },
+            "GLOW_INTENSITY": {
+                "type": 1
+            },
+            "ICON_FALSE": {
+                "type": 3
+            },
+            "ICON_TRUE": {
+                "type": 3
+            },
+            "USAGE_TYPE": {
+                "type": 1,
+                "values": [
+                    0,
+                    1,
+                    2
+                ]
+            },
+            "USE_ICON_FALSE": {
+                "type": 0
+            }
+        }
+    },
+    "{6B9CAEEC-5958-C223-30F7-BD36569FC57A}": {
+        "caption": "Slider",
+        "restrictions": {
+            "objectType": [
+                2
+            ],
+            "requestAction": true,
+            "variableType": [
+                1,
+                2
+            ]
+        },
+        "parameters": {
+            "CUSTOM_GRADIENT": {
+                "type": 3,
+                "parameters": {
+                    "Color": {
+                        "type": 1
+                    },
+                    "Value": {
+                        "type": "variableType"
+                    }
+                }
+            },
+            "DECIMAL_SEPARATOR": {
+                "type": 3
+            },
+            "DIGITS": {
+                "type": 1
+            },
+            "GRADIENT_TYPE": {
+                "type": 1,
+                "values": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4
+                ]
+            },
+            "ICON": {
+                "type": 3
+            },
+            "INTERVALS": {
+                "type": 3,
+                "parameters": {
+                    "ConstantActive": {
+                        "type": 0
+                    },
+                    "ConstantValue": {
+                        "type": 3
+                    },
+                    "ConversionFactor": {
+                        "type": 2
+                    },
+                    "DigitsActive": {
+                        "type": 0
+                    },
+                    "DigitsValue": {
+                        "type": 1
+                    },
+                    "IconActive": {
+                        "type": 0
+                    },
+                    "IconValue": {
+                        "type": 3
+                    },
+                    "IntervalMaxValue": {
+                        "type": "variableType"
+                    },
+                    "IntervalMinValue": {
+                        "type": "variableType"
+                    },
+                    "PrefixActive": {
+                        "type": 0
+                    },
+                    "PrefixValue": {
+                        "type": 3
+                    },
+                    "SuffixActive": {
+                        "type": 0
+                    },
+                    "SuffixValue": {
+                        "type": 3
+                    }
+                }
+            },
+            "INTERVALS_ACTIVE": {
+                "type": 0
+            },
+            "MAX": {
+                "type": "variableType"
+            },
+            "MIN": {
+                "type": "variableType"
+            },
+            "PERCENTAGE": {
+                "type": 0
+            },
+            "PREFIX": {
+                "type": 3
+            },
+            "STEP_SIZE": {
+                "type": "variableType"
+            },
+            "SUFFIX": {
+                "type": 3
+            },
+            "THOUSANDS_SEPARATOR": {
+                "type": 3
+            },
+            "USAGE_TYPE": {
+                "type": 1,
+                "values": [
+                    0,
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6
+                ]
+            }
+        }
+    },
+    "{6F477326-1683-A2FD-D2E7-477F366ECB62}": {
+        "caption": "Value Input",
+        "restrictions": {
+            "objectType": [
+                2
+            ],
+            "requestAction": true,
+            "variableType": [
+                1,
+                2,
+                3
+            ]
+        },
+        "parameters": {
+            "MULTILINE": {
+                "type": 0
+            },
+            "PREFIX": {
+                "type": 3
+            },
+            "SUFFIX": {
+                "type": 3
+            }
+        }
+    },
+    "{9DE1D610-5106-97FB-714D-1AADEDF8377A}": {
+        "caption": "Web Content",
+        "restrictions": {
+            "objectType": [
+                2
+            ],
+            "requestAction": false,
+            "variableType": [
+                3
+            ]
+        },
+        "parameters": {
+            "HTML_TYPE": {
+                "type": 1,
+                "values": [
+                    0,
+                    1
+                ]
+            },
+            "PADDING": {
+                "type": 0
+            }
+        }
+    }
+}

@@ -18,50 +18,6 @@ namespace Xiaomi{
     }
 
     /**
-     * Convert
-     */
-    class Convert
-    {
-        /**
-         * ToIPSVar
-         *
-         * @param  string $Format
-         * @return int
-         */
-        public static function ToIPSVar(string $Format): int
-        {
-            switch ($Format) {
-                case 'bool':
-                    return VARIABLETYPE_BOOLEAN;
-                case 'uint8':
-                case 'uint16':
-                case 'uint32':
-                case 'int8':
-                case 'int16':
-                case 'int32':
-                    return VARIABLETYPE_INTEGER;
-                case 'float':
-                case 'double':
-                    return VARIABLETYPE_FLOAT;
-            }
-            return VARIABLETYPE_STRING;
-        }
-
-        /**
-         * getProfileName
-         *
-         * @param  int $Piid
-         * @param  string $Type
-         * @return string
-         */
-        public static function getProfileName(int $Piid, string $Type, string $ProfileSuffix): string
-        {
-            return \sprintf('XIAOMI.%s.%08d.%s', $Type, $Piid, $ProfileSuffix);
-        }
-
-    }
-
-    /**
      * Translate
      */
     class Translate
@@ -311,6 +267,8 @@ namespace Xiaomi\Device{
         public const ParamIdentsRead = 'ParamIdentsRead';
         public const ParamIdentsWrite = 'ParamIdentsWrite';
         public const LockedStateVariables = 'LockedStateVariables';
+        /** Früher von dieser Instanz genutzte XIAOMI.*-Profile, die noch entfernt werden sollen */
+        public const ObsoleteProfiles = 'ObsoleteProfiles';
     }
 
     /**
@@ -726,6 +684,15 @@ namespace Xiaomi\Cloud{
     /**
      * ForwardData
      */
+    /**
+     * ProfilePrefix
+     */
+    class ProfilePrefix
+    {
+        /** Präfix der Variablenprofile, die die Geräte bis 1.30 angelegt haben */
+        public const Name = 'XIAOMI.';
+    }
+
     /**
      * Command
      *
