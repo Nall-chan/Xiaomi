@@ -18,58 +18,6 @@ namespace Xiaomi{
     }
 
     /**
-     * Translate
-     */
-    class Translate
-    {
-        /**
-         * getLocaleName
-         *
-         * @param  string $Name
-         * @return string
-         */
-        public static function getLocaleName(string $Name): string
-        {
-            $Locale = explode('_', IPS_GetSystemLanguage())[0];
-            $Names = json_decode(file_get_contents(__DIR__ . '/card_default.json'), true)['names'];
-            if (array_key_exists($Name, $Names)) {
-                if (array_key_exists($Locale, $Names[$Name])) {
-                    return $Names[$Name][$Locale];
-                }
-            }
-            $Columns = array_column($Names, $Locale, 'en');
-            if (array_key_exists($Name, $Columns)) {
-                return $Columns[$Name];
-            }
-            return $Name;
-        }
-
-        /**
-         * getLocaleUnit
-         *
-         * @param  string $Unit
-         * @return string
-         */
-        public static function getLocaleUnit(string $Unit): string
-        {
-            $Locale = explode('_', IPS_GetSystemLanguage())[0];
-            $All = json_decode(file_get_contents(__DIR__ . '/card_default.json'), true);
-            $ComplexUnits = array_column($All['complex_units'][0], 'name', 'key');
-            if (array_key_exists($Unit, $ComplexUnits)) {
-                if (array_key_exists($Locale, $ComplexUnits[$Unit])) {
-                    return $ComplexUnits[$Unit][$Locale];
-                }
-            }
-            if (array_key_exists($Unit, $All['units'])) {
-                if (array_key_exists($Locale, $All['units'][$Unit]['name'])) {
-                    return $All['units'][$Unit]['name'][$Locale];
-                }
-            }
-            return $Unit;
-        }
-    }
-
-    /**
      * IdentPrefix
      */
     class IdentPrefix
@@ -267,6 +215,8 @@ namespace Xiaomi\Device{
         public const ParamIdentsRead = 'ParamIdentsRead';
         public const ParamIdentsWrite = 'ParamIdentsWrite';
         public const LockedStateVariables = 'LockedStateVariables';
+        /** Sperren aus der Gerätekarte der App (libs/MiotCard.php) */
+        public const Locks = 'Locks';
         /** Früher von dieser Instanz genutzte XIAOMI.*-Profile, die noch entfernt werden sollen */
         public const ObsoleteProfiles = 'ObsoleteProfiles';
     }
@@ -418,6 +368,8 @@ namespace Xiaomi\Cloud{
         public const HomeMerged = '/v2/homeroom/gethome_merged';
         /** Geräte eines Zuhauses (home_owner, home_id) */
         public const HomeDeviceList = '/v2/home/home_device_list';
+        /** Öffentliche App-Konfiguration (ohne Anmeldung, GET mit data={"lang","name","version"}) */
+        public const AppConfig = '/service/getappconfig';
         /** Produktkatalog der Region: Produktname in der Sprache des Kontos, Bilder (liefert alle Modelle) */
         public const ProductCatalog = '/v2/plugin/get_config_info_new';
         /** Gerätebeschreibung je URN (wie die App) */
@@ -715,6 +667,14 @@ namespace Xiaomi\Cloud{
         public const GetProduct = 'GetProduct';
         /** Produktkatalog in der Cloud IO höchstens so lange zwischenspeichern (Sekunden) */
         public const ProductMaxAge = 604800;
+        /** Gerätekarte der App (card_control_miotspec_config) für den Gerätetyp, Params: urn (string) */
+        public const GetCardConfig = 'GetCardConfig';
+        /** Gerätekarten in der Cloud IO höchstens so lange zwischenspeichern (Sekunden) */
+        public const CardMaxAge = 604800;
+        /** Begriffe und Einheiten der App (card_default_txt) in der Systemsprache, ohne Params */
+        public const GetTerms = 'GetTerms';
+        /** Begriffe in der Cloud IO höchstens so lange zwischenspeichern (Sekunden) */
+        public const TermsMaxAge = 604800;
         /** App-Version für den Produktkatalog; mit v=2 kommen die Namen in der Sprache des Cookies (wie die App) */
         public const CatalogAppVersion = 11090704;
         /** Geräteliste in der Cloud IO höchstens so lange zwischenspeichern (Sekunden) */

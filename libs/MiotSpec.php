@@ -45,7 +45,7 @@ namespace Xiaomi\Spec {
     class Normalizer
     {
         /** Version des eigenen Formats, bei Änderungen erhöhen */
-        public const SchemaVersion = 1;
+        public const SchemaVersion = 2;
 
         /**
          * Normalize
@@ -74,8 +74,10 @@ namespace Xiaomi\Spec {
                     $Values = [];
                     foreach (array_values((array) ($Property['value-list'] ?? [])) as $Index => $Entry) {
                         $Values[] = [
-                            Key::Value => $Entry['value'],
-                            Key::Name  => $Texts[sprintf('%s:valuelist:%03d', $Key, $Index)] ?? (string) ($Entry['description'] ?? '')
+                            Key::Value       => $Entry['value'],
+                            Key::Name        => $Texts[sprintf('%s:valuelist:%03d', $Key, $Index)] ?? (string) ($Entry['description'] ?? ''),
+                            // Englischer Text der Spec, z.B. für Sperren der App-Karten (Schema 2)
+                            Key::Description => (string) ($Entry['description'] ?? '')
                         ];
                     }
                     $Range = $Property['value-range'] ?? null;

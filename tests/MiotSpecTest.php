@@ -31,7 +31,7 @@ class MiotSpecTest extends TestCase
         $this->assertSame('on', $Power[Key::Type]);
         $this->assertSame(['read', 'write', 'notify'], $Power[Key::Access]);
         // Werteliste: Position 1 deutsch leer → englisch, Position 0 deutsch
-        $this->assertSame([[Key::Value => 0, Key::Name => 'Direkt'], [Key::Value => 1, Key::Name => 'Natural']], $Mode[Key::Values]);
+        $this->assertSame([[Key::Value => 0, Key::Name => 'Direkt', Key::Description => 'Straight Wind'], [Key::Value => 1, Key::Name => 'Natural', Key::Description => 'Natural Wind']], $Mode[Key::Values]);
         // Weder deutsch noch englisch → Beschreibung der Spec
         $this->assertSame('Fan Speed', $Speed[Key::Name]);
         $this->assertSame([1, 100, 1], $Speed[Key::Range]);
