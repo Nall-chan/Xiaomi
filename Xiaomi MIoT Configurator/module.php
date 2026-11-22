@@ -110,53 +110,63 @@ class XiaomiMIoTConfigurator extends IPSModuleStrict
         $Form['actions'][0]['visible'] = !$IOActive;
 
         $ShowOffline = $this->ReadAttributeBoolean(\Xiaomi\Configurator\Attribute::ShowOffline);
-        // Nur Geräte-Instanzen an derselben Cloud IO berücksichtigen
-        $InstanceIDList = $this->GetInstanceList($IOId);
+        // Alle Geräte-Instanzen im System: InstanzID => [DeviceId, Cloud IO]
+        $Instances = $this->GetInstanceList();
         $Devices = $IOActive ? $this->GetDevices() : [];
         $DeviceValues = [];
         foreach ($Devices as $Device) {
-            if (empty($Device['localip'])) {
+            //we skip all Gateways...
+            if (strpos($Device[\Xiaomi\Cloud\DeviceKey::Urn], \Xiaomi\SpecTypes::Gateway) === 0) {
                 continue;
             }
-            //we skip all Gateways...
-            if (strpos((string) ($Device['spec_type'] ?? ''), \Xiaomi\SpecTypes::Gateway) === 0) {
+            $DeviceId = $Device[\Xiaomi\Cloud\DeviceKey::DeviceId];
+            $LocalIp = $Device[\Xiaomi\Cloud\DeviceKey::LocalIp];
+            $InstanceIdDevice = array_search($DeviceId, array_column($Instances, 'did', 'id'));
+            // Instanz an einer anderen Cloud IO (z.B. Konto eines Familienmitglieds): hier nicht anzeigen
+            if (($InstanceIdDevice !== false) && ($Instances[$InstanceIdDevice]['io'] != $IOId)) {
+                unset($Instances[$InstanceIdDevice]);
                 continue;
             }
             $AddDevice = [
-                'IPAddress'              => $Device['localip'],
-                'MAC'                    => $Device['mac'] ?? '',
-                'Model'                  => $Device['model'] ?? '',
-                'name'                   => $Device['name'] ?? ''
+                'IPAddress' => ($LocalIp !== '') ? $LocalIp : $this->Translate('Cloud only'),
+                'MAC'       => $Device[\Xiaomi\Cloud\DeviceKey::Mac],
+                'Model'     => $Device[\Xiaomi\Cloud\DeviceKey::Model],
+                'Origin'    => $Device[\Xiaomi\Cloud\DeviceKey::Shared] ? sprintf($this->Translate('Shared by %s'), $Device[\Xiaomi\Cloud\DeviceKey::Owner]) : $this->Translate('Own account'),
+                'name'      => $Device[\Xiaomi\Cloud\DeviceKey::Name]
             ];
-            $InstanceIdDevice = array_search($Device['did'], $InstanceIDList);
             if ($InstanceIdDevice !== false) {
                 $AddDevice['name'] = IPS_GetName($InstanceIdDevice);
                 $AddDevice['instanceID'] = $InstanceIdDevice;
-                $AddDevice['host'] = $Device['localip'];
-                unset($InstanceIDList[$InstanceIdDevice]);
+                unset($Instances[$InstanceIdDevice]);
             }
             // Erst hier auf offline filtern, damit offline Instanzen nicht rot angezeigt werden.
-            if (empty($Device['isOnline']) && !$ShowOffline) {
+            if (!$Device[\Xiaomi\Cloud\DeviceKey::Online] && !$ShowOffline && ($InstanceIdDevice === false)) {
                 continue;
             }
             $AddDevice['create'] = [
                 'moduleID'      => \Xiaomi\GUID::MiDevice,
                 'configuration' => [
-                    \Xiaomi\Device\Property::Active         => (bool) ($Device['isOnline'] ?? false),
-                    \Xiaomi\Device\Property::Host           => $Device['localip'],
-                    \Xiaomi\Device\Property::DeviceId       => (string) $Device['did']
+                    \Xiaomi\Device\Property::Active     => $Device[\Xiaomi\Cloud\DeviceKey::Online],
+                    \Xiaomi\Device\Property::Host       => $LocalIp,
+                    \Xiaomi\Device\Property::DeviceId   => $DeviceId,
+                    // Ohne lokale IP nur über die Cloud erreichbar
+                    \Xiaomi\Device\Property::ForceCloud => ($LocalIp === '')
                 ]
             ];
             $DeviceValues[] = $AddDevice;
         }
-        // Vorhandene Instanzen, die (aktuell) nicht in der Cloud gefunden wurden
-        foreach ($InstanceIDList as $InstanceIdDevice => $DID) {
+        // Vorhandene Instanzen an dieser Cloud IO, die (aktuell) nicht in der Cloud gefunden wurden
+        foreach ($Instances as $InstanceIdDevice => $Instance) {
+            if ($Instance['io'] != $IOId) {
+                continue;
+            }
             $DeviceValues[] = [
-                'instanceID'             => $InstanceIdDevice,
-                'IPAddress'              => IPS_GetProperty($InstanceIdDevice, \Xiaomi\Device\Property::Host),
-                'MAC'                    => '',
-                'Model'                  => '',
-                'name'                   => IPS_GetName($InstanceIdDevice)
+                'instanceID' => $InstanceIdDevice,
+                'IPAddress'  => IPS_GetProperty($InstanceIdDevice, \Xiaomi\Device\Property::Host),
+                'MAC'        => '',
+                'Model'      => '',
+                'Origin'     => '',
+                'name'       => IPS_GetName($InstanceIdDevice)
             ];
         }
         $Form['actions'][1]['items'][0]['value'] = $ShowOffline;
@@ -182,48 +192,39 @@ class XiaomiMIoTConfigurator extends IPSModuleStrict
     /**
      * GetDevices
      *
+     * Geräteliste (eigene und freigegebene Geräte) von der Cloud IO, immer frisch geladen.
+     *
      * @return array
      */
     private function GetDevices(): array
     {
-        $this->SendDebug(__FUNCTION__, \Xiaomi\Cloud\ApiUrl::Device_List, 0);
-        $Request = json_encode([
-            'getVirtualModel'   => true,
-            'getHuamiDevices'   => 1,
-            'get_split_device'  => true,
-            'support_smart_home'=> true,
-            'get_cariot_device' => true
-        ]);
-        $Result = $this->SendDataToParent(\Xiaomi\Cloud\ForwardData::ToJson(\Xiaomi\Cloud\ApiUrl::Device_List, $Request));
-        $this->SendDebug(__FUNCTION__, \Xiaomi\Sensitive::mask((string) $Result), 0);
-        if (!$Result) {
-            return [];
-        }
+        $Result = $this->SendDataToParent(\Xiaomi\Cloud\Command::ToJson(\Xiaomi\Cloud\Command::GetDeviceList, ['refresh' => true]));
         $Result = json_decode($Result, true);
-        if (($Result['code'] ?? -1) != 0) {
+        if (!is_array($Result) || !isset($Result['result'])) {
+            $this->SendDebug(__FUNCTION__, 'no device list', 0);
             return [];
         }
-        return $Result['result']['list'] ?? [];
+        $this->SendDebug(__FUNCTION__, count($Result['result']) . ' devices', 0);
+        return $Result['result'];
     }
 
     /**
      * GetInstanceList
      *
-     * Liefert alle Geräte-Instanzen an der angegebenen Cloud IO.
+     * Liefert alle Geräte-Instanzen mit DeviceId und verbundener Cloud IO.
      *
-     * @param  int $IOId ID der Cloud IO
-     * @return array InstanzID => DeviceId
+     * @return array InstanzID => ['id' => InstanzID, 'did' => DeviceId, 'io' => Cloud IO]
      */
-    private function GetInstanceList(int $IOId): array
+    private function GetInstanceList(): array
     {
-        $InstanceIDList = [];
+        $Instances = [];
         foreach (IPS_GetInstanceListByModuleID(\Xiaomi\GUID::MiDevice) as $InstanceID) {
-            if (IPS_GetInstance($InstanceID)['ConnectionID'] != $IOId) {
-                continue;
-            }
-            $InstanceIDList[$InstanceID] = IPS_GetProperty($InstanceID, \Xiaomi\Device\Property::DeviceId);
+            $Instances[$InstanceID] = [
+                'id'  => $InstanceID,
+                'did' => (string) IPS_GetProperty($InstanceID, \Xiaomi\Device\Property::DeviceId),
+                'io'  => IPS_GetInstance($InstanceID)['ConnectionID']
+            ];
         }
-        $this->SendDebug('Filter', $InstanceIDList, 0);
-        return $InstanceIDList;
+        return $Instances;
     }
 }

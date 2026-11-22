@@ -5,7 +5,8 @@
     "vendor": "Xiaomi",
     "aliases": [],
     "parentRequirements": [
-        "{76F2BB7B-F2B9-47EA-88F7-FD357D2E49E1}"
+        "{76F2BB7B-F2B9-47EA-88F7-FD357D2E49E1}",
+        "{9A3D49C8-30BC-7F07-8B6A-3DF5B32D42E6}"
     ],
     "childRequirements": [],
     "implemented": [

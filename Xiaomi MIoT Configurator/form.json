@@ -45,6 +45,11 @@
                     "width": "150px"
                 },
                 {
+                    "caption": "Origin",
+                    "name": "Origin",
+                    "width": "220px"
+                },
+                {
                     "caption": "Name",
                     "name": "name",
                     "width": "auto"

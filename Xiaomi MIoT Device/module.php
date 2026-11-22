@@ -8,6 +8,7 @@ eval('declare(strict_types=1);namespace XiaomiMiDevice {?>' . file_get_contents(
 eval('declare(strict_types=1);namespace XiaomiMiDevice {?>' . file_get_contents(__DIR__ . '/../libs/helper/ParentIOHelper.php') . '}');
 require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
 require_once dirname(__DIR__) . '/libs/MiioProtocol.php';
+require_once dirname(__DIR__) . '/libs/MiotSpec.php';
 
 /**
  * @method bool SendDebug(string $Message, mixed $Data, int $Format)
@@ -78,7 +79,6 @@ class XiaomiMIoTDevice extends IPSModuleStrict
         $this->RegisterAttributeString(\Xiaomi\Device\Attribute::ProductName, '');
         $this->RegisterAttributeArray(\Xiaomi\Device\Attribute::Info, []);
         $this->RegisterAttributeString(\Xiaomi\Device\Attribute::Icon, '');
-        $this->RegisterAttributeArray(\Xiaomi\Device\Attribute::Locales, []);
         $this->RegisterAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, false);
         $this->RegisterAttributeArray(\Xiaomi\Device\Attribute::ActionIdentsWithValues, []);
         $this->RegisterAttributeArray(\Xiaomi\Device\Attribute::ActionIdents, []);
@@ -241,19 +241,17 @@ class XiaomiMIoTDevice extends IPSModuleStrict
                 // Alle Timer anhalten
                 $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, 0);
                 $this->SetTimerInterval(\Xiaomi\Device\Timer::Reconnect, 0);
-                // Alle Attribute löschen
-                $this->WriteAttributeString(\Xiaomi\Device\Attribute::Token, '');
-                $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Specs, []);
-                $this->WriteAttributeString(\Xiaomi\Device\Attribute::ProductName, '');
-                $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Info, []);
-                $this->WriteAttributeString(\Xiaomi\Device\Attribute::Icon, '');
-                $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Locales, []);
+                // Gerätedaten und Beschreibung an der Cloud IO vorbei am Zwischenspeicher neu laden.
+                // Alte Daten bleiben erhalten, bis die neuen erfolgreich geladen sind.
+                if (!$this->HasActiveParent()) {
+                    echo $this->Translate('Cloud IO is not active') . PHP_EOL;
+                    return;
+                }
                 $this->WriteAttributeBoolean(\Xiaomi\Device\Attribute::useCloud, false);
-                $this->WriteAttributeArray(\Xiaomi\Device\Attribute::ActionIdentsWithValues, []);
-                $this->WriteAttributeArray(\Xiaomi\Device\Attribute::ActionIdents, []);
-                $this->WriteAttributeArray(\Xiaomi\Device\Attribute::ParamIdentsRead, []);
-                $this->WriteAttributeArray(\Xiaomi\Device\Attribute::ParamIdentsWrite, []);
-                // Neu laden von allen Einstellungen und Attributen
+                $this->LoadDeviceData(true);
+                if (!$this->LoadSpec(true)) {
+                    echo $this->Translate('Device description could not be loaded') . PHP_EOL;
+                }
                 $this->InitConnection();
                 $this->ReloadForm();
                 return;
@@ -443,7 +441,8 @@ class XiaomiMIoTDevice extends IPSModuleStrict
             return json_encode($Form);
         }
         $Form['elements'][1]['items'][1]['items'][0]['enabled'] = !$this->ReadPropertyBoolean(\Xiaomi\Device\Property::DeniedCloud);
-        $Form['elements'][1]['items'][1]['items'][1]['enabled'] = !$this->ReadPropertyBoolean(\Xiaomi\Device\Property::ForceCloud);
+        // „Cloud verbieten“ nur mit lokaler IP möglich
+        $Form['elements'][1]['items'][1]['items'][1]['enabled'] = !$this->ReadPropertyBoolean(\Xiaomi\Device\Property::ForceCloud) && ($this->ReadPropertyString(\Xiaomi\Device\Property::Host) !== '');
         $Icon = $this->ReadAttributeString(\Xiaomi\Device\Attribute::Icon);
         if ($Icon) {
             $Icon = 'data:image/png;base64, ' . $Icon;
@@ -483,7 +482,12 @@ class XiaomiMIoTDevice extends IPSModuleStrict
             ],
             [
                 'type'      => 'Label',
-                'caption'   => $this->Translate('Specs: ') . (isset($Info['model']) ? \Xiaomi\Device\SpecUrls::Device . $Info['model'] : '')
+                'caption'   => 'URN: ' . ($Info['urn'] ?? '')
+            ],
+            [
+                'type'      => 'Label',
+                'link'      => true,
+                'caption'   => $this->Translate('Specs: ') . (isset($Info['model']) ? \Xiaomi\Device\SpecUrls::Overview . $Info['model'] : '')
             ],
             [
                 'type'      => 'Label',
@@ -590,6 +594,11 @@ class XiaomiMIoTDevice extends IPSModuleStrict
             case IS_ACTIVE:
                 // „Wiederverbinden erfolgreich“ meldet RequestState nach der ersten erfolgreichen Abfrage.
                 break;
+            case \Xiaomi\Device\InstanceStatus::ConfigError:
+                // Konfigurationsfehler: kein Wiederverbinden, keine Verbindungsmeldung
+                $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, 0);
+                $this->SetTimerInterval(\Xiaomi\Device\Timer::Reconnect, 0);
+                break;
             case IS_INACTIVE:
                 $this->Retries = 0;
                 $this->Reconnecting = false;
@@ -648,6 +657,29 @@ class XiaomiMIoTDevice extends IPSModuleStrict
      */
     private function InitConnection(): void
     {
+        // Nur ein Verbindungsaufbau gleichzeitig: ApplyChanges und IOChangeState können sich überschneiden,
+        // seit das Laden der Gerätebeschreibung über die Cloud IO länger dauert.
+        $Lock = __CLASS__ . '.' . (string) $this->InstanceID . '.InitConnection';
+        if (!IPS_SemaphoreEnter($Lock, 1)) {
+            $this->SendDebug(__FUNCTION__, 'already running', 0);
+            return;
+        }
+        try {
+            $this->Connect();
+        } finally {
+            IPS_SemaphoreLeave($Lock);
+        }
+    }
+
+    /**
+     * Connect
+     *
+     * Verbindungsaufbau: Gerätedaten und Beschreibung von der Cloud IO, Handshake, erste Abfrage.
+     *
+     * @return void
+     */
+    private function Connect(): void
+    {
         $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, 0);
         $this->SetTimerInterval(\Xiaomi\Device\Timer::Reconnect, 0);
         $this->ServerStamp = 0;
@@ -656,7 +688,7 @@ class XiaomiMIoTDevice extends IPSModuleStrict
         // Anzeige IP in der INFO Spalte
         $this->SetSummary($this->ReadPropertyString(\Xiaomi\Device\Property::Host));
 
-        if ((!$this->ReadPropertyBoolean(\Xiaomi\Device\Property::Active)) || (!$this->ReadPropertyString(\Xiaomi\Device\Property::Host))) {
+        if (!$this->ReadPropertyBoolean(\Xiaomi\Device\Property::Active)) {
             $this->SetStatus(IS_INACTIVE);
             return;
         }
@@ -664,32 +696,33 @@ class XiaomiMIoTDevice extends IPSModuleStrict
             $this->SetStatus(\Xiaomi\Device\InstanceStatus::ConfigError);
             return;
         }
-
-        if (!$this->ReadAttributeString(\Xiaomi\Device\Attribute::Token)) {
-            if ($this->HasActiveParent()) {
-                // Kein Token -> Token aus Cloud holen.
-                if (!$this->GetToken()) {
-                    $this->SetStatus(\Xiaomi\Device\InstanceStatus::GetTokenFailed);
-                    return;
-                }
-            } else {
-                $this->SetStatus(IS_INACTIVE);
-                return;
-            }
-        }
-
-        if (!$this->SendHandshake()) {
+        // Die Cloud IO ist Pflicht (Gerätedaten, Token, Beschreibung). Ohne aktive IO warten, IOChangeState verbindet neu.
+        if (!$this->HasActiveParent()) {
+            $this->SendDebug(__FUNCTION__, 'waiting for active Cloud IO', 0);
+            $this->SetStatus(IS_INACTIVE);
             return;
         }
-
-        // Info Paket abholen mit model
-        if (!$this->GetModelData()) {
+        $HasHost = ($this->ReadPropertyString(\Xiaomi\Device\Property::Host) !== '');
+        // Ohne lokale IP nur über die Cloud
+        $ForceCloud = $this->ReadPropertyBoolean(\Xiaomi\Device\Property::ForceCloud) || !$HasHost;
+        $DeniedCloud = $this->ReadPropertyBoolean(\Xiaomi\Device\Property::DeniedCloud) && $HasHost;
+        // Ist die Cloud gerade nicht erreichbar, mit den gespeicherten Daten weiterarbeiten
+        $this->LoadDeviceData(false);
+        if (!$ForceCloud && ($this->ReadAttributeString(\Xiaomi\Device\Attribute::Token) === '')) {
+            $this->SetStatus(\Xiaomi\Device\InstanceStatus::GetTokenFailed);
+            return;
+        }
+        if (!$this->LoadSpec(false)) {
             $this->SetStatus(\Xiaomi\Device\InstanceStatus::GetSpecsFailed);
             return;
         }
+        if (!$ForceCloud) {
+            if (!$this->SendHandshake()) {
+                return;
+            }
+            $this->LoadLocalInfo();
+        }
         $this->CreateStateVariables();
-        $ForceCloud = $this->ReadPropertyBoolean(\Xiaomi\Device\Property::ForceCloud);
-        $DeniedCloud = $this->ReadPropertyBoolean(\Xiaomi\Device\Property::DeniedCloud);
         if ($ForceCloud) {
             $UseCloud = true;
         } elseif ($DeniedCloud) {
@@ -939,30 +972,102 @@ class XiaomiMIoTDevice extends IPSModuleStrict
     }
 
     /**
-     * GetToken
+     * SendCommand
      *
-     * @return bool
+     * Befehl an die Cloud IO (DataID SendCommandToCloud).
+     *
+     * @param  string $Command
+     * @param  array $Params
+     * @return ?array Inhalt von 'result', null bei Fehler
      */
-    private function GetToken(): bool
+    private function SendCommand(string $Command, array $Params): ?array
     {
-        $this->SendDebug(__FUNCTION__, '', 0);
-        $Params = json_encode(
-            [
-                'dids' => [
-                    $this->ReadPropertyString(\Xiaomi\Device\Property::DeviceId)
-                ]
-            ]
-        );
-        $Result = $this->SendCloud(\Xiaomi\Cloud\ApiUrl::Device_List, $Params);
-        if (is_null($Result)) {
+        $Response = $this->SendDataToParent(\Xiaomi\Cloud\Command::ToJson($Command, $Params));
+        $this->SendDebug('Command ' . $Command, \Xiaomi\Sensitive::mask($Response), 0);
+        $Result = json_decode($Response, true);
+        if (!is_array($Result) || !array_key_exists('result', $Result)) {
+            return null;
+        }
+        return is_array($Result['result']) ? $Result['result'] : null;
+    }
+
+    /**
+     * LoadDeviceData
+     *
+     * Modell, URN, Token und lokale IP aus der Geräteliste der Cloud IO. Ein geänderter Token wird übernommen.
+     *
+     * @param  bool $Refresh true = Geräteliste in der Cloud IO neu laden
+     * @return bool false, wenn die Cloud IO keine Daten liefert (gespeicherte Daten bleiben)
+     */
+    private function LoadDeviceData(bool $Refresh): bool
+    {
+        $Device = $this->SendCommand(\Xiaomi\Cloud\Command::GetDevice, ['did' => $this->ReadPropertyString(\Xiaomi\Device\Property::DeviceId), 'refresh' => $Refresh]);
+        if (is_null($Device)) {
             return false;
         }
-        if (empty($Result['list'][0]['token'])) {
-            $this->SendDebug(__FUNCTION__, 'no token in result', 0);
-            return false;
+        $Token = (string) ($Device[\Xiaomi\Cloud\DeviceKey::Token] ?? '');
+        if (($Token !== '') && ($Token !== $this->ReadAttributeString(\Xiaomi\Device\Attribute::Token))) {
+            $this->WriteAttributeString(\Xiaomi\Device\Attribute::Token, $Token);
         }
-        $this->WriteAttributeString(\Xiaomi\Device\Attribute::Token, $Result['list'][0]['token']);
+        $Info = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::Info);
+        $Info['model'] = (string) ($Device[\Xiaomi\Cloud\DeviceKey::Model] ?? '');
+        $Info['urn'] = (string) ($Device[\Xiaomi\Cloud\DeviceKey::Urn] ?? '');
+        $Info['mac'] = (string) ($Device[\Xiaomi\Cloud\DeviceKey::Mac] ?? '');
+        $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Info, $Info);
+        $Host = $this->ReadPropertyString(\Xiaomi\Device\Property::Host);
+        $this->SetSummary(($Host !== '') ? $Host . ' (' . $Info['model'] . ')' : $Info['model']);
         return true;
+    }
+
+    /**
+     * LoadSpec
+     *
+     * Lädt die Gerätebeschreibung von der Cloud IO, wenn sie fehlt, veraltet ist (Schema/URN) oder erzwungen wird.
+     * Die bisherige Beschreibung wird erst nach erfolgreichem Laden ersetzt.
+     *
+     * @param  bool $Force true = immer neu laden (auch am Zwischenspeicher der Cloud IO vorbei)
+     * @return bool true, wenn eine nutzbare Beschreibung vorliegt
+     */
+    private function LoadSpec(bool $Force): bool
+    {
+        $Urn = (string) ($this->ReadAttributeArray(\Xiaomi\Device\Attribute::Info)['urn'] ?? '');
+        $Specs = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::Specs);
+        $Usable = isset($Specs['services']);
+        $Current = (($Specs[\Xiaomi\Spec\Key::Schema] ?? 0) == \Xiaomi\Spec\Normalizer::SchemaVersion) && (($Specs[\Xiaomi\Spec\Key::Urn] ?? '') === $Urn);
+        if (($Current && !$Force) || ($Urn === '')) {
+            return $Usable;
+        }
+        $NewSpecs = $this->SendCommand(\Xiaomi\Cloud\Command::GetSpec, ['urn' => $Urn, 'refresh' => $Force]);
+        if (is_null($NewSpecs) || !isset($NewSpecs[\Xiaomi\Spec\Key::Services])) {
+            $this->SendDebug(__FUNCTION__, 'device description not available', 0);
+            return $Usable;
+        }
+        $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Specs, $NewSpecs);
+        $this->LogMessage($this->Translate('Device description loaded'), KL_NOTIFY);
+        return true;
+    }
+
+    /**
+     * LoadLocalInfo
+     *
+     * miIO.info (Firmware, Hardware, miIO-Version) für die Anzeige im Formular. Optional, Fehler nur ins Debug.
+     *
+     * @return void
+     */
+    private function LoadLocalInfo(): void
+    {
+        $Result = $this->SendLocal(\Xiaomi\Device\ApiMethod::Info);
+        if (!is_array($Result)) {
+            $this->SendDebug(__FUNCTION__, 'no miIO.info', 0);
+            return;
+        }
+        $Info = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::Info);
+        foreach (['miio_ver', 'fw_ver', 'hw_ver'] as $Key) {
+            if (isset($Result[$Key])) {
+                $Info[$Key] = $Result[$Key];
+            }
+        }
+        $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Info, $Info);
     }
 
     /**
@@ -978,7 +1083,7 @@ class XiaomiMIoTDevice extends IPSModuleStrict
             return false;
         }
         $OldToken = $this->ReadAttributeString(\Xiaomi\Device\Attribute::Token);
-        if (!$this->GetToken()) {
+        if (!$this->LoadDeviceData(true)) {
             return false;
         }
         if ($this->ReadAttributeString(\Xiaomi\Device\Attribute::Token) === $OldToken) {
@@ -1003,7 +1108,7 @@ class XiaomiMIoTDevice extends IPSModuleStrict
         }
         foreach ($Specs['services'] as $Service) {
             $Siid = $Service['iid'];
-            if (!array_key_exists('properties', $Service)) {
+            if (!array_key_exists('properties', $Service) || in_array($Service['type'] ?? '', \Xiaomi\Device\SkipService::Types)) {
                 continue;
             }
             foreach ($Service['properties'] as $Property) {
@@ -1024,72 +1129,79 @@ class XiaomiMIoTDevice extends IPSModuleStrict
     /**
      * GetVariableData
      *
-     * @param  int $Siid
-     * @param  array $Property
-     * @param  mixed $Locales
-     * @return array
+     * Variablentyp und Profil einer Eigenschaft (Gerätebeschreibung im eigenen Format, libs/MiotSpec.php).
+     *
+     * @param  array $Property Eigenschaft
+     * @param  string $ProfileSuffix Modellteil der URN (z.B. xiaomi-p76)
+     * @return array [Variablentyp, Profil]
      */
-    private function GetVariableData(int $Siid, array $Property, string $ProfileSuffix, &$Locales): array
+    private function GetVariableData(array $Property, string $ProfileSuffix): array
     {
-        $Piid = $Property['iid'];
-        $IpsVarType = \Xiaomi\Convert::ToIPSVar($Property['format']);
-        $Profile = \Xiaomi\Convert::getProfileName($Piid, $Property['type'], $ProfileSuffix);
+        $IpsVarType = \Xiaomi\Convert::ToIPSVar($Property[\Xiaomi\Spec\Key::Format]);
+        $Profile = \Xiaomi\Convert::getProfileName($Property[\Xiaomi\Spec\Key::Iid], $Property[\Xiaomi\Spec\Key::Type], $ProfileSuffix);
         $this->SendDebug(__FUNCTION__, $Profile, 0);
         $Suffix = '';
         $Min = 0;
         $Max = 0;
         $Step = 0;
         $Assoziation = [];
-        if (array_key_exists('unit', $Property)) {
-            switch ($Property['unit']) {
-                case 'none':
-                    break;
-                case 'rgb':
-                    $Profile = '~HexColor';
-                    break;
-                case 'percentage':
-                    $Suffix = ' %';
-                    break;
-                case 'arcdegrees':
-                    $Suffix = ' °';
-                    break;
-                case 'kelvin':
-                    $Profile = '~TWColor';
-                    break;
-                default:
-                    $Suffix = ' ' . \Xiaomi\Translate::getLocaleUnit($Property['unit']);
-                    break;
-            }
-        }
-        if (array_key_exists('valueList', $Property)) {
-            foreach ($Property['valueList'] as $Index => $Values) {
-                $LocaleKey = $Values['i18nKey']; //sprintf('service:%03d:property:%03d:valuelist:%03d', $Siid, $Piid, $Index);
-                if (array_key_exists($LocaleKey, $Locales)) {
-                    $Values['description'] = $Locales[$LocaleKey];
-                } else {
-                    $Values['description'] = \Xiaomi\Translate::getLocaleName($Values['description']);
-                }
-                $Assoziation[] = [$Values['value'], $Values['description'], '', -1];
-            }
-        }
-        if (isset($Property['valueRange'])) {
-            list($Min, $Max, $Step) = $Property['valueRange'];
-        }
-        switch ($IpsVarType) {
-            case VARIABLETYPE_BOOLEAN:
-                if (($Suffix == '') && (count($Assoziation) == 0)) {
-                    $Profile = (in_array('write', $Property['access']) ? '~Switch' : '');
-                }
+        switch ($Property[\Xiaomi\Spec\Key::Unit]) {
+            case '':
+            case 'none':
                 break;
+            case 'rgb':
+                $Profile = '~HexColor';
+                break;
+            case 'percentage':
+                $Suffix = ' %';
+                break;
+            case 'arcdegrees':
+                $Suffix = ' °';
+                break;
+            case 'kelvin':
+                $Profile = '~TWColor';
+                break;
+            default:
+                $Suffix = ' ' . \Xiaomi\Translate::getLocaleUnit($Property[\Xiaomi\Spec\Key::Unit]);
+                break;
+        }
+        foreach ($Property[\Xiaomi\Spec\Key::Values] as $Value) {
+            $Assoziation[] = [$Value[\Xiaomi\Spec\Key::Value], \Xiaomi\Translate::getLocaleName((string) $Value[\Xiaomi\Spec\Key::Name]), '', -1];
+        }
+        if (is_array($Property[\Xiaomi\Spec\Key::Range])) {
+            [$Min, $Max] = $Property[\Xiaomi\Spec\Key::Range];
+            $Step = $Property[\Xiaomi\Spec\Key::Range][2] ?? 0;
+        }
+        if ($IpsVarType == VARIABLETYPE_BOOLEAN) {
+            if (($Suffix == '') && (count($Assoziation) == 0)) {
+                $Profile = (in_array('write', $Property[\Xiaomi\Spec\Key::Access]) ? '~Switch' : '');
+            }
         }
         if (($Profile) && ($Profile[0] != '~')) {
             if (count($Assoziation)) {
                 $this->RegisterProfileEx($IpsVarType, $Profile, '', '', $Suffix, $Assoziation);
             } else {
-                $this->RegisterProfile($IpsVarType, $Profile, '', '', $Suffix, $Min, $Max, $Step);
+                $this->RegisterProfile($IpsVarType, $Profile, '', '', $Suffix, (float) $Min, (float) $Max, (float) $Step);
             }
         }
         return [$IpsVarType, $Profile];
+    }
+
+    /**
+     * ElementName
+     *
+     * Name aus der Gerätebeschreibung; ohne Übersetzung der Spec (Name = Beschreibung) über die Begriffstabelle.
+     *
+     * @param  array $Element Service, Eigenschaft oder Aktion
+     * @return string
+     */
+    private function ElementName(array $Element): string
+    {
+        $Name = (string) $Element[\Xiaomi\Spec\Key::Name];
+        if ($Name === (string) $Element[\Xiaomi\Spec\Key::Description]) {
+            return \Xiaomi\Translate::getLocaleName($Name);
+        }
+        return $Name;
     }
 
     /**
@@ -1100,96 +1212,77 @@ class XiaomiMIoTDevice extends IPSModuleStrict
     private function CreateStateVariables(): void
     {
         $Specs = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::Specs);
-        if (!isset($Specs['urn'])) {
+        // Nur mit Beschreibung im aktuellen Format (alte Formate werden durch LoadSpec ersetzt)
+        if (($Specs[\Xiaomi\Spec\Key::Schema] ?? 0) != \Xiaomi\Spec\Normalizer::SchemaVersion) {
             return;
         }
-        $ProfileSuffix = array_reverse(explode(':', $Specs['urn']))[1];
-        $Locales = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::Locales);
+        $ProfileSuffix = explode(':', $Specs[\Xiaomi\Spec\Key::Urn])[5] ?? '';
         $DisabledStateVariables = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::LockedStateVariables);
-        $this->SendDebug('Specs', json_encode($Specs), 0);
         $ActionsIdentsWithValue = [];
         $ActionsIdents = [];
         $ParamIdentsWrite = [];
         $ParamIdentsRead = [];
         $Pos = 0;
-        foreach ($Specs['services'] as $Service) {
-            $ServiceName = $Service['description'];
-            $ServiceKey = $Service['i18nKey'];
-            if (array_key_exists($ServiceKey, $Locales)) {
-                $ServiceName = $Locales[$ServiceKey];
+        foreach ($Specs[\Xiaomi\Spec\Key::Services] as $Service) {
+            if (in_array($Service[\Xiaomi\Spec\Key::Type], \Xiaomi\Device\SkipService::Types)) {
+                continue;
             }
-
-            if (array_key_exists('properties', $Service)) {
-                foreach ($Service['properties'] as $Property) {
-                    if (!in_array('read', $Property['access']) && !in_array('write', $Property['access'])) {
-                        continue;
-                    }
-                    $Ident = \Xiaomi\IdentPrefix::Property . '_' . (string) $Service['iid'] . '_' . (string) $Property['iid']; // . '_' . $Property['prop'];
-                    $PropertyName = $Property['description'];
-                    $PropertyKey = sprintf('service:%03d:property:%03d', $Service['iid'], $Property['iid']);
-                    if (array_key_exists($PropertyKey, $Locales)) {
-                        $PropertyName = $Locales[$PropertyKey];
-                    } else {
-                        $PropertyName = \Xiaomi\Translate::getLocaleName($PropertyName);
-                    }
-                    $Name = $ServiceName . ': ' . $PropertyName;
-                    if (!in_array($Ident, $DisabledStateVariables)) {
-                        list($IpsVarType, $Profile) = $this->GetVariableData($Service['iid'], $Property, $ProfileSuffix, $Locales);
-                        $this->MaintainVariable($Ident, $Name, $IpsVarType, $Profile, $Pos++, true);
-                        if (in_array('write', $Property['access'])) {
-                            $this->EnableAction($Ident);
-                        }
-                    }
-                    if (in_array('write', $Property['access'])) {
-                        $ParamIdentsWrite[$Ident] = $Name;
-                    }
-                    $ParamIdentsRead[$Ident] = $Name;
+            $ServiceName = $this->ElementName($Service);
+            $Siid = $Service[\Xiaomi\Spec\Key::Iid];
+            $PropertiesByIid = array_column($Service[\Xiaomi\Spec\Key::Properties], null, \Xiaomi\Spec\Key::Iid);
+            foreach ($Service[\Xiaomi\Spec\Key::Properties] as $Property) {
+                $Access = $Property[\Xiaomi\Spec\Key::Access];
+                if (!in_array('read', $Access) && !in_array('write', $Access)) {
+                    continue;
                 }
+                $Ident = \Xiaomi\IdentPrefix::Property . '_' . (string) $Siid . '_' . (string) $Property[\Xiaomi\Spec\Key::Iid];
+                $Name = $ServiceName . ': ' . $this->ElementName($Property);
+                if (!in_array($Ident, $DisabledStateVariables)) {
+                    [$IpsVarType, $Profile] = $this->GetVariableData($Property, $ProfileSuffix);
+                    $this->MaintainVariable($Ident, $Name, $IpsVarType, $Profile, $Pos++, true);
+                    if (in_array('write', $Access)) {
+                        $this->EnableAction($Ident);
+                    }
+                }
+                if (in_array('write', $Access)) {
+                    $ParamIdentsWrite[$Ident] = $Name;
+                }
+                $ParamIdentsRead[$Ident] = $Name;
             }
-            if (array_key_exists('actions', $Service)) {
-                foreach ($Service['actions'] as $Action) {
-                    if (count($Action['in']) > 1) { // Aktionen mit mehr als einen Parameter sind nur per Script erreichbar
-                        continue;
-                    }
-                    $Ident = \Xiaomi\IdentPrefix::Action . '_' . (string) $Service['iid'] . '_' . (string) $Action['iid'];
-                    if (in_array($Ident, $DisabledStateVariables)) {
-                        continue;
-                    }
-                    $ActionName = $Action['description'];
-                    $ActionKey = sprintf('service:%03d:action:%03d', $Service['iid'], $Action['iid']);
-                    if (array_key_exists($ActionKey, $Locales)) {
-                        $ActionName = $Locales[$ActionKey];
-                    } else {
-                        $ActionName = \Xiaomi\Translate::getLocaleName($ActionName);
-                    }
-                    $Name = $ServiceName . ': ' . $ActionName;
-                    if (count($Action['in'])) { // ein Parameter -> Variable mit passendem Profil
-                        $PropertyKey = array_search($Action['in'][0], array_column($Service['properties'], 'iid'));
-                        if (!in_array($Ident, $DisabledStateVariables)) {
-                            list($IpsVarType, $Profile) = $this->GetVariableData($Service['iid'], $Service['properties'][$PropertyKey], $ProfileSuffix, $Locales);
-                            $this->MaintainVariable($Ident, $Name, $IpsVarType, $Profile, $Pos++, true);
-                            // Aktionen haben keinen Zustand: neutralen Wert passend zum Variablentyp setzen
-                            switch ($IpsVarType) {
-                                case VARIABLETYPE_BOOLEAN:
-                                    $this->SetValue($Ident, false);
-                                    break;
-                                case VARIABLETYPE_STRING:
-                                    $this->SetValue($Ident, '');
-                                    break;
-                                default:
-                                    $this->SetValue($Ident, -1);
-                                    break;
-                            }
-                        }
-                        $ActionsIdentsWithValue[$Ident] = $Name;
-                    } else { // kein Parameter, nur 'Execute' Profile
-                        if (!in_array($Ident, $DisabledStateVariables)) {
-                            $this->MaintainVariable($Ident, $Name, VARIABLETYPE_INTEGER, 'XIAOMI.ExecuteAction', $Pos++, true);
-                        }
-                        $ActionsIdents[$Ident] = $Name;
-                    }
-                    $this->EnableAction($Ident);
+            foreach ($Service[\Xiaomi\Spec\Key::Actions] as $Action) {
+                $In = $Action[\Xiaomi\Spec\Key::In];
+                if (count($In) > 1) { // Aktionen mit mehr als einen Parameter sind nur per Script erreichbar
+                    continue;
                 }
+                $Ident = \Xiaomi\IdentPrefix::Action . '_' . (string) $Siid . '_' . (string) $Action[\Xiaomi\Spec\Key::Iid];
+                if (in_array($Ident, $DisabledStateVariables)) {
+                    continue;
+                }
+                $Name = $ServiceName . ': ' . $this->ElementName($Action);
+                if (count($In)) { // ein Parameter -> Variable mit passendem Profil
+                    if (!isset($PropertiesByIid[$In[0]])) {
+                        continue;
+                    }
+                    [$IpsVarType, $Profile] = $this->GetVariableData($PropertiesByIid[$In[0]], $ProfileSuffix);
+                    $this->MaintainVariable($Ident, $Name, $IpsVarType, $Profile, $Pos++, true);
+                    // Aktionen haben keinen Zustand: neutralen Wert passend zum Variablentyp setzen
+                    switch ($IpsVarType) {
+                        case VARIABLETYPE_BOOLEAN:
+                            $this->SetValue($Ident, false);
+                            break;
+                        case VARIABLETYPE_STRING:
+                            $this->SetValue($Ident, '');
+                            break;
+                        default:
+                            $this->SetValue($Ident, -1);
+                            break;
+                    }
+                    $ActionsIdentsWithValue[$Ident] = $Name;
+                } else { // kein Parameter, nur 'Execute' Profile
+                    $this->MaintainVariable($Ident, $Name, VARIABLETYPE_INTEGER, 'XIAOMI.ExecuteAction', $Pos++, true);
+                    $ActionsIdents[$Ident] = $Name;
+                }
+                $this->EnableAction($Ident);
             }
         }
         $this->WriteAttributeArray(\Xiaomi\Device\Attribute::ActionIdentsWithValues, $ActionsIdentsWithValue);
@@ -1306,101 +1399,6 @@ class XiaomiMIoTDevice extends IPSModuleStrict
         }
         $State = \Xiaomi\Device\InstanceStatus::TimeoutError;
         return null;
-    }
-
-    /**
-     * GetModelData
-     *
-     * @return bool
-     */
-    private function GetModelData(): bool
-    {
-        // Info Paket laden
-        $Result = $this->SendLocal(\Xiaomi\Device\ApiMethod::Info);
-        $this->SendDebug('GetModelData', \Xiaomi\Sensitive::mask($Result), 0);
-        if (is_null($Result)) {
-            $this->SendDebug('Error get model', '', 0);
-            return false;
-        }
-        $OldSpecs = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::Info);
-        $OldModel = array_key_exists('model', $OldSpecs) ? $OldSpecs['model'] : 'invalid';
-        $Specs = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::Specs);
-        if (!isset($Specs['urn'])) {
-            $OldModel = 'invalid';
-        }
-        $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Info, $Result);
-        $this->SendDebug('Model loaded', $Result['model'], 0);
-        $this->SetSummary($this->ReadPropertyString(\Xiaomi\Device\Property::Host) . ' (' . $Result['model'] . ')');
-        // wenn das Attribute schon vorhanden ist brauchen wir vielleicht nicht neu laden
-        // Fallback von Versionen wo das Attribute fehlte
-        if (count($this->ReadAttributeArray(\Xiaomi\Device\Attribute::ParamIdentsRead))) {
-            // Wenn model nicht geändert alles okay
-            if ($Result['model'] == $OldModel) {
-                $this->SendDebug('Model not changed', $OldModel, 0);
-                return true;
-            }
-        }
-        $this->SendDebug('Model changed (old)', $OldModel, 0);
-        $this->SendDebug('Model changed', 'Load specs...', 0);
-        $this->LogMessage('Load specs...', KL_NOTIFY);
-        // Fähigkeiten neu laden
-        /**
-         * @todo Kaputt weil die Seite offline ist :(
-         */
-        $Data = @Sys_GetURLContentEx(\Xiaomi\Device\SpecUrls::Device . $Result['model'], ['Timeout'=>15000]);
-        if (!$Data) {
-            $this->SendDebug('ERROR load SpecsDom', \Xiaomi\Device\SpecUrls::Device . $Result['model'], 0);
-            $this->LogMessage('ERROR load SpecsDom ' . \Xiaomi\Device\SpecUrls::Device . $Result['model'], KL_ERROR);
-            return false;
-        }
-        $this->SendDebug('Get SpecsDom', $Data, 0);
-        $HtmlDoc = Dom\HTMLDocument::createFromString($Data);
-        $xpath = new Dom\XPath($HtmlDoc);
-        $AppDataNodes = $xpath->query('//*[@data-page="app"]', null, false);
-        if ($AppDataNodes->length != 1) {
-            $this->SendDebug('Error get model node', $AppDataNodes->length, 0);
-            $this->LogMessage('Error get model node', KL_ERROR);
-            return false;
-        }
-        $JsonSpecs = $AppDataNodes->item(0)->textContent;
-        $Specs = json_decode($JsonSpecs, true);
-        // services/property in AttributeArray schreiben
-        $this->SendDebug('Get Specs', $JsonSpecs, 0);
-
-        $IconURLs = array_intersect_key($Specs['props']['product'], array_flip(['icon', 'icon_real', 'icon_on', 'icon_off']));
-        foreach ($IconURLs as $IconURL) {
-            if ($IconURL) {
-                $IconRaw = @Sys_GetURLContentEx($IconURL, ['Timeout'=>5000]);
-                $this->WriteAttributeString(\Xiaomi\Device\Attribute::Icon, base64_encode($IconRaw));
-                break;
-            }
-        }
-
-        $this->SendDebug('Model name', $Specs['props']['product']['name'], 0);
-        $this->SendDebug('Model specs', json_encode($Specs['props']['tree']), 0);
-        $this->WriteAttributeString(\Xiaomi\Device\Attribute::ProductName, $Specs['props']['product']['name']);
-        $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Specs, array_merge($Specs['props']['tree'], $Specs['props']['spec']));
-        $this->writeLocale($Specs['props']['i18n']);
-        $this->LogMessage('Load specs...finished', KL_NOTIFY);
-        return true;
-    }
-
-    /**
-     * writeLocale
-     *
-     * @param  array $Data
-     * @return bool
-     */
-    private function writeLocale(array $Data): bool
-    {
-        $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Locales, []);
-        $locale = explode('_', IPS_GetSystemLanguage())[0];
-        if (array_key_exists($locale, $Data)) {
-            $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Locales, array_merge($Data['en'], $Data[$locale]));
-        } else {
-            $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Locales, $Data['en']);
-        }
-        return true;
     }
 
     /**

@@ -5,11 +5,15 @@ declare(strict_types=1);
 eval('declare(strict_types=1);namespace XiaomiCloudIO {?>' . file_get_contents(__DIR__ . '/../libs/helper/DebugHelper.php') . '}');
 eval('declare(strict_types=1);namespace XiaomiCloudIO {?>' . file_get_contents(__DIR__ . '/../libs/helper/BufferHelper.php') . '}');
 require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
+require_once dirname(__DIR__) . '/libs/MiotSpec.php';
 /**
  * @method bool SendDebug(string $Message, mixed $Data, int $Format)
  * @property string $VerifyUrl
  * @property string $IdentitySession
  * @property int $Flag
+ * @property array $DeviceList Zwischengespeicherte Geräteliste (did => Gerät, mit Token)
+ * @property int $DeviceListTime Zeitpunkt der letzten Abfrage der Geräteliste
+ * @property array $SpecCache Zwischengespeicherte Gerätebeschreibungen (urn => ['time', 'spec'])
  */
 class XiaomiMIoTCloudIO extends IPSModuleStrict
 {
@@ -130,6 +134,9 @@ class XiaomiMIoTCloudIO extends IPSModuleStrict
         $this->RegisterAttributeString(\Xiaomi\Cloud\Attribute::Sign, '');
         $this->VerifyUrl = '';
         $this->IdentitySession = '';
+        $this->DeviceList = [];
+        $this->DeviceListTime = 0;
+        $this->SpecCache = [];
     }
 
     /**
@@ -169,6 +176,9 @@ class XiaomiMIoTCloudIO extends IPSModuleStrict
     {
         //Never delete this line!
         parent::ApplyChanges();
+        $this->DeviceList = [];
+        $this->DeviceListTime = 0;
+        $this->SpecCache = [];
         $this->SetSummary($this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Username));
         if (IPS_GetKernelRunlevel() != KR_READY) {
             $this->RegisterMessage(0, IPS_KERNELSTARTED);
@@ -272,28 +282,12 @@ class XiaomiMIoTCloudIO extends IPSModuleStrict
             $this->SendDebug('ForwardData', 'Instance not active', 0);
             return '';
         }
+        if ((json_decode($JSONString, true)[\Xiaomi\Cloud\ForwardData::GUID] ?? '') === \Xiaomi\GUID::SendCommandToCloud) {
+            [$Command, $Params] = \Xiaomi\Cloud\Command::FromJson($JSONString);
+            return $this->HandleCommand($Command, $Params);
+        }
         list($Uri, $Params) = \Xiaomi\Cloud\ForwardData::FromJson($JSONString);
-        $Response = $this->Request($Uri, $Params);
-        if (is_null($Response)) {
-            return '';
-        }
-        $Result = json_decode($Response, true);
-        if ($Result === null) {
-            return '';
-        }
-        if (($Result['code'] ?? 0) == 2) {
-            if ($this->Login(
-                $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Username),
-                $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Password)
-            )) {
-                if ($this->UpdateServiceToken()) {
-                    $Response = $this->Request($Uri, $Params);
-                    return is_null($Response) ? '' : $Response;
-                }
-            }
-            $this->SetStatus(IS_EBASE + 1);
-        }
-        return is_null($Response) ? '' : $Response;
+        return $this->CallApi($Uri, $Params);
     }
 
     /**
@@ -392,6 +386,271 @@ class XiaomiMIoTCloudIO extends IPSModuleStrict
             return $this->Translate('MESSAGE:Verification successful!');
         }
         return $this->Translate($Result);
+    }
+
+    /**
+     * CallApi
+     *
+     * Ruft einen Cloud-Endpunkt auf und meldet sich bei abgelaufener Sitzung (code 2) einmal neu an.
+     *
+     * @param  string $Uri Pfad des Endpunkts
+     * @param  string $Params Parameter (JSON)
+     * @return string Antwort (JSON) oder '' im Fehlerfall
+     */
+    private function CallApi(string $Uri, string $Params): string
+    {
+        $Response = $this->Request($Uri, $Params);
+        if (is_null($Response)) {
+            return '';
+        }
+        $Result = json_decode($Response, true);
+        if ($Result === null) {
+            return '';
+        }
+        if (($Result['code'] ?? 0) == 2) {
+            if ($this->Login(
+                $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Username),
+                $this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Password)
+            )) {
+                if ($this->UpdateServiceToken()) {
+                    $Response = $this->Request($Uri, $Params);
+                    return is_null($Response) ? '' : $Response;
+                }
+            }
+            $this->SetStatus(IS_EBASE + 1);
+        }
+        return $Response;
+    }
+
+    /**
+     * CallApiResult
+     *
+     * @param  string $Uri Pfad des Endpunkts
+     * @param  array $Params Parameter
+     * @return ?array Inhalt von 'result' bei code 0, sonst null
+     */
+    private function CallApiResult(string $Uri, array $Params): ?array
+    {
+        $Result = json_decode($this->CallApi($Uri, json_encode($Params)), true);
+        if (!is_array($Result) || (($Result['code'] ?? -1) != 0)) {
+            return null;
+        }
+        return is_array($Result['result'] ?? null) ? $Result['result'] : [];
+    }
+
+    /**
+     * HandleCommand
+     *
+     * Befehle von Geräten und Konfigurator (DataID GUID::SendCommandToCloud).
+     *
+     * @param  string $Command
+     * @param  array $Params
+     * @return string JSON {"result": …} oder {"error": "…"}
+     */
+    private function HandleCommand(string $Command, array $Params): string
+    {
+        $this->SendDebug('Command', $Command . ' ' . json_encode($Params), 0);
+        switch ($Command) {
+            case \Xiaomi\Cloud\Command::GetDeviceList:
+                $List = $this->GetDeviceList((bool) ($Params['refresh'] ?? false));
+                if (is_null($List)) {
+                    return json_encode(['error' => 'Device list not available']);
+                }
+                // Konfigurator braucht keine Token
+                foreach ($List as &$Device) {
+                    unset($Device[\Xiaomi\Cloud\DeviceKey::Token]);
+                }
+                return json_encode(['result' => array_values($List)]);
+            case \Xiaomi\Cloud\Command::GetDevice:
+                $DeviceId = (string) ($Params['did'] ?? '');
+                $List = $this->GetDeviceList((bool) ($Params['refresh'] ?? false));
+                if (!isset($List[$DeviceId])) {
+                    // Neues Gerät oder Liste veraltet: einmal neu laden
+                    $List = $this->GetDeviceList(true);
+                }
+                if (!isset($List[$DeviceId])) {
+                    return json_encode(['error' => 'Device not found in cloud']);
+                }
+                return json_encode(['result' => $List[$DeviceId]]);
+            case \Xiaomi\Cloud\Command::GetSpec:
+                $Spec = $this->GetSpec((string) ($Params['urn'] ?? ''), (bool) ($Params['refresh'] ?? false));
+                if (is_null($Spec)) {
+                    return json_encode(['error' => 'Device description not available']);
+                }
+                return json_encode(['result' => $Spec]);
+        }
+        return json_encode(['error' => 'Unknown command']);
+    }
+
+    /**
+     * GetSpec
+     *
+     * Gerätebeschreibung im eigenen Format, übersetzt in die Systemsprache. Quelle zuerst die Cloud
+     * (wie die App), sonst die öffentliche Quelle. Wird SpecMaxAge Sekunden zwischengespeichert.
+     *
+     * @param  string $Urn Volle URN inkl. Suffix (spec_type aus der Geräteliste)
+     * @param  bool $Refresh true = Zwischenspeicher ignorieren
+     * @return ?array null, wenn keine Quelle die Beschreibung liefert
+     */
+    private function GetSpec(string $Urn, bool $Refresh): ?array
+    {
+        if ($Urn === '') {
+            return null;
+        }
+        $Cache = $this->SpecCache;
+        if (!$Refresh && isset($Cache[$Urn]) && (time() - $Cache[$Urn]['time'] < \Xiaomi\Cloud\Command::SpecMaxAge)) {
+            return $Cache[$Urn]['spec'];
+        }
+        $Raw = $this->LoadSpecFromCloud($Urn) ?? $this->LoadSpecPublic($Urn);
+        if (is_null($Raw)) {
+            $this->SendDebug(__FUNCTION__, 'no source for ' . $Urn, 0);
+            return null;
+        }
+        [$Instance, $Languages] = $Raw;
+        $Spec = \Xiaomi\Spec\Normalizer::Normalize($Instance, $Languages, \Xiaomi\Spec\Normalizer::Language(IPS_GetSystemLanguage()));
+        $Cache[$Urn] = ['time' => time(), 'spec' => $Spec];
+        $this->SpecCache = $Cache;
+        return $Spec;
+    }
+
+    /**
+     * LoadSpecFromCloud
+     *
+     * @param  string $Urn
+     * @return ?array [Rohdaten, Übersetzungen je Sprache]
+     */
+    private function LoadSpecFromCloud(string $Urn): ?array
+    {
+        $Result = json_decode($this->CallApi(\Xiaomi\Cloud\ApiUrl::SpecInstances, json_encode(['dids' => [''], 'urns' => [$Urn], 'isGetFullInstance' => true])), true);
+        $Instance = json_decode((string) ($Result['instances'][$Urn]['instance'] ?? ''), true);
+        if (!is_array($Instance) || !isset($Instance['services'])) {
+            $this->SendDebug(__FUNCTION__, 'no instance', 0);
+            return null;
+        }
+        // Übersetzungen sind optional, ohne sie bleiben die englischen Beschreibungen
+        $Result = json_decode($this->CallApi(\Xiaomi\Cloud\ApiUrl::SpecLanguages, json_encode(['urns' => [$Urn . ',0']])), true);
+        return [$Instance, (array) ($Result['result'][$Urn]['data'] ?? [])];
+    }
+
+    /**
+     * LoadSpecPublic
+     *
+     * @param  string $Urn
+     * @return ?array [Rohdaten, Übersetzungen je Sprache]
+     */
+    private function LoadSpecPublic(string $Urn): ?array
+    {
+        foreach (\Xiaomi\Cloud\ApiUrl::SpecPublicHosts as $Host) {
+            $Instance = json_decode((string) @Sys_GetURLContentEx($Host . \Xiaomi\Cloud\ApiUrl::SpecPublicInstance . $Urn, ['Timeout' => 15000]), true);
+            if (!is_array($Instance) || !isset($Instance['services'])) {
+                $this->SendDebug(__FUNCTION__, 'no instance from ' . $Host, 0);
+                continue;
+            }
+            $Languages = json_decode((string) @Sys_GetURLContentEx($Host . \Xiaomi\Cloud\ApiUrl::SpecPublicLanguages . $Urn, ['Timeout' => 15000]), true);
+            return [$Instance, (array) ($Languages['data'] ?? [])];
+        }
+        return null;
+    }
+
+    /**
+     * GetDeviceList
+     *
+     * Eigene Geräte (alle Seiten) und Geräte aus freigegebenen Zuhause anderer Konten.
+     * Wird für DeviceListMaxAge Sekunden zwischengespeichert.
+     *
+     * @param  bool $Refresh true = Zwischenspeicher ignorieren
+     * @return ?array did => Gerät (mit Token), null wenn die eigene Liste nicht geladen werden konnte
+     */
+    private function GetDeviceList(bool $Refresh): ?array
+    {
+        if (!$Refresh && $this->DeviceListTime && (time() - $this->DeviceListTime < \Xiaomi\Cloud\Command::DeviceListMaxAge)) {
+            return $this->DeviceList;
+        }
+        $List = [];
+        // Eigene Geräte, seitenweise
+        $StartDid = '';
+        for ($Page = 0; $Page < 20; $Page++) {
+            $Params = [
+                'getVirtualModel'   => true,
+                'getHuamiDevices'   => 1,
+                'get_split_device'  => true,
+                'support_smart_home'=> true,
+                'get_cariot_device' => true,
+                'limit'             => 200
+            ];
+            if ($StartDid !== '') {
+                $Params['start_did'] = $StartDid;
+            }
+            $Result = $this->CallApiResult(\Xiaomi\Cloud\ApiUrl::Device_List, $Params);
+            if (is_null($Result)) {
+                return null;
+            }
+            foreach ($Result['list'] ?? [] as $Device) {
+                $List[(string) $Device['did']] = self::NormalizeDevice($Device, false, '');
+            }
+            if (empty($Result['has_more']) || empty($Result['next_start_did'])) {
+                break;
+            }
+            $StartDid = (string) $Result['next_start_did'];
+        }
+        // Freigegebene Zuhause anderer Konten (Fehler hier nur ins Debug, eigene Geräte bleiben nutzbar)
+        $Homes = $this->CallApiResult(\Xiaomi\Cloud\ApiUrl::HomeMerged, [
+            'fg'              => true,
+            'fetch_share'     => true,
+            'fetch_share_dev' => true,
+            'limit'           => 300,
+            'app_ver'         => 12
+        ]);
+        foreach ($Homes['homelist'] ?? [] as $Home) {
+            if (empty($Home['shareflag'])) {
+                continue;
+            }
+            $Result = $this->CallApiResult(\Xiaomi\Cloud\ApiUrl::HomeDeviceList, [
+                'home_owner'         => $Home['uid'],
+                'home_id'            => $Home['id'],
+                'limit'              => 200,
+                'get_split_device'   => true,
+                'support_smart_home' => true
+            ]);
+            if (is_null($Result)) {
+                $this->SendDebug(__FUNCTION__, 'shared home not available', 0);
+                continue;
+            }
+            foreach ($Result['device_info'] ?? [] as $Device) {
+                $DeviceId = (string) $Device['did'];
+                if (!isset($List[$DeviceId])) {
+                    $List[$DeviceId] = self::NormalizeDevice($Device, true, (string) ($Device['owner']['nickname'] ?? ''));
+                }
+            }
+        }
+        $this->SendDebug(__FUNCTION__, count($List) . ' devices', 0);
+        $this->DeviceList = $List;
+        $this->DeviceListTime = time();
+        return $List;
+    }
+
+    /**
+     * NormalizeDevice
+     *
+     * @param  array $Device Gerät aus der Cloud
+     * @param  bool $Shared Gerät aus einem freigegebenen Zuhause
+     * @param  string $Owner Name des Eigentümers (nur bei Freigabe)
+     * @return array
+     */
+    private static function NormalizeDevice(array $Device, bool $Shared, string $Owner): array
+    {
+        return [
+            \Xiaomi\Cloud\DeviceKey::DeviceId => (string) $Device['did'],
+            \Xiaomi\Cloud\DeviceKey::Name     => (string) ($Device['name'] ?? ''),
+            \Xiaomi\Cloud\DeviceKey::Model    => (string) ($Device['model'] ?? ''),
+            \Xiaomi\Cloud\DeviceKey::Urn      => (string) ($Device['spec_type'] ?? ''),
+            \Xiaomi\Cloud\DeviceKey::LocalIp  => (string) ($Device['localip'] ?? ''),
+            \Xiaomi\Cloud\DeviceKey::Token    => (string) ($Device['token'] ?? ''),
+            \Xiaomi\Cloud\DeviceKey::Online   => !empty($Device['isOnline']),
+            \Xiaomi\Cloud\DeviceKey::Mac      => (string) ($Device['mac'] ?? ''),
+            \Xiaomi\Cloud\DeviceKey::Shared   => $Shared,
+            \Xiaomi\Cloud\DeviceKey::Owner    => $Owner
+        ];
     }
 
     /**

@@ -27,7 +27,8 @@ class DeviceReconnectTest extends TestCase
         parent::setUp();
         $this->InstanceID = IPS_CreateInstance(self::DeviceModuleID);
         IPS_SetProperty($this->InstanceID, \Xiaomi\Device\Property::Active, true);
-        IPS_ApplyChanges($this->InstanceID); // ohne Host: bleibt inaktiv, kein Netzwerkzugriff
+        IPS_SetProperty($this->InstanceID, \Xiaomi\Device\Property::DeviceId, '123');
+        IPS_ApplyChanges($this->InstanceID); // ohne Cloud IO: bleibt inaktiv, kein Netzwerkzugriff
         $this->Device = IPS\InstanceManager::getInstanceInterface($this->InstanceID);
     }
 

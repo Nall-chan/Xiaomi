@@ -4,6 +4,10 @@
             "Show offline devices": "Zeige offline Geräte",
             "Devices": "Geräte",
             "IP-Address": "IP-Adresse",
+            "Origin": "Herkunft",
+            "Own account": "Eigenes Konto",
+            "Shared by %s": "Freigegeben von %s",
+            "Cloud only": "Nur Cloud",
             "Invalid Ident": "Ungültiger Ident",
             "The Xiaomi MIoT Cloud IO is not connected or not logged in. Please open the gateway configuration and log in.": "Die Xiaomi MIoT Cloud IO ist nicht verbunden oder nicht angemeldet. Bitte die Konfiguration des Gateways öffnen und anmelden.",
             "This module is free for non-commercial use,\r\nDonations in support of the author are accepted here:": "Dieses Modul ist für die nicht kommerzielle Nutzung kostenlos,\r\nSchenkungen als Unterstützung für den Autor werden hier akzeptiert:"

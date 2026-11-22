@@ -13,6 +13,8 @@ namespace Xiaomi{
         public const CloudIO = '{DF2248D9-FC17-4609-840D-BA52DBF9CEB6}';
         public const ReceiveFromCloud = '{5F3A76AF-D01E-42A3-93A3-D4E5E9267E32}';
         public const SendToCloud = '{76F2BB7B-F2B9-47EA-88F7-FD357D2E49E1}';
+        /** Befehle an die Cloud IO (Geräteliste, Gerätedaten, Gerätebeschreibung) */
+        public const SendCommandToCloud = '{9A3D49C8-30BC-7F07-8B6A-3DF5B32D42E6}';
     }
 
     /**
@@ -261,6 +263,26 @@ namespace Xiaomi\Device{
     }
 
     /**
+     * SpecUrls
+     */
+    class SpecUrls
+    {
+        /** Übersichtsseite je Modell mit Eigenschaften und Aktionen (für Nutzer im Formular) */
+        public const Overview = 'https://home.miot-spec.com/spec/';
+    }
+
+    /**
+     * SkipService
+     *
+     * Services, die weder abgefragt noch als Variable angelegt werden.
+     * device-information (Service 1) beantworten Geräte lokal oft nicht (-4003), python-miio überspringt ihn ebenso.
+     */
+    class SkipService
+    {
+        public const Types = ['device-information'];
+    }
+
+    /**
      * ObsoleteKeys
      *
      * Nicht mehr registrierte Eigenschaften/Attribute (Entwicklungsstände 06/2023).
@@ -269,7 +291,7 @@ namespace Xiaomi\Device{
     class ObsoleteKeys
     {
         public const Properties = ['Model', 'Token'];
-        public const Attributes = ['DeviceId', 'Model'];
+        public const Attributes = ['DeviceId', 'Model', 'Locales'];
     }
 
     /**
@@ -402,17 +424,6 @@ namespace Xiaomi\Device{
         /** Pause vor der Wiederholung, wenn das Gerät beschäftigt ist (µs) */
         public const BusyRetryDelay = 500000;
     }
-
-    /**
-     * SpecUrls
-     */
-    class SpecUrls
-    {
-        public const Device = 'https://home.miot-spec.com/spec/';
-        public const AllMioTSpecs = 'https://miot-spec.org/miot-spec-v2/instances?status=all';
-        public const MioTDevices = 'https://miot-spec.org/miot-spec-v2/instance?type=';
-        public const Locales = 'https://miot-spec.org/instance/v2/multiLanguage?urn=';
-    }
 }
 
 namespace Xiaomi\Cloud{
@@ -445,6 +456,18 @@ namespace Xiaomi\Cloud{
         public const Login = 'https://account.xiaomi.com/pass/serviceLoginAuth2';
         public const Domain = 'api.io.mi.com/app';
         public const Device_List = '/v2/home/device_list_page';
+        /** Zuhause inkl. freigegebener (fetch_share) */
+        public const HomeMerged = '/v2/homeroom/gethome_merged';
+        /** Geräte eines Zuhauses (home_owner, home_id) */
+        public const HomeDeviceList = '/v2/home/home_device_list';
+        /** Gerätebeschreibung je URN (wie die App) */
+        public const SpecInstances = '/appgateway/gspec/Gspec/get_instances_by_dids';
+        /** Übersetzungen der Gerätebeschreibung je URN (wie die App) */
+        public const SpecLanguages = '/appgateway/gspec/Gspec/spec_multi_language';
+        /** Öffentliche Quelle als Ausweich, zweiter Host ist ein Spiegel */
+        public const SpecPublicHosts = ['https://miot-spec.org', 'https://spec.miot-spec.com'];
+        public const SpecPublicInstance = '/miot-spec-v2/instance?type=';
+        public const SpecPublicLanguages = '/instance/v2/multiLanguage?urn=';
         public const GetProperties = '/miotspec/prop/get';
         public const SetProperties = '/miotspec/prop/set';
         public const ExecuteAction = '/miotspec/action';
@@ -701,6 +724,77 @@ namespace Xiaomi\Cloud{
     /**
      * ForwardData
      */
+    /**
+     * Command
+     *
+     * Befehle von Gerät/Konfigurator an die Cloud IO (DataID GUID::SendCommandToCloud).
+     * Antwort: JSON {"result": …} oder {"error": "…"}.
+     */
+    class Command
+    {
+        public const Name = 'Command';
+        public const Params = 'Params';
+        /** Geräteliste ohne Token, Params: refresh (bool) */
+        public const GetDeviceList = 'GetDeviceList';
+        /** Ein Gerät inkl. Token, Params: did (string), refresh (bool) */
+        public const GetDevice = 'GetDevice';
+        /** Gerätebeschreibung im eigenen Format (libs/MiotSpec.php), Params: urn (string), refresh (bool) */
+        public const GetSpec = 'GetSpec';
+        /** Gerätebeschreibung in der Cloud IO höchstens so lange zwischenspeichern (Sekunden) */
+        public const SpecMaxAge = 86400;
+        /** Geräteliste in der Cloud IO höchstens so lange zwischenspeichern (Sekunden) */
+        public const DeviceListMaxAge = 300;
+
+        /**
+         * ToJson
+         *
+         * @param  string $Command
+         * @param  array $Params
+         * @return string
+         */
+        public static function ToJson(string $Command, array $Params = []): string
+        {
+            return json_encode(
+                [
+                    ForwardData::GUID => \Xiaomi\GUID::SendCommandToCloud,
+                    self::Name        => $Command,
+                    self::Params      => $Params
+                ]
+            );
+        }
+
+        /**
+         * FromJson
+         *
+         * @param  string $JSONString
+         * @return array [Command, Params]
+         */
+        public static function FromJson(string $JSONString): array
+        {
+            $Data = json_decode($JSONString, true);
+            return [(string) ($Data[self::Name] ?? ''), (array) ($Data[self::Params] ?? [])];
+        }
+    }
+
+    /**
+     * DeviceKey
+     *
+     * Felder eines Gerätes in der Geräteliste der Cloud IO (Cloud-Namen, plus eigene Felder Shared/Owner).
+     */
+    class DeviceKey
+    {
+        public const DeviceId = 'did';
+        public const Name = 'name';
+        public const Model = 'model';
+        public const Urn = 'spec_type';
+        public const LocalIp = 'localip';
+        public const Token = 'token';
+        public const Online = 'isOnline';
+        public const Mac = 'mac';
+        public const Shared = 'shared';
+        public const Owner = 'owner';
+    }
+
     class ForwardData
     {
         public const GUID = 'DataID';
