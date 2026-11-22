@@ -123,6 +123,45 @@ namespace Xiaomi\Spec {
         }
 
         /**
+         * NamedOutput
+         *
+         * Rückgabewerte einer Aktion (out, Liste in Reihenfolge der out-piids) mit dem Kurztyp der Eigenschaft als Schlüssel,
+         * z.B. [1, 0] → ['stream-status' => 1, 'video-attribute' => 0]. Doppelte Typen erhalten `_<piid>`.
+         * Passt die Beschreibung nicht (Aktion fehlt, Anzahl weicht ab), bleibt die Liste unverändert.
+         *
+         * @param  array $Spec Gerätebeschreibung im eigenen Format
+         * @param  int $Siid
+         * @param  int $Aiid
+         * @param  array $Out Rückgabewerte des Gerätes
+         * @return array
+         */
+        public static function NamedOutput(array $Spec, int $Siid, int $Aiid, array $Out): array
+        {
+            foreach ((array) ($Spec[Key::Services] ?? []) as $Service) {
+                if ((int) $Service[Key::Iid] !== $Siid) {
+                    continue;
+                }
+                foreach ((array) ($Service[Key::Actions] ?? []) as $Action) {
+                    if (((int) $Action[Key::Iid] !== $Aiid) || (count($Action[Key::Out]) !== count($Out))) {
+                        continue;
+                    }
+                    $Types = array_column((array) $Service[Key::Properties], Key::Type, Key::Iid);
+                    $Named = [];
+                    foreach (array_values($Out) as $Index => $Value) {
+                        $Piid = $Action[Key::Out][$Index];
+                        $Name = (string) ($Types[$Piid] ?? '');
+                        if (($Name === '') || array_key_exists($Name, $Named)) {
+                            $Name .= '_' . $Piid;
+                        }
+                        $Named[$Name] = $Value;
+                    }
+                    return $Named;
+                }
+            }
+            return $Out;
+        }
+
+        /**
          * ShortType
          *
          * `urn:miot-spec-v2:property:fan-level:00000016:xiaomi-p76:1` → `fan-level`

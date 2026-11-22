@@ -49,6 +49,28 @@ class MiotSpecTest extends TestCase
         $this->assertSame('Switch Status', $Spec[Key::Services][0][Key::Properties][0][Key::Name]);
     }
 
+    public function testNamedOutput(): void
+    {
+        $Spec = ['services' => [[
+            'iid'        => 3,
+            'properties' => [
+                ['iid' => 1, 'type' => 'stream-status'],
+                ['iid' => 3, 'type' => 'video-attribute'],
+                ['iid' => 7, 'type' => 'stream-address']
+            ],
+            'actions' => [
+                ['iid' => 3, 'out' => [1, 3]],
+                ['iid' => 4, 'out' => [7, 7]]
+            ]
+        ]]];
+        $this->assertSame(['stream-status' => 1, 'video-attribute' => 0], Normalizer::NamedOutput($Spec, 3, 3, [1, 0]));
+        // doppelter Typ erhält die piid
+        $this->assertSame(['stream-address' => 'a', 'stream-address_7' => 'b'], Normalizer::NamedOutput($Spec, 3, 4, ['a', 'b']));
+        // Anzahl passt nicht oder Aktion fehlt: Liste bleibt
+        $this->assertSame([1], Normalizer::NamedOutput($Spec, 3, 3, [1]));
+        $this->assertSame([1, 0], Normalizer::NamedOutput($Spec, 9, 3, [1, 0]));
+    }
+
     public function testShortTypeAndLanguage(): void
     {
         $this->assertSame('fan-level', Normalizer::ShortType('urn:miot-spec-v2:property:fan-level:00000016:test-fan:1'));

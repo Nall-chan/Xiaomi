@@ -572,7 +572,8 @@ class XiaomiMIoTDevice extends IPSModuleStrict
      * @param  int $ServiceId
      * @param  int $ActionId
      * @param  array $Parameter
-     * @return mixed false bei Fehler, sonst die Rückgabewerte der Aktion (out) als Array oder true, wenn das Gerät keine liefert
+     * @return mixed false bei Fehler, sonst die Rückgabewerte der Aktion (out) als Array mit dem Kurztyp der Eigenschaft
+     *               als Schlüssel (z.B. 'stream-address'), oder true, wenn das Gerät keine liefert
      */
     public function ExecuteAction(int $ServiceId, int $ActionId, array $Parameter): mixed
     {
@@ -601,9 +602,9 @@ class XiaomiMIoTDevice extends IPSModuleStrict
             echo $this->GetErrorText(\Xiaomi\Device\ApiError::$CodeToText, $Code) . PHP_EOL;
             return false;
         }
-        // Liefert die Aktion Rückgabewerte (out), werden diese zurückgegeben.
+        // Rückgabewerte (out) mit dem Kurztyp der Eigenschaft als Schlüssel, z.B. ['stream-address' => …] (ab 2.0)
         if (array_key_exists('out', $Result)) {
-            return $Result['out'];
+            return \Xiaomi\Spec\Normalizer::NamedOutput($this->ReadAttributeArray(\Xiaomi\Device\Attribute::Specs), $ServiceId, $ActionId, (array) $Result['out']);
         }
         return true;
     }
