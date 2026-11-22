@@ -13,8 +13,10 @@ require_once dirname(__DIR__) . '/libs/MiotSpec.php';
  * @property int $Flag
  * @property array $DeviceList Zwischengespeicherte Geräteliste (did => Gerät, mit Token)
  * @property int $DeviceListTime Zeitpunkt der letzten Abfrage der Geräteliste
- * @property array $SpecCache Zwischengespeicherte Gerätebeschreibungen (urn => ['time', 'spec'])
- * @property array $ProductCatalog Produktkatalog (model => ['name', 'icon'])
+ * @property array $ProductCatalog Produktkatalog, nur benötigte Modelle (model => ['name', 'icon'] oder null = nicht im Katalog)
+ *
+ * Gerätebeschreibungen liegen je URN in einem eigenen Puffer `Spec_<md5(urn)>` (['time', 'spec']),
+ * damit kein Puffer das Limit von Symcon erreicht (Warnung ab 256 KB, abgeschnitten ab 1024 KB).
  * @property int $ProductCatalogTime Zeitpunkt der letzten Abfrage des Produktkatalogs
  */
 class XiaomiMIoTCloudIO extends IPSModuleStrict
@@ -138,7 +140,6 @@ class XiaomiMIoTCloudIO extends IPSModuleStrict
         $this->IdentitySession = '';
         $this->DeviceList = [];
         $this->DeviceListTime = 0;
-        $this->SpecCache = [];
         $this->ProductCatalog = [];
         $this->ProductCatalogTime = 0;
     }
@@ -182,7 +183,7 @@ class XiaomiMIoTCloudIO extends IPSModuleStrict
         parent::ApplyChanges();
         $this->DeviceList = [];
         $this->DeviceListTime = 0;
-        $this->SpecCache = [];
+        $this->ClearSpecBuffers();
         $this->ProductCatalog = [];
         $this->ProductCatalogTime = 0;
         $this->SetSummary($this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Username));
@@ -508,33 +509,45 @@ class XiaomiMIoTCloudIO extends IPSModuleStrict
         if ($Model === '') {
             return null;
         }
-        if (!$this->ProductCatalogTime || (time() - $this->ProductCatalogTime >= \Xiaomi\Cloud\Command::ProductMaxAge)) {
-            // Anfrage wie die App; last_modify 0 = ganzer Katalog
-            $Result = $this->CallApiResult(\Xiaomi\Cloud\ApiUrl::ProductCatalog, [
-                'devices_last_modify'    => 0,
-                'developers_last_modify' => 0,
-                'app_version'            => \Xiaomi\Cloud\Command::CatalogAppVersion,
-                'app_platform'           => 'phone',
-                'isLocal'                => false,
-                'v'                      => 2
-            ]);
-            $Catalog = [];
-            foreach ($Result['devices']['list'] ?? [] as $Entry) {
-                if (empty($Entry['model'])) {
-                    continue;
-                }
-                $Catalog[(string) $Entry['model']] = [
-                    'name' => (string) ($Entry['name'] ?? ''),
-                    'icon' => (string) (($Entry['icon_real'] ?? '') ?: ($Entry['icon_on'] ?? ''))
-                ];
-            }
-            $this->SendDebug(__FUNCTION__, count($Catalog) . ' products', 0);
-            if (count($Catalog)) {
-                $this->ProductCatalog = $Catalog;
-                $this->ProductCatalogTime = time();
-            }
+        $Catalog = $this->ProductCatalog;
+        $Fresh = $this->ProductCatalogTime && (time() - $this->ProductCatalogTime < \Xiaomi\Cloud\Command::ProductMaxAge);
+        if ($Fresh && array_key_exists($Model, $Catalog)) {
+            return $Catalog[$Model];
         }
-        return $this->ProductCatalog[$Model] ?? null;
+        // Anfrage wie die App; last_modify 0 = ganzer Katalog
+        $Result = $this->CallApiResult(\Xiaomi\Cloud\ApiUrl::ProductCatalog, [
+            'devices_last_modify'    => 0,
+            'developers_last_modify' => 0,
+            'app_version'            => \Xiaomi\Cloud\Command::CatalogAppVersion,
+            'app_platform'           => 'phone',
+            'isLocal'                => false,
+            'v'                      => 2
+        ]);
+        $Full = [];
+        foreach ($Result['devices']['list'] ?? [] as $Entry) {
+            if (empty($Entry['model'])) {
+                continue;
+            }
+            $Full[(string) $Entry['model']] = [
+                'name' => (string) ($Entry['name'] ?? ''),
+                'icon' => (string) (($Entry['icon_real'] ?? '') ?: ($Entry['icon_on'] ?? ''))
+            ];
+        }
+        $this->SendDebug(__FUNCTION__, count($Full) . ' products', 0);
+        if (count($Full) == 0) {
+            return $Catalog[$Model] ?? null;
+        }
+        // Nur benötigte Modelle behalten (Geräteliste, bisher angefragte, angefragtes); der ganze Katalog
+        // hätte mit seinen langen Bild-URLs schon heute ca. 180 KB (Pufferlimit 256 KB).
+        $Models = array_column((array) $this->DeviceList, \Xiaomi\Cloud\DeviceKey::Model);
+        $Models = array_unique(array_merge($Models, array_keys($Catalog), [$Model]));
+        $Catalog = [];
+        foreach ($Models as $Name) {
+            $Catalog[$Name] = $Full[$Name] ?? null;
+        }
+        $this->ProductCatalog = $Catalog;
+        $this->ProductCatalogTime = time();
+        return $Catalog[$Model];
     }
 
     /**
@@ -552,9 +565,10 @@ class XiaomiMIoTCloudIO extends IPSModuleStrict
         if ($Urn === '') {
             return null;
         }
-        $Cache = $this->SpecCache;
-        if (!$Refresh && isset($Cache[$Urn]) && (time() - $Cache[$Urn]['time'] < \Xiaomi\Cloud\Command::SpecMaxAge)) {
-            return $Cache[$Urn]['spec'];
+        $Buffer = self::SpecBufferName($Urn);
+        $Cache = $this->{$Buffer};
+        if (!$Refresh && is_array($Cache) && isset($Cache['time']) && (time() - $Cache['time'] < \Xiaomi\Cloud\Command::SpecMaxAge)) {
+            return $Cache['spec'];
         }
         $Raw = $this->LoadSpecFromCloud($Urn) ?? $this->LoadSpecPublic($Urn);
         if (is_null($Raw)) {
@@ -563,9 +577,33 @@ class XiaomiMIoTCloudIO extends IPSModuleStrict
         }
         [$Instance, $Languages] = $Raw;
         $Spec = \Xiaomi\Spec\Normalizer::Normalize($Instance, $Languages, \Xiaomi\Spec\Normalizer::Language(IPS_GetSystemLanguage()));
-        $Cache[$Urn] = ['time' => time(), 'spec' => $Spec];
-        $this->SpecCache = $Cache;
+        $this->{$Buffer} = ['time' => time(), 'spec' => $Spec];
         return $Spec;
+    }
+
+    /**
+     * SpecBufferName
+     *
+     * @param  string $Urn
+     * @return string Name des Puffers für die Gerätebeschreibung dieser URN
+     */
+    private static function SpecBufferName(string $Urn): string
+    {
+        return 'Spec_' . md5($Urn);
+    }
+
+    /**
+     * ClearSpecBuffers
+     *
+     * @return void
+     */
+    private function ClearSpecBuffers(): void
+    {
+        foreach ($this->GetBufferList() as $Name) {
+            if (str_starts_with($Name, 'Spec_')) {
+                $this->{$Name} = [];
+            }
+        }
     }
 
     /**
