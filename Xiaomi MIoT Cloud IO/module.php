@@ -14,6 +14,8 @@ require_once dirname(__DIR__) . '/libs/MiotSpec.php';
  * @property array $DeviceList Zwischengespeicherte Geräteliste (did => Gerät, mit Token)
  * @property int $DeviceListTime Zeitpunkt der letzten Abfrage der Geräteliste
  * @property array $SpecCache Zwischengespeicherte Gerätebeschreibungen (urn => ['time', 'spec'])
+ * @property array $ProductCatalog Produktkatalog (model => ['name', 'icon'])
+ * @property int $ProductCatalogTime Zeitpunkt der letzten Abfrage des Produktkatalogs
  */
 class XiaomiMIoTCloudIO extends IPSModuleStrict
 {
@@ -137,6 +139,8 @@ class XiaomiMIoTCloudIO extends IPSModuleStrict
         $this->DeviceList = [];
         $this->DeviceListTime = 0;
         $this->SpecCache = [];
+        $this->ProductCatalog = [];
+        $this->ProductCatalogTime = 0;
     }
 
     /**
@@ -179,6 +183,8 @@ class XiaomiMIoTCloudIO extends IPSModuleStrict
         $this->DeviceList = [];
         $this->DeviceListTime = 0;
         $this->SpecCache = [];
+        $this->ProductCatalog = [];
+        $this->ProductCatalogTime = 0;
         $this->SetSummary($this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Username));
         if (IPS_GetKernelRunlevel() != KR_READY) {
             $this->RegisterMessage(0, IPS_KERNELSTARTED);
@@ -478,8 +484,57 @@ class XiaomiMIoTCloudIO extends IPSModuleStrict
                     return json_encode(['error' => 'Device description not available']);
                 }
                 return json_encode(['result' => $Spec]);
+            case \Xiaomi\Cloud\Command::GetProduct:
+                $Product = $this->GetProduct((string) ($Params['model'] ?? ''));
+                if (is_null($Product)) {
+                    return json_encode(['error' => 'Product not found in catalog']);
+                }
+                return json_encode(['result' => $Product]);
         }
         return json_encode(['error' => 'Unknown command']);
+    }
+
+    /**
+     * GetProduct
+     *
+     * Produktname (Sprache des Kontos) und Bild-URL aus dem Produktkatalog der Region.
+     * Der Katalog enthält alle Modelle der Region und wird ProductMaxAge Sekunden zwischengespeichert.
+     *
+     * @param  string $Model
+     * @return ?array ['name', 'icon'] oder null
+     */
+    private function GetProduct(string $Model): ?array
+    {
+        if ($Model === '') {
+            return null;
+        }
+        if (!$this->ProductCatalogTime || (time() - $this->ProductCatalogTime >= \Xiaomi\Cloud\Command::ProductMaxAge)) {
+            // Anfrage wie die App; last_modify 0 = ganzer Katalog
+            $Result = $this->CallApiResult(\Xiaomi\Cloud\ApiUrl::ProductCatalog, [
+                'devices_last_modify'    => 0,
+                'developers_last_modify' => 0,
+                'app_version'            => \Xiaomi\Cloud\Command::CatalogAppVersion,
+                'app_platform'           => 'phone',
+                'isLocal'                => false,
+                'v'                      => 2
+            ]);
+            $Catalog = [];
+            foreach ($Result['devices']['list'] ?? [] as $Entry) {
+                if (empty($Entry['model'])) {
+                    continue;
+                }
+                $Catalog[(string) $Entry['model']] = [
+                    'name' => (string) ($Entry['name'] ?? ''),
+                    'icon' => (string) (($Entry['icon_real'] ?? '') ?: ($Entry['icon_on'] ?? ''))
+                ];
+            }
+            $this->SendDebug(__FUNCTION__, count($Catalog) . ' products', 0);
+            if (count($Catalog)) {
+                $this->ProductCatalog = $Catalog;
+                $this->ProductCatalogTime = time();
+            }
+        }
+        return $this->ProductCatalog[$Model] ?? null;
     }
 
     /**

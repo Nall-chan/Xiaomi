@@ -252,6 +252,7 @@ class XiaomiMIoTDevice extends IPSModuleStrict
                 if (!$this->LoadSpec(true)) {
                     echo $this->Translate('Device description could not be loaded') . PHP_EOL;
                 }
+                $this->LoadProduct(true);
                 $this->InitConnection();
                 $this->ReloadForm();
                 return;
@@ -716,6 +717,7 @@ class XiaomiMIoTDevice extends IPSModuleStrict
             $this->SetStatus(\Xiaomi\Device\InstanceStatus::GetSpecsFailed);
             return;
         }
+        $this->LoadProduct(false);
         if (!$ForceCloud) {
             if (!$this->SendHandshake()) {
                 return;
@@ -1045,6 +1047,38 @@ class XiaomiMIoTDevice extends IPSModuleStrict
         $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Specs, $NewSpecs);
         $this->LogMessage($this->Translate('Device description loaded'), KL_NOTIFY);
         return true;
+    }
+
+    /**
+     * LoadProduct
+     *
+     * Produktname und Bild für das Formular aus dem Produktkatalog der Cloud IO. Optional, Fehler nur ins Debug.
+     * Das Bild wird nur geladen, wenn sich seine Adresse geändert hat.
+     *
+     * @param  bool $Force true = auch laden, wenn schon ein Produktname vorhanden ist
+     * @return void
+     */
+    private function LoadProduct(bool $Force): void
+    {
+        if (!$Force && ($this->ReadAttributeString(\Xiaomi\Device\Attribute::ProductName) !== '')) {
+            return;
+        }
+        $Info = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::Info);
+        $Product = $this->SendCommand(\Xiaomi\Cloud\Command::GetProduct, ['model' => (string) ($Info['model'] ?? '')]);
+        if (is_null($Product)) {
+            $this->SendDebug(__FUNCTION__, 'product not in catalog', 0);
+            return;
+        }
+        $this->WriteAttributeString(\Xiaomi\Device\Attribute::ProductName, (string) $Product['name']);
+        $IconUrl = (string) $Product['icon'];
+        if (($IconUrl !== '') && ($Force || ($IconUrl !== ($Info['icon'] ?? '')))) {
+            $Icon = @Sys_GetURLContentEx($IconUrl, ['Timeout' => 5000]);
+            if ($Icon) {
+                $this->WriteAttributeString(\Xiaomi\Device\Attribute::Icon, base64_encode($Icon));
+                $Info['icon'] = $IconUrl;
+                $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Info, $Info);
+            }
+        }
     }
 
     /**

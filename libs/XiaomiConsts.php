@@ -460,6 +460,8 @@ namespace Xiaomi\Cloud{
         public const HomeMerged = '/v2/homeroom/gethome_merged';
         /** Geräte eines Zuhauses (home_owner, home_id) */
         public const HomeDeviceList = '/v2/home/home_device_list';
+        /** Produktkatalog der Region: Produktname in der Sprache des Kontos, Bilder (liefert alle Modelle) */
+        public const ProductCatalog = '/v2/plugin/get_config_info_new';
         /** Gerätebeschreibung je URN (wie die App) */
         public const SpecInstances = '/appgateway/gspec/Gspec/get_instances_by_dids';
         /** Übersetzungen der Gerätebeschreibung je URN (wie die App) */
@@ -742,6 +744,12 @@ namespace Xiaomi\Cloud{
         public const GetSpec = 'GetSpec';
         /** Gerätebeschreibung in der Cloud IO höchstens so lange zwischenspeichern (Sekunden) */
         public const SpecMaxAge = 86400;
+        /** Produktname und Bild-URL aus dem Produktkatalog der Region, Params: model (string) */
+        public const GetProduct = 'GetProduct';
+        /** Produktkatalog in der Cloud IO höchstens so lange zwischenspeichern (Sekunden) */
+        public const ProductMaxAge = 604800;
+        /** App-Version für den Produktkatalog; mit v=2 kommen die Namen in der Sprache des Cookies (wie die App) */
+        public const CatalogAppVersion = 11090704;
         /** Geräteliste in der Cloud IO höchstens so lange zwischenspeichern (Sekunden) */
         public const DeviceListMaxAge = 300;
 
