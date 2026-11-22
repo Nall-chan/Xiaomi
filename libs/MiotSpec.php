@@ -45,7 +45,7 @@ namespace Xiaomi\Spec {
     class Normalizer
     {
         /** Version des eigenen Formats, bei Änderungen erhöhen */
-        public const SchemaVersion = 2;
+        public const SchemaVersion = 3;
 
         /**
          * Normalize
@@ -75,7 +75,7 @@ namespace Xiaomi\Spec {
                     foreach (array_values((array) ($Property['value-list'] ?? [])) as $Index => $Entry) {
                         $Values[] = [
                             Key::Value       => $Entry['value'],
-                            Key::Name        => $Texts[sprintf('%s:valuelist:%03d', $Key, $Index)] ?? (string) ($Entry['description'] ?? ''),
+                            Key::Name        => $Texts[sprintf('%s:valuelist:%03d', $Key, $Index)] ?? self::Readable((string) ($Entry['description'] ?? '')),
                             // Englischer Text der Spec, z.B. für Sperren der App-Karten (Schema 2)
                             Key::Description => (string) ($Entry['description'] ?? '')
                         ];
@@ -84,7 +84,7 @@ namespace Xiaomi\Spec {
                     $Properties[] = [
                         Key::Iid         => $Piid,
                         Key::Type        => self::ShortType((string) ($Property['type'] ?? '')),
-                        Key::Name        => $Texts[$Key] ?? (string) ($Property['description'] ?? ''),
+                        Key::Name        => $Texts[$Key] ?? self::Readable((string) ($Property['description'] ?? '')),
                         Key::Description => (string) ($Property['description'] ?? ''),
                         Key::Format      => (string) ($Property['format'] ?? ''),
                         Key::Access      => array_values((array) ($Property['access'] ?? [])),
@@ -99,7 +99,7 @@ namespace Xiaomi\Spec {
                     $Actions[] = [
                         Key::Iid         => $Aiid,
                         Key::Type        => self::ShortType((string) ($Action['type'] ?? '')),
-                        Key::Name        => $Texts[sprintf('%s:action:%03d', $Prefix, $Aiid)] ?? (string) ($Action['description'] ?? ''),
+                        Key::Name        => $Texts[sprintf('%s:action:%03d', $Prefix, $Aiid)] ?? self::Readable((string) ($Action['description'] ?? '')),
                         Key::Description => (string) ($Action['description'] ?? ''),
                         Key::In          => array_map('intval', (array) ($Action['in'] ?? [])),
                         Key::Out         => array_map('intval', (array) ($Action['out'] ?? []))
@@ -108,7 +108,7 @@ namespace Xiaomi\Spec {
                 $Services[] = [
                     Key::Iid         => $Siid,
                     Key::Type        => self::ShortType((string) ($Service['type'] ?? '')),
-                    Key::Name        => $Texts[$Prefix] ?? (string) ($Service['description'] ?? ''),
+                    Key::Name        => $Texts[$Prefix] ?? self::Readable((string) ($Service['description'] ?? '')),
                     Key::Description => (string) ($Service['description'] ?? ''),
                     Key::Properties  => $Properties,
                     Key::Actions     => $Actions
@@ -120,6 +120,23 @@ namespace Xiaomi\Spec {
                 Key::Description => (string) ($Instance['description'] ?? ''),
                 Key::Services    => $Services
             ];
+        }
+
+        /**
+         * Readable
+         *
+         * Maschinennamen ohne Übersetzung lesbar machen: `do-not-disturb` → `Do Not Disturb`.
+         * Andere Texte (mit Leerzeichen, Großbuchstaben …) bleiben unverändert.
+         *
+         * @param  string $Text Beschreibung aus der Spec
+         * @return string
+         */
+        public static function Readable(string $Text): string
+        {
+            if (!preg_match('/^[a-z0-9]+(-[a-z0-9]+)*$/', $Text)) {
+                return $Text;
+            }
+            return ucwords(str_replace('-', ' ', $Text));
         }
 
         /**

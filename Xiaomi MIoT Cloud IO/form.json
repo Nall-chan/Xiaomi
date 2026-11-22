@@ -147,6 +147,8 @@
                     "visible": false,
                     "popup": {
                         "caption": "Variables with Xiaomi profiles",
+                        "width": "80%",
+                        "closeCaption": "Close",
                         "items": [
                             {
                                 "type": "List",
@@ -156,11 +158,16 @@
                                     {
                                         "caption": "Variable",
                                         "name": "VariableID",
-                                        "width": "90px"
+                                        "width": "110px"
                                     },
                                     {
-                                        "caption": "Location",
-                                        "name": "Location",
+                                        "caption": "Instance",
+                                        "name": "Instance",
+                                        "width": "350px"
+                                    },
+                                    {
+                                        "caption": "Name",
+                                        "name": "Name",
                                         "width": "auto"
                                     },
                                     {
@@ -169,7 +176,15 @@
                                         "width": "380px"
                                     }
                                 ],
-                                "values": []
+                                "values": [],
+                                "onSelectionChanged": "IPS_RequestAction($id, 'SelectProfileUsage', $ProfileUsageList['VariableID']);"
+                            },
+                            {
+                                "type": "OpenObjectButton",
+                                "name": "OpenProfileVariable",
+                                "caption": "Open variable",
+                                "objectID": 0,
+                                "enabled": false
                             }
                         ]
                     }

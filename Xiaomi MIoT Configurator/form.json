@@ -8,16 +8,11 @@
             "caption": "The Xiaomi MIoT Cloud IO is not connected or not logged in. Please open the gateway configuration and log in."
         },
         {
-            "type": "RowLayout",
-            "items": [
-                {
-                    "type": "CheckBox",
-                    "name": "ShowOffline",
-                    "caption": "Show offline devices",
-                    "onChange": "IPS_RequestAction($id,'ShowOffline',$ShowOffline);",
-                    "width": "250px"
-                }
-            ]
+            "type": "OpenObjectButton",
+            "name": "OpenCloudIO",
+            "caption": "Open Cloud IO",
+            "objectID": 0,
+            "visible": false
         },
         {
             "type": "Configurator",
@@ -35,14 +30,14 @@
                     "width": "200px"
                 },
                 {
-                    "caption": "MAC",
-                    "name": "MAC",
-                    "width": "150px"
-                },
-                {
                     "caption": "IP-Address",
                     "name": "IPAddress",
                     "width": "150px"
+                },
+                {
+                    "caption": "State",
+                    "name": "State",
+                    "width": "110px"
                 },
                 {
                     "caption": "Origin",

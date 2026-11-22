@@ -11,7 +11,6 @@ require_once dirname(__DIR__) . '/libs/MiioProtocol.php';
 require_once dirname(__DIR__) . '/libs/MiotSpec.php';
 require_once dirname(__DIR__) . '/libs/MiotPresentation.php';
 require_once dirname(__DIR__) . '/libs/MiotTerms.php';
-require_once dirname(__DIR__) . '/libs/MiotCard.php';
 
 /**
  * @method bool SendDebug(string $Message, mixed $Data, int $Format)
@@ -28,7 +27,6 @@ require_once dirname(__DIR__) . '/libs/MiotCard.php';
  * @property int $ServerStampTime
  * @property int $ParentID
  * @property int $MessageId
- * @property array $LockState Aktueller Zustand der Sperren (Ident => gesperrt), nur Änderungen werden gesetzt
  */
 class XiaomiMIoTDevice extends IPSModuleStrict
 {
@@ -96,14 +94,12 @@ class XiaomiMIoTDevice extends IPSModuleStrict
         $this->RegisterAttributeArray(\Xiaomi\Device\Attribute::ParamIdentsWrite, []);
         $this->RegisterAttributeArray(\Xiaomi\Device\Attribute::LockedStateVariables, []);
         $this->RegisterAttributeArray(\Xiaomi\Device\Attribute::ObsoleteProfiles, []);
-        $this->RegisterAttributeArray(\Xiaomi\Device\Attribute::Locks, []);
         $this->RegisterTimer(\Xiaomi\Device\Timer::RefreshState, 0, 'IPS_RequestAction(' . $this->InstanceID . ',"' . \Xiaomi\Device\Timer::RefreshState . '",true);');
         $this->RegisterTimer(\Xiaomi\Device\Timer::Reconnect, 0, 'IPS_RequestAction(' . $this->InstanceID . ',"' . \Xiaomi\Device\Timer::Reconnect . '",true);');
         $this->Retries = 0;
         $this->Reconnecting = false;
         $this->ParentID = 0;
         $this->MessageId = random_int(1, \Xiaomi\Device\LocalProtocol::MaxMessageId);
-        $this->LockState = [];
     }
 
     /**
@@ -190,7 +186,6 @@ class XiaomiMIoTDevice extends IPSModuleStrict
 
         parent::ApplyChanges();
         $this->MessageId = random_int(1, \Xiaomi\Device\LocalProtocol::MaxMessageId);
-        $this->LockState = [];
         $this->RegisterMessage($this->InstanceID, FM_CONNECT);
         $this->RegisterMessage($this->InstanceID, FM_DISCONNECT);
         // Wenn Kernel nicht fertig, dann nix machen und darauf warten
@@ -248,6 +243,10 @@ class XiaomiMIoTDevice extends IPSModuleStrict
                 return;
             case \Xiaomi\Device\Timer::RefreshState:
                 $this->RequestState();
+                // Nach einer vorgezogenen Abfrage (ScheduleRefresh) wieder das eingestellte Intervall; im Fehlerzustand bleibt der Timer aus
+                if ($this->GetStatus() == IS_ACTIVE) {
+                    $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, $this->ReadPropertyInteger(\Xiaomi\Device\Property::RefreshInterval) * 1000);
+                }
                 return;
             case \Xiaomi\Device\Timer::Reconnect:
                 // Reconnect Timer abgelaufen. Verbindungsaufbau versuchen.
@@ -393,7 +392,6 @@ class XiaomiMIoTDevice extends IPSModuleStrict
             $this->SendDebug((string) $Value['siid'] . '_' . (string) $Value['piid'], $Value['value'], 0);
             $this->SetValue($Ident, $Value['value']);
         }
-        $this->ApplyLocks();
         if ($this->Reconnecting && ($this->GetStatus() == IS_ACTIVE)) {
             // Erst jetzt gilt die Verbindung als wiederhergestellt (siehe SetStatus)
             $this->Reconnecting = false;
@@ -604,8 +602,10 @@ class XiaomiMIoTDevice extends IPSModuleStrict
         }
         // Rückgabewerte (out) mit dem Kurztyp der Eigenschaft als Schlüssel, z.B. ['stream-address' => …] (ab 2.0)
         if (array_key_exists('out', $Result)) {
+            $this->ScheduleRefresh();
             return \Xiaomi\Spec\Normalizer::NamedOutput($this->ReadAttributeArray(\Xiaomi\Device\Attribute::Specs), $ServiceId, $ActionId, (array) $Result['out']);
         }
+        $this->ScheduleRefresh();
         return true;
     }
 
@@ -670,9 +670,8 @@ class XiaomiMIoTDevice extends IPSModuleStrict
         switch ($State) {
             case IS_ACTIVE:
                 // Bereits verbundene Instanzen (z.B. lokal, schon in ApplyChanges verbunden) nicht erneut verbinden.
-                if ($this->GetStatus() != IS_ACTIVE) {
-                    $this->ApplyChanges();
-                }
+                // Läuft gerade ein Verbindungsaufbau, wird auf ihn gewartet und danach erneut geprüft.
+                $this->InitConnection(true);
                 break;
         }
     }
@@ -680,18 +679,25 @@ class XiaomiMIoTDevice extends IPSModuleStrict
     /**
      * InitConnection
      *
+     * Nur ein Verbindungsaufbau gleichzeitig: ApplyChanges und IOChangeState können sich überschneiden.
+     * Ein zweiter Aufruf wartet auf den laufenden (nicht überspringen: endet der erste inaktiv, z.B. weil
+     * die Cloud IO beim Reload noch nicht aktiv war, würde sonst niemand mehr verbinden).
+     *
+     * @param  bool $OnlyIfNotActive true = nach dem Warten nur verbinden, wenn die Instanz nicht aktiv ist
      * @return void
      */
-    private function InitConnection(): void
+    private function InitConnection(bool $OnlyIfNotActive = false): void
     {
-        // Nur ein Verbindungsaufbau gleichzeitig: ApplyChanges und IOChangeState können sich überschneiden,
-        // seit das Laden der Gerätebeschreibung über die Cloud IO länger dauert.
         $Lock = __CLASS__ . '.' . (string) $this->InstanceID . '.InitConnection';
-        if (!IPS_SemaphoreEnter($Lock, 1)) {
-            $this->SendDebug(__FUNCTION__, 'already running', 0);
+        if (!IPS_SemaphoreEnter($Lock, \Xiaomi\Device\LocalProtocol::ConnectWait)) {
+            $this->SendDebug(__FUNCTION__, 'timeout waiting for running connect', 0);
             return;
         }
         try {
+            if ($OnlyIfNotActive && ($this->GetStatus() == IS_ACTIVE)) {
+                $this->SendDebug(__FUNCTION__, 'already connected', 0);
+                return;
+            }
             $this->Connect();
         } finally {
             IPS_SemaphoreLeave($Lock);
@@ -970,11 +976,6 @@ class XiaomiMIoTDevice extends IPSModuleStrict
             echo $this->Translate('Instance is not active') . PHP_EOL;
             return false;
         }
-        // Sperre aus der Gerätekarte (z.B. Lüfterstufe bei Modus „Natural Wind“): auch für Skripte, die nicht über die Variablenaktion gehen
-        if ($this->IsLocked(\Xiaomi\IdentPrefix::Property . '_' . (string) $ServiceId . '_' . (string) $PropertyId)) {
-            echo $this->Translate('Not possible in the current device state') . PHP_EOL;
-            return false;
-        }
         $Params = [];
         $Params[] = [
             'did'  => $this->ReadPropertyString(\Xiaomi\Device\Property::DeviceId),
@@ -1001,8 +1002,21 @@ class XiaomiMIoTDevice extends IPSModuleStrict
         if (@$this->GetIDForIdent($Ident)) {
             $this->SetValue($Ident, $Value);
         }
-        $this->ApplyLocks();
+        $this->ScheduleRefresh();
         return true;
+    }
+
+    /**
+     * ScheduleRefresh
+     *
+     * Zieht die nächste Abfrage auf RefreshAfterWrite ms vor, damit Folgeänderungen des Gerätes ankommen.
+     * Mehrere Befehle kurz hintereinander starten den Timer neu und ergeben nur eine Abfrage.
+     *
+     * @return void
+     */
+    private function ScheduleRefresh(): void
+    {
+        $this->SetTimerInterval(\Xiaomi\Device\Timer::RefreshState, \Xiaomi\Device\Timer::RefreshAfterWrite);
     }
 
     /**
@@ -1241,7 +1255,8 @@ class XiaomiMIoTDevice extends IPSModuleStrict
     private function ElementName(array $Element): string
     {
         $Name = (string) $Element[\Xiaomi\Spec\Key::Name];
-        if ($Name === (string) $Element[\Xiaomi\Spec\Key::Description]) {
+        // Ohne Übersetzung der Spec ist der Name die (lesbar gemachte) Beschreibung: dann die Begriffe der App versuchen
+        if ($Name === \Xiaomi\Spec\Normalizer::Readable((string) $Element[\Xiaomi\Spec\Key::Description])) {
             return \Xiaomi\Terms\Terms::Name($this->Terms, $Name);
         }
         return $Name;
@@ -1335,79 +1350,6 @@ class XiaomiMIoTDevice extends IPSModuleStrict
         $this->WriteAttributeArray(\Xiaomi\Device\Attribute::ParamIdentsRead, $ParamIdentsRead);
         $this->WriteAttributeArray(\Xiaomi\Device\Attribute::ParamIdentsWrite, $ParamIdentsWrite);
         $this->CleanupProfiles();
-        $this->LoadLocks();
-    }
-
-    /**
-     * LoadLocks
-     *
-     * Sperren aus der Gerätekarte der App (Cloud IO) für diese Gerätebeschreibung. Optional, ohne Karte keine Sperren.
-     *
-     * @return void
-     */
-    private function LoadLocks(): void
-    {
-        $Specs = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::Specs);
-        $Card = $this->SendCommand(\Xiaomi\Cloud\Command::GetCardConfig, ['urn' => (string) ($Specs[\Xiaomi\Spec\Key::Urn] ?? '')]);
-        $Locks = is_null($Card) ? [] : \Xiaomi\Card\Card::Locks($Card, $Specs, \Xiaomi\IdentPrefix::Property);
-        $this->SendDebug(__FUNCTION__, json_encode($Locks), 0);
-        $this->WriteAttributeArray(\Xiaomi\Device\Attribute::Locks, $Locks);
-        // CreateStateVariables hat alle Aktionen aktiviert: Zustand neu setzen
-        $this->LockState = [];
-        $this->ApplyLocks();
-    }
-
-    /**
-     * IsLocked
-     *
-     * @param  string $Ident Ident der Eigenschaft
-     * @return bool true, wenn eine Sperre der Gerätekarte greift
-     */
-    private function IsLocked(string $Ident): bool
-    {
-        $Locks = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::Locks);
-        if (!isset($Locks[$Ident])) {
-            return false;
-        }
-        return \Xiaomi\Card\Card::IsLocked($Locks[$Ident], fn (string $Condition): mixed => $this->GetIDForIdent($Condition) ? $this->GetValue($Condition) : null);
-    }
-
-    /**
-     * ApplyLocks
-     *
-     * Entzieht gesperrten schreibbaren Variablen die Aktion und gibt sie wieder frei (nur bei Änderung).
-     *
-     * @return void
-     */
-    private function ApplyLocks(): void
-    {
-        $Locks = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::Locks);
-        if (count($Locks) == 0) {
-            return;
-        }
-        $Writable = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::ParamIdentsWrite);
-        $Disabled = $this->ReadAttributeArray(\Xiaomi\Device\Attribute::LockedStateVariables);
-        $State = $this->LockState;
-        if (!is_array($State)) {
-            $State = [];
-        }
-        foreach (array_keys($Locks) as $Ident) {
-            if (!isset($Writable[$Ident]) || in_array($Ident, $Disabled) || !$this->GetIDForIdent($Ident)) {
-                continue;
-            }
-            $Locked = $this->IsLocked($Ident);
-            if (($State[$Ident] ?? null) === $Locked) {
-                continue;
-            }
-            if ($Locked) {
-                $this->DisableAction($Ident);
-            } else {
-                $this->EnableAction($Ident);
-            }
-            $this->SendDebug(__FUNCTION__, $Ident . ($Locked ? ' locked' : ' unlocked'), 0);
-            $State[$Ident] = $Locked;
-        }
-        $this->LockState = $State;
     }
 
     /**

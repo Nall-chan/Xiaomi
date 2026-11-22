@@ -149,6 +149,8 @@ namespace Xiaomi\Device{
     {
         public const RefreshState = 'RefreshState';
         public const Reconnect = 'Reconnect';
+        /** Abfrage nach Schreiben/Aktion (ms): Geräte setzen Folgeänderungen (z.B. Einschalten beim Farbwechsel) oft erst kurz danach */
+        public const RefreshAfterWrite = 1000;
     }
 
     /**
@@ -195,7 +197,7 @@ namespace Xiaomi\Device{
     class ObsoleteKeys
     {
         public const Properties = ['Model', 'Token'];
-        public const Attributes = ['DeviceId', 'Model', 'Locales'];
+        public const Attributes = ['DeviceId', 'Model', 'Locales', 'Locks'];
     }
 
     /**
@@ -215,8 +217,6 @@ namespace Xiaomi\Device{
         public const ParamIdentsRead = 'ParamIdentsRead';
         public const ParamIdentsWrite = 'ParamIdentsWrite';
         public const LockedStateVariables = 'LockedStateVariables';
-        /** Sperren aus der Gerätekarte der App (libs/MiotCard.php) */
-        public const Locks = 'Locks';
         /** Früher von dieser Instanz genutzte XIAOMI.*-Profile, die noch entfernt werden sollen */
         public const ObsoleteProfiles = 'ObsoleteProfiles';
     }
@@ -323,6 +323,8 @@ namespace Xiaomi\Device{
         public const MaxPropertiesPerRequest = 10;
         /** Max. Wartezeit in ms auf eine laufende Anfrage derselben Instanz */
         public const LockWait = 2000;
+        /** Max. Wartezeit in ms auf einen laufenden Verbindungsaufbau derselben Instanz (Beschreibung laden, Handshake, Abfrage) */
+        public const ConnectWait = 30000;
         /** Nachrichten-ID läuft fortlaufend bis hier und beginnt dann wieder bei 1 */
         public const MaxMessageId = 9999;
         /** Sprung der Nachrichten-ID nach einer Zeitüberschreitung (späte Antworten nicht zuordnen) */
@@ -667,10 +669,6 @@ namespace Xiaomi\Cloud{
         public const GetProduct = 'GetProduct';
         /** Produktkatalog in der Cloud IO höchstens so lange zwischenspeichern (Sekunden) */
         public const ProductMaxAge = 604800;
-        /** Gerätekarte der App (card_control_miotspec_config) für den Gerätetyp, Params: urn (string) */
-        public const GetCardConfig = 'GetCardConfig';
-        /** Gerätekarten in der Cloud IO höchstens so lange zwischenspeichern (Sekunden) */
-        public const CardMaxAge = 604800;
         /** Begriffe und Einheiten der App (card_default_txt) in der Systemsprache, ohne Params */
         public const GetTerms = 'GetTerms';
         /** Begriffe in der Cloud IO höchstens so lange zwischenspeichern (Sekunden) */
@@ -772,8 +770,25 @@ namespace Xiaomi\Configurator{
     /**
      * Attribute
      */
-    class Attribute
+    /**
+     * ObsoleteKeys
+     *
+     * Nicht mehr registrierte Attribute des Konfigurators, Migrate entfernt sie.
+     */
+    class ObsoleteKeys
     {
+        /** Filter „Zeige offline Geräte“ bis 2.0, ersetzt durch die Spalte Status */
         public const ShowOffline = 'ShowOffline';
+    }
+
+    /**
+     * Icon
+     *
+     * Icons der Spalte Status (iron-icons, Parameter icons der Listenwerte, ab Symcon 9.0).
+     */
+    class Icon
+    {
+        public const Online = 'cloud-done';
+        public const Offline = 'cloud-off';
     }
 }

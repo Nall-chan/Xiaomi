@@ -34,10 +34,11 @@ namespace Xiaomi\Terms {
                 if ($Text === '') {
                     continue;
                 }
-                $Names[(string) $Key] = $Text;
+                // Schlüssel klein geschrieben: Nachschlagen ohne Rücksicht auf Groß-/Kleinschreibung
+                $Names[strtolower((string) $Key)] = $Text;
                 // Spec-Beschreibungen sind englisch: auch über den englischen Text finden
                 if (!empty($Texts['en'])) {
-                    $Names[(string) $Texts['en']] = $Text;
+                    $Names[strtolower((string) $Texts['en'])] = $Text;
                 }
             }
             $Units = [];
@@ -61,12 +62,12 @@ namespace Xiaomi\Terms {
          * Name
          *
          * @param  array $Terms Ergebnis von Reduce
-         * @param  string $Name Begriff (Schlüssel oder englischer Text)
+         * @param  string $Name Begriff (Schlüssel oder englischer Text, Groß-/Kleinschreibung egal)
          * @return string Übersetzung, sonst der Begriff selbst
          */
         public static function Name(array $Terms, string $Name): string
         {
-            return $Terms['names'][$Name] ?? $Name;
+            return $Terms['names'][strtolower($Name)] ?? $Name;
         }
 
         /**

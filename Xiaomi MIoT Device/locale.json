@@ -58,7 +58,6 @@
             "Device description could not be loaded": "Die Gerätebeschreibung konnte nicht geladen werden",
             "Device description loaded": "Gerätebeschreibung geladen",
             "Device busy": "Gerät beschäftigt",
-            "Not possible in the current device state": "Im aktuellen Gerätezustand nicht möglich",
             "Device specifications in outdated format, token and specifications will be reloaded": "Gerätebeschreibung im veralteten Format, Token und Gerätebeschreibung werden neu geladen",
             "Invalid Ident": "Ungültiger Ident",
             "Instance is not active": "Instanz ist nicht aktiv",

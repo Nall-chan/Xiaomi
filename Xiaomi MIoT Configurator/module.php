@@ -3,16 +3,26 @@
 declare(strict_types=1);
 
 eval('declare(strict_types=1);namespace XiaomiConfigurator {?>' . file_get_contents(__DIR__ . '/../libs/helper/DebugHelper.php') . '}');
+eval('declare(strict_types=1);namespace XiaomiConfigurator {?>' . file_get_contents(__DIR__ . '/../libs/helper/BufferHelper.php') . '}');
+eval('declare(strict_types=1);namespace XiaomiConfigurator {?>' . file_get_contents(__DIR__ . '/../libs/helper/ParentIOHelper.php') . '}');
 require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
 
 /**
  * Konfigurator: Listet die Geräte des verbundenen Cloud-Accounts und legt Geräte-Instanzen an.
  *
  * @method bool SendDebug(string $Message, mixed $Data, int $Format)
+ * @method int RegisterParent()
+ * @method bool IORequestAction(string $Ident, mixed $Value)
+ * @property int $ParentID Verbundene Cloud IO (ParentIOHelper)
  */
 class XiaomiMIoTConfigurator extends IPSModuleStrict
 {
     use \XiaomiConfigurator\DebugHelper;
+    use \XiaomiConfigurator\BufferHelper;
+    use \XiaomiConfigurator\InstanceStatus {
+        \XiaomiConfigurator\InstanceStatus::MessageSink as IOMessageSink;
+        \XiaomiConfigurator\InstanceStatus::RequestAction as IORequestAction;
+    }
 
     /**
      * Create
@@ -23,20 +33,43 @@ class XiaomiMIoTConfigurator extends IPSModuleStrict
     {
         //Never delete this line!
         parent::Create();
-        $this->RegisterAttributeBoolean(\Xiaomi\Configurator\Attribute::ShowOffline, true);
+        $this->ParentID = 0;
+    }
+
+    /**
+     * Migrate
+     *
+     * Entfernt das Attribut ShowOffline (bis 2.0: Filter „Zeige offline Geräte“, jetzt Spalte Status).
+     *
+     * @param  string $JSONData
+     * @return string
+     */
+    public function Migrate(string $JSONData): string
+    {
+        //Never delete this line!
+        parent::Migrate($JSONData);
+        $j = json_decode($JSONData);
+        if (!isset($j->attributes) || !property_exists($j->attributes, \Xiaomi\Configurator\ObsoleteKeys::ShowOffline)) {
+            // Leerer String = keine Änderung (SDK)
+            return '';
+        }
+        unset($j->attributes->{\Xiaomi\Configurator\ObsoleteKeys::ShowOffline});
+        return json_encode($j);
     }
 
     /**
      * GetCompatibleParents
      *
-     * Je Konfigurator eine eigene Cloud IO (ersetzt RequireParent, das es in IPSModuleStrict nicht gibt).
+     * Ohne gültige Cloud IO `require` (neue Cloud IO anlegen, ersetzt RequireParent aus IPSModule),
+     * mit vorhandener Cloud IO `connect`, damit beim Wechseln auch die bestehenden Cloud IOs angeboten werden.
      *
      * @return string
      */
     public function GetCompatibleParents(): string
     {
+        $ParentId = @IPS_GetInstance($this->InstanceID)['ConnectionID'] ?? 0;
         return json_encode([
-            'type'      => 'require',
+            'type'      => (($ParentId > 1) && IPS_InstanceExists($ParentId)) ? 'connect' : 'require',
             'moduleIDs' => [\Xiaomi\GUID::CloudIO]
         ]);
     }
@@ -52,11 +85,15 @@ class XiaomiMIoTConfigurator extends IPSModuleStrict
         parent::ApplyChanges();
         $this->RegisterMessage($this->InstanceID, FM_CONNECT);
         $this->RegisterMessage($this->InstanceID, FM_DISCONNECT);
+        // Statuswechsel der Cloud IO verfolgen (IM_CHANGESTATUS), siehe IOChangeState
+        $this->RegisterParent();
         $this->UpdateSummary();
     }
 
     /**
      * MessageSink
+     *
+     * Verbinden/Trennen und Statuswechsel der Cloud IO wertet der ParentIOHelper aus und ruft IOChangeState.
      *
      * @param  int $TimeStamp
      * @param  int $SenderID
@@ -66,12 +103,7 @@ class XiaomiMIoTConfigurator extends IPSModuleStrict
      */
     public function MessageSink(int $TimeStamp, int $SenderID, int $Message, array $Data): void
     {
-        switch ($Message) {
-            case FM_CONNECT:
-            case FM_DISCONNECT:
-                $this->UpdateSummary();
-                break;
-        }
+        $this->IOMessageSink($TimeStamp, $SenderID, $Message, $Data);
     }
 
     /**
@@ -83,11 +115,8 @@ class XiaomiMIoTConfigurator extends IPSModuleStrict
      */
     public function RequestAction(string $Ident, mixed $Value): void
     {
-        switch ($Ident) {
-            case \Xiaomi\Configurator\Attribute::ShowOffline:
-                $this->WriteAttributeBoolean(\Xiaomi\Configurator\Attribute::ShowOffline, (bool) $Value);
-                $this->ReloadForm();
-                return;
+        if ($this->IORequestAction($Ident, $Value)) {
+            return;
         }
         echo $this->Translate('Invalid Ident') . PHP_EOL;
     }
@@ -106,10 +135,11 @@ class XiaomiMIoTConfigurator extends IPSModuleStrict
         $this->UpdateSummary();
         $IOId = IPS_GetInstance($this->InstanceID)['ConnectionID'];
         $IOActive = ($IOId > 1) && (IPS_GetInstance($IOId)['InstanceStatus'] == IS_ACTIVE);
-        // Hinweis, wenn keine aktive Cloud IO verbunden ist
+        // Hinweis, wenn keine aktive Cloud IO verbunden ist; mit verbundener IO zusätzlich ein Knopf, der sie öffnet
         $Form['actions'][0]['visible'] = !$IOActive;
+        $Form['actions'][1]['visible'] = !$IOActive && ($IOId > 1);
+        $Form['actions'][1]['objectID'] = ($IOId > 1) ? $IOId : 0;
 
-        $ShowOffline = $this->ReadAttributeBoolean(\Xiaomi\Configurator\Attribute::ShowOffline);
         // Alle Geräte-Instanzen im System: InstanzID => [DeviceId, Cloud IO]
         $Instances = $this->GetInstanceList();
         $Devices = $IOActive ? $this->GetDevices() : [];
@@ -127,21 +157,20 @@ class XiaomiMIoTConfigurator extends IPSModuleStrict
                 unset($Instances[$InstanceIdDevice]);
                 continue;
             }
+            $Online = $Device[\Xiaomi\Cloud\DeviceKey::Online];
             $AddDevice = [
                 'IPAddress' => ($LocalIp !== '') ? $LocalIp : $this->Translate('Cloud only'),
-                'MAC'       => $Device[\Xiaomi\Cloud\DeviceKey::Mac],
+                'State'     => $this->Translate($Online ? 'Online' : 'Offline'),
                 'Model'     => $Device[\Xiaomi\Cloud\DeviceKey::Model],
                 'Origin'    => $Device[\Xiaomi\Cloud\DeviceKey::Shared] ? sprintf($this->Translate('Shared by %s'), $Device[\Xiaomi\Cloud\DeviceKey::Owner]) : $this->Translate('Own account'),
-                'name'      => $Device[\Xiaomi\Cloud\DeviceKey::Name]
+                // Name der Instanz, sonst der Name aus der Cloud
+                'name'      => $Device[\Xiaomi\Cloud\DeviceKey::Name],
+                'icons'     => ['State' => $Online ? \Xiaomi\Configurator\Icon::Online : \Xiaomi\Configurator\Icon::Offline]
             ];
             if ($InstanceIdDevice !== false) {
                 $AddDevice['name'] = IPS_GetName($InstanceIdDevice);
                 $AddDevice['instanceID'] = $InstanceIdDevice;
                 unset($Instances[$InstanceIdDevice]);
-            }
-            // Erst hier auf offline filtern, damit offline Instanzen nicht rot angezeigt werden.
-            if (!$Device[\Xiaomi\Cloud\DeviceKey::Online] && !$ShowOffline && ($InstanceIdDevice === false)) {
-                continue;
             }
             $AddDevice['create'] = [
                 'moduleID'      => \Xiaomi\GUID::MiDevice,
@@ -163,17 +192,30 @@ class XiaomiMIoTConfigurator extends IPSModuleStrict
             $DeviceValues[] = [
                 'instanceID' => $InstanceIdDevice,
                 'IPAddress'  => IPS_GetProperty($InstanceIdDevice, \Xiaomi\Device\Property::Host),
-                'MAC'        => '',
+                'State'      => '',
                 'Model'      => '',
                 'Origin'     => '',
                 'name'       => IPS_GetName($InstanceIdDevice)
             ];
         }
-        $Form['actions'][1]['items'][0]['value'] = $ShowOffline;
         $Form['actions'][2]['values'] = $DeviceValues;
         $this->SendDebug('FORM', \Xiaomi\Sensitive::mask(json_encode($Form)), 0);
         $this->SendDebug('FORM', json_last_error_msg(), 0);
         return json_encode($Form);
+    }
+
+    /**
+     * IOChangeState
+     *
+     * Wechsel der Cloud IO oder ihres Status: Zusammenfassung und Formular (Hinweis, Knopf, Geräteliste) aktualisieren.
+     *
+     * @param  int $State Status der Cloud IO
+     * @return void
+     */
+    protected function IOChangeState(int $State): void
+    {
+        $this->UpdateSummary();
+        $this->ReloadForm();
     }
 
     /**

@@ -71,6 +71,14 @@ class MiotSpecTest extends TestCase
         $this->assertSame([1, 0], Normalizer::NamedOutput($Spec, 9, 3, [1, 0]));
     }
 
+    public function testReadable(): void
+    {
+        $this->assertSame('Do Not Disturb', Normalizer::Readable('do-not-disturb'));
+        $this->assertSame('Enable', Normalizer::Readable('enable'));
+        $this->assertSame('Switch Status', Normalizer::Readable('Switch Status'));
+        $this->assertSame('switch status', Normalizer::Readable('switch status'));
+    }
+
     public function testShortTypeAndLanguage(): void
     {
         $this->assertSame('fan-level', Normalizer::ShortType('urn:miot-spec-v2:property:fan-level:00000016:test-fan:1'));

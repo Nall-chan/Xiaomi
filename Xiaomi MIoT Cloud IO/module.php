@@ -7,7 +7,6 @@ eval('declare(strict_types=1);namespace XiaomiCloudIO {?>' . file_get_contents(_
 require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
 require_once dirname(__DIR__) . '/libs/MiotSpec.php';
 require_once dirname(__DIR__) . '/libs/MiotTerms.php';
-require_once dirname(__DIR__) . '/libs/MiotCard.php';
 /**
  * @method bool SendDebug(string $Message, mixed $Data, int $Format)
  * @property string $VerifyUrl
@@ -19,7 +18,6 @@ require_once dirname(__DIR__) . '/libs/MiotCard.php';
  *
  * Gerätebeschreibungen liegen je URN in einem eigenen Puffer `Spec_<md5(urn)>` (['time', 'spec']),
  * damit kein Puffer das Limit von Symcon erreicht (Warnung ab 256 KB, abgeschnitten ab 1024 KB).
- * Gerätekarten liegen je Gerätetyp im Puffer `Card_<md5(Typ)>` (['time', 'card']).
  * @property int $ProductCatalogTime Zeitpunkt der letzten Abfrage des Produktkatalogs
  * @property array $Terms Begriffe und Einheiten der App in der Systemsprache (libs/MiotTerms.php)
  * @property int $TermsTime Zeitpunkt der letzten Abfrage der Begriffe
@@ -258,7 +256,13 @@ class XiaomiMIoTCloudIO extends IPSModuleStrict
                 break;
             case 'ShowProfileUsage':
                 $this->UpdateFormField('ProfileUsageList', 'values', json_encode($this->GetProfileUsage()));
+                $this->UpdateFormField('OpenProfileVariable', 'enabled', false);
                 $this->UpdateFormField('ProfileUsagePopup', 'visible', true);
+                break;
+            case 'SelectProfileUsage':
+                // Auswahl einer Zeile: Ziel des Knopfes „Variable öffnen“ setzen
+                $this->UpdateFormField('OpenProfileVariable', 'objectID', (int) $Value);
+                $this->UpdateFormField('OpenProfileVariable', 'enabled', IPS_VariableExists((int) $Value));
                 break;
         }
     }
@@ -453,7 +457,14 @@ class XiaomiMIoTCloudIO extends IPSModuleStrict
             $Variable = IPS_GetVariable($VariableId);
             foreach ([$Variable['VariableCustomProfile'], $Variable['VariableProfile']] as $Profile) {
                 if (str_starts_with($Profile, \Xiaomi\Cloud\ProfilePrefix::Name)) {
-                    $Rows[] = ['VariableID' => $VariableId, 'Location' => IPS_GetLocation($VariableId), 'Profile' => $Profile];
+                    $Parent = IPS_GetParent($VariableId);
+                    $Rows[] = [
+                        'VariableID' => $VariableId,
+                        'Instance'   => ($Parent > 0) ? IPS_GetName($Parent) : '',
+                        'Name'       => IPS_GetName($VariableId),
+                        'Profile'    => $Profile,
+                        'icons'      => ['VariableID' => 'ips:variable']
+                    ];
                     break;
                 }
             }
@@ -559,47 +570,8 @@ class XiaomiMIoTCloudIO extends IPSModuleStrict
                 return json_encode(['result' => $Product]);
             case \Xiaomi\Cloud\Command::GetTerms:
                 return json_encode(['result' => $this->GetTerms()]);
-            case \Xiaomi\Cloud\Command::GetCardConfig:
-                $Card = $this->GetCardConfig((string) ($Params['urn'] ?? ''));
-                if (is_null($Card)) {
-                    return json_encode(['error' => 'No card for this device type']);
-                }
-                return json_encode(['result' => $Card]);
         }
         return json_encode(['error' => 'Unknown command']);
-    }
-
-    /**
-     * GetCardConfig
-     *
-     * Gerätekarte der App für den Gerätetyp der URN; je Gerätetyp CardMaxAge Sekunden zwischengespeichert
-     * (auch „keine Karte“, damit nicht bei jeder Anfrage die ganze Konfiguration geladen wird).
-     *
-     * @param  string $Urn
-     * @return ?array
-     */
-    private function GetCardConfig(string $Urn): ?array
-    {
-        $Type = \Xiaomi\Card\Card::DeviceType($Urn);
-        if ($Type === '') {
-            return null;
-        }
-        $Buffer = 'Card_' . md5($Type);
-        $Cache = $this->{$Buffer};
-        if (is_array($Cache) && isset($Cache['time']) && (time() - $Cache['time'] < \Xiaomi\Cloud\Command::CardMaxAge)) {
-            return $Cache['card'];
-        }
-        $Url = \Xiaomi\Cloud\ApiUrl::GetApiUrl($this->ReadAttributeString(\Xiaomi\Cloud\Attribute::Country), \Xiaomi\Cloud\ApiUrl::AppConfig)
-            . '?data=' . rawurlencode(json_encode(['lang' => 'en', 'name' => \Xiaomi\Card\Card::ConfigName, 'version' => \Xiaomi\Card\Card::ConfigVersion]));
-        $Result = json_decode((string) @Sys_GetURLContentEx($Url, ['Timeout' => 15000]), true);
-        $Configs = json_decode((string) ($Result['result']['content'] ?? ''), true);
-        if (!is_array($Configs)) {
-            $this->SendDebug(__FUNCTION__, 'no card config', 0);
-            return is_array($Cache) ? $Cache['card'] : null;
-        }
-        $Card = \Xiaomi\Card\Card::Find($Configs, $Urn);
-        $this->{$Buffer} = ['time' => time(), 'card' => $Card];
-        return $Card;
     }
 
     /**
@@ -736,7 +708,7 @@ class XiaomiMIoTCloudIO extends IPSModuleStrict
     private function ClearSpecBuffers(): void
     {
         foreach ($this->GetBufferList() as $Name) {
-            if (str_starts_with($Name, 'Spec_') || str_starts_with($Name, 'Card_')) {
+            if (str_starts_with($Name, 'Spec_')) {
                 $this->{$Name} = [];
             }
         }
