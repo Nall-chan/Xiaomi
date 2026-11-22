@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * Migration der Geräte-Instanz aus älteren Versionen.
+ * Migrate liefert einen leeren String, wenn nichts zu ändern ist.
  */
 class DeviceMigrateTest extends TestCase
 {
@@ -27,8 +28,7 @@ class DeviceMigrateTest extends TestCase
 
     public function testWithoutAttributesIsUnchanged(): void
     {
-        $Json = json_encode(['configuration' => new stdClass()]);
-        $this->assertSame($Json, $this->Device->Migrate($Json));
+        $this->assertSame('', $this->Device->Migrate(json_encode(['configuration' => new stdClass()])));
     }
 
     public function testMissingSpecsAttributeIsUnchanged(): void
@@ -37,7 +37,7 @@ class DeviceMigrateTest extends TestCase
             'configuration' => new stdClass(),
             'attributes'    => ['Token' => 'abcdef']
         ]);
-        $this->assertSame($Json, $this->Device->Migrate($Json));
+        $this->assertSame('', $this->Device->Migrate($Json));
     }
 
     public function testEmptySpecsAreUnchanged(): void
@@ -46,7 +46,7 @@ class DeviceMigrateTest extends TestCase
             'configuration' => new stdClass(),
             'attributes'    => ['Token' => 'abcdef', 'Specs' => '[]']
         ]);
-        $this->assertSame($Json, $this->Device->Migrate($Json));
+        $this->assertSame('', $this->Device->Migrate($Json));
     }
 
     public function testOldSpecsFormatResetsToken(): void
@@ -61,10 +61,21 @@ class DeviceMigrateTest extends TestCase
 
     public function testCurrentSpecsKeepToken(): void
     {
-        $Result = json_decode($this->Device->Migrate(json_encode([
+        $Json = json_encode([
             'configuration' => new stdClass(),
             'attributes'    => ['Token' => 'abcdef', 'Specs' => json_encode(['urn' => 'urn:miot-spec-v2:device:fan:0000A005:dmaker-p18:1'])]
+        ]);
+        $this->assertSame('', $this->Device->Migrate($Json));
+    }
+
+    public function testObsoleteKeysAreRemoved(): void
+    {
+        $Result = json_decode($this->Device->Migrate(json_encode([
+            'configuration' => ['Host' => '192.0.2.1', 'Model' => 'x', 'Token' => 'y'],
+            'attributes'    => ['ModelName' => 'Fan', 'DeviceId' => '1', 'Model' => 'x', 'Specs' => '[]']
         ])), true);
-        $this->assertSame('abcdef', $Result['attributes']['Token']);
+        $this->assertSame(['Host' => '192.0.2.1'], $Result['configuration']);
+        // ModelName ist das aktuelle Attribut ProductName und bleibt erhalten
+        $this->assertSame(['ModelName' => 'Fan', 'Specs' => '[]'], $Result['attributes']);
     }
 }

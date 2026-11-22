@@ -246,6 +246,33 @@ namespace Xiaomi\Device{
     }
 
     /**
+     * ReconnectDelay
+     *
+     * Abstand der Verbindungsversuche angelehnt an die Standard-Strategie von Event Control
+     * („Langsam verdoppelnd mit Limit (32 Minuten)“), Start mit 15 s für kurze WLAN-Aussetzer:
+     * 15 s, 30 s, 1, 2, 4, 8, 16, 32 Minuten.
+     */
+    class ReconnectDelay
+    {
+        /** Erster Versuch nach (Sekunden) */
+        public const First = 15;
+        /** Größter Abstand (Sekunden) */
+        public const Max = 1920;
+    }
+
+    /**
+     * ObsoleteKeys
+     *
+     * Nicht mehr registrierte Eigenschaften/Attribute (Entwicklungsstände 06/2023).
+     * Migrate entfernt sie aus der Persistenz, da Read/Write nur für registrierte Schlüssel möglich ist.
+     */
+    class ObsoleteKeys
+    {
+        public const Properties = ['Model', 'Token'];
+        public const Attributes = ['DeviceId', 'Model'];
+    }
+
+    /**
      * Attribute
      */
     class Attribute
@@ -296,6 +323,8 @@ namespace Xiaomi\Device{
     {
         public const PaketError = 300;
         public const ChecksumError = 301;
+        /** Gerät beschäftigt, Anfrage kann wiederholt werden (python-miio: „recoverable“) */
+        public const DeviceBusy = -30001;
         public static $CodeToText = [
             -4001       => 'Unreadable attribute',
             -4002       => 'Attribute is not writable',
@@ -305,13 +334,71 @@ namespace Xiaomi\Device{
             -4006       => 'Method in parameter error',
             -4007       => 'DeviceId error',
             -9999       => 'user ack timeout',
-            -704010000  => 'Unknown error',
+            -30001      => 'Device busy',
+            // MIoT-Statuscodes der Cloud (-70xxxyzzz). Bedeutung laut Xiaomi „Spec 云端错误码“
+            // (iot.mi.com, Hilfe & Support, Stand 2025-09-26); Auswahl der für Geräte relevanten Codes.
+            -702022036  => 'Operation in progress',
+            -704000000  => 'Bad request',
+            -704002000  => 'Device error',
+            -704010000  => 'Not authenticated',
+            -704012901  => 'Token does not exist or expired',
+            -704012902  => 'Token invalid',
+            -704012903  => 'Authorization expired',
+            -704012905  => 'Device not bound',
+            -704030013  => 'Property not readable',
+            -704030023  => 'Property not writable',
+            -704030992  => 'Too many requests',
             -704040002  => 'Service does not exist', // live geprüft (siid 99)
             -704040003  => 'Property does not exist', // live geprüft (piid 99)
-            -704040005  => 'Invalid action',
+            -704040004  => 'Event does not exist',
+            -704040005  => 'Action does not exist', // live geprüft (aiid 99)
+            -704040999  => 'Function not available',
+            -704042001  => 'Device not found',
             -704042011  => 'Device offline',
-            -704220043  => 'Property value invalid'
+            -704044006  => 'Device description not found',
+            -704053100  => 'Operation not possible',
+            -704053101  => 'Camera is sleeping',
+            -704083036  => 'Device operation timeout',
+            -704090001  => 'Device not found',
+            -704220008  => 'Invalid ID',
+            -704220025  => 'Action parameter count mismatch',
+            -704220035  => 'Action parameter invalid',
+            -704220043  => 'Property value invalid',
+            -704222035  => 'Action output invalid',
+            -705001000  => 'Internal server error',
+            -705201013  => 'Reading property failed',
+            -705201015  => 'Action execution failed',
+            -705201023  => 'Writing property failed',
+            -706010002  => 'Remote service error, device could not process the command',
+            -706010004  => 'MIoT error',
+            -706010005  => 'Property cache failed',
+            -706012013  => 'Reading property failed',
+            -706012015  => 'Action execution failed',
+            -706012023  => 'Writing property failed'
         ];
+    }
+
+    /**
+     * LocalProtocol
+     *
+     * Zeiten und Grenzen des lokalen miIO-Protokolls (UDP 54321).
+     */
+    class LocalProtocol
+    {
+        /** Antwortzeit einer Anfrage in Sekunden (Geräte antworten lokal meist in unter 1 s) */
+        public const ReceiveTimeout = 3;
+        /** Antwortzeit eines Handshakes in Sekunden */
+        public const HandshakeTimeout = 2;
+        /** Max. Eigenschaften je get_properties (python-miio: „some devices are stricter“) */
+        public const MaxPropertiesPerRequest = 10;
+        /** Max. Wartezeit in ms auf eine laufende Anfrage derselben Instanz */
+        public const LockWait = 2000;
+        /** Nachrichten-ID läuft fortlaufend bis hier und beginnt dann wieder bei 1 */
+        public const MaxMessageId = 9999;
+        /** Sprung der Nachrichten-ID nach einer Zeitüberschreitung (späte Antworten nicht zuordnen) */
+        public const MessageIdSkip = 100;
+        /** Pause vor der Wiederholung, wenn das Gerät beschäftigt ist (µs) */
+        public const BusyRetryDelay = 500000;
     }
 
     /**

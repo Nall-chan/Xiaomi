@@ -65,4 +65,18 @@ class CloudIOTest extends TestCase
         $this->assertSame('', $Result['ssecurity']);
         $this->assertSame('', $Result['location']);
     }
+
+    public function testMigrateWithoutOldPropertiesIsUnchanged(): void
+    {
+        $this->assertSame('', $this->CloudIO->Migrate(json_encode(['configuration' => new stdClass(), 'attributes' => ['Username' => 'a']])));
+    }
+
+    public function testMigrateMovesCredentialsToAttributes(): void
+    {
+        $Result = json_decode($this->CloudIO->Migrate(json_encode([
+            'configuration' => ['Username' => 'user', 'Password' => 'pw', 'Country' => 'de']
+        ])), true);
+        $this->assertSame([], $Result['configuration']);
+        $this->assertSame(['Username' => 'user', 'Password' => 'pw', 'Country' => 'de'], $Result['attributes']);
+    }
 }

@@ -35,7 +35,7 @@
             "Error on submit verification code": "Fehler beim Absenden des Verifizierungscodes",
             "Error on parsing verification result": "Fehler beim Parsen des Verifizierungsergebnisses",
             "Error on finalizing verification": "Fehler beim Abschließen der Verifizierung",
-            "Error in parsing result from send verification request":"Fehler beim Parsen des Ergebnisses der Anforderung zum senden des Verifizierungscodes",
+            "Error in parsing result from send verification request": "Fehler beim Parsen des Ergebnisses der Anforderung zum senden des Verifizierungscodes",
             "This module is free for non-commercial use,\r\nDonations in support of the author are accepted here:": "Dieses Modul ist für die nicht kommerzielle Nutzung kostenlos,\r\nSchenkungen als Unterstützung für den Autor werden hier akzeptiert:"
         }
     }

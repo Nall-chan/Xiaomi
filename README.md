@@ -100,7 +100,7 @@ Ist die [Xiaomi MIoT Cloud](Xiaomi%20MIoT%20Cloud%20IO/README.md) Instanz verbun
 
 ### 2. Changelog
 
-**Version 1.24:**  
+**Version 1.30:**  
 
 > [!IMPORTANT]
 > - Voraussetzung ist jetzt Symcon 9.0 oder höher.  
@@ -113,7 +113,10 @@ Ist die [Xiaomi MIoT Cloud](Xiaomi%20MIoT%20Cloud%20IO/README.md) Instanz verbun
 - Hat sich der Token eines Gerätes geändert (z.B. nach erneutem Anlernen), wird er automatisch neu aus der Cloud geladen.  
 - Der Konfigurator zeigt den Namen der verbundenen Cloud IO in der Zusammenfassung und weist auf eine fehlende oder nicht angemeldete Cloud IO hin.  
 - Zugangsdaten, Token und die Sitzungsschlüssel in Stream-URLs (z.B. Kamera-Aktionen) werden in den Debug-Ausgaben nicht mehr im Klartext angezeigt. Das Konfigurationsformular der Geräte zeigt vom Token nur noch den Anfang und die Länge.  
-- Verbindungsabbrüche von Geräten erscheinen nur noch einmal im Log („Verbindung fehlgeschlagen, versuche neu zu verbinden“), weitere Versuche nur im Debug. „Wiederverbinden erfolgreich“ wird erst nach der ersten erfolgreichen Abfrage gemeldet, die Wartezeit zwischen den Versuchen steigt bei instabilen Geräten weiter an.  
+- Verbindungsabbrüche von Geräten: Jeder fehlgeschlagene Versuch erscheint als Fehler im Log mit dem Abstand bis zum nächsten Versuch („Verbindung fehlgeschlagen, nächster Versuch in 15 Sekunden“). Der Abstand beginnt bei 15 Sekunden und verdoppelt sich wie bei der Standard-Strategie von Event Control bis höchstens 32 Minuten. „Wiederverbinden erfolgreich“ wird erst nach der ersten erfolgreichen Abfrage gemeldet.  
+- Lokale Geräte: Ein nicht antwortendes Gerät wird nach höchstens ca. 5 Sekunden erkannt (bisher bis zu 21 Sekunden). Weitere Befehle warten nicht mehr auf die Zeitüberschreitung, sondern brechen sofort ab.  
+- Lokale Geräte: Statusabfragen werden in Blöcken von je 10 Eigenschaften gesendet, da manche Geräte größere Anfragen verwerfen. Meldet ein Gerät „beschäftigt“, wird der Befehl einmal wiederholt.  
+- Fehlercodes der Cloud werden mit Text angezeigt statt als „Unbekannter Fehler“ (z.B. „Kamera im Ruhezustand“, „Fehler im entfernten Dienst, das Gerät konnte den Befehl nicht verarbeiten“).  
 
 **Fehlerbehebungen**  
 
@@ -124,12 +127,14 @@ Ist die [Xiaomi MIoT Cloud](Xiaomi%20MIoT%20Cloud%20IO/README.md) Instanz verbun
 - Geräte: Befehle direkt nach dem Speichern schlugen mit „Senden blockiert“ fehl.  
 - Geräte: Aktionsvariablen vom Typ Text zeigten den Wert „-1“.  
 - Geräte: Inaktive Instanzen meldeten bei jedem Übernehmen „getrennt“ im Log.  
+- Geräte: „Verbindung hergestellt“ erschien beim Speichern oder Neustart doppelt im Log.  
 - Geräte: Update von sehr alten Versionen konnte fehlschlagen.  
 - Cloud IO: Der Abschluss der Zwei-Faktor-Anmeldung konnte fehlschlagen.  
 - Cloud IO: Bei erforderlicher Zwei-Faktor-Anmeldung wurde zusätzlich „Nicht autorisiert“ gemeldet.  
 - Cloud IO: Eine nicht angemeldete Cloud IO ging nach einem Neustart in den Fehlerzustand.  
 - Cloud IO: Sprach- und Zeitzonen-Angabe an die Cloud wurde fehlerhaft übertragen.  
 - Fehlende Übersetzungen von Fehlermeldungen und Ländern ergänzt.  
+
 **Version 1.23:**  
 
 - Einige Anpassungen wieder entfernt, nachdem die Quelle der Geräteeigenschaften wieder verfügbar ist.  

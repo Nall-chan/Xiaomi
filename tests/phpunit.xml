@@ -1,8 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.0/phpunit.xsd" cacheDirectory=".phpunit.cache">
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.5/phpunit.xsd" cacheDirectory=".phpunit.cache">
   <php>
     <const name="PHPUNIT_TESTSUITE" value="true"/>
   </php>
+  <testsuites>
+    <testsuite name="Xiaomi">
+      <directory>.</directory>
+      <exclude>stubs</exclude>
+    </testsuite>
+  </testsuites>
   <source>
     <include>
       <directory suffix=".php">..</directory>

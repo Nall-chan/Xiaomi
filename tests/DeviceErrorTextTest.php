@@ -54,6 +54,14 @@ class DeviceErrorTextTest extends TestCase
         );
     }
 
+    public function testRemoteServiceErrorIsKnown(): void
+    {
+        $this->assertSame(
+            $this->Device->Translate('Remote service error, device could not process the command'),
+            $this->GetErrorText->invoke($this->Device, \Xiaomi\Device\ApiError::$CodeToText, -706010002)
+        );
+    }
+
     public function testEveryErrorTextIsTranslated(): void
     {
         $Locale = json_decode(file_get_contents(__DIR__ . '/../Xiaomi MIoT Device/locale.json'), true)['translations']['de'];

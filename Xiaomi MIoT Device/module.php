@@ -5,7 +5,6 @@ eval('declare(strict_types=1);namespace XiaomiMiDevice {?>' . file_get_contents(
 eval('declare(strict_types=1);namespace XiaomiMiDevice {?>' . file_get_contents(__DIR__ . '/../libs/helper/BufferHelper.php') . '}');
 eval('declare(strict_types=1);namespace XiaomiMiDevice {?>' . file_get_contents(__DIR__ . '/../libs/helper/AttributeArrayHelper.php') . '}');
 eval('declare(strict_types=1);namespace XiaomiMiDevice {?>' . file_get_contents(__DIR__ . '/../libs/helper/VariableProfileHelper.php') . '}');
-eval('declare(strict_types=1);namespace XiaomiMiDevice {?>' . file_get_contents(__DIR__ . '/../libs/helper/SemaphoreHelper.php') . '}');
 eval('declare(strict_types=1);namespace XiaomiMiDevice {?>' . file_get_contents(__DIR__ . '/../libs/helper/ParentIOHelper.php') . '}');
 require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
 
@@ -16,16 +15,15 @@ require_once dirname(__DIR__) . '/libs/XiaomiConsts.php';
  * @method void WriteAttributeArray(string $name, mixed $value)
  * @method void RegisterProfileEx(int $VarTyp, string $Name, string $Icon, string $Prefix, string $Suffix, int|array $Associations, float $MaxValue = -1, float $StepSize = 0, int $Digits = 0)
  * @method void RegisterProfile(int $VarTyp, string $Name, string $Icon, string $Prefix, string $Suffix, float $MinValue, float $MaxValue, float $StepSize, int $Digits = 0)
- * @method bool lock(string $ident)
- * @method void unlock(string $ident)
  * @method int RegisterParent()
  * @method bool IORequestAction(string $Ident, mixed $Value)
  * @property bool $ShowVariableWarning
- * @property int $Retries
+ * @property int $Retries Abstand bis zum nächsten Verbindungsversuch in Sekunden (0 = kein Fehlschlag)
  * @property bool $Reconnecting
  * @property int $ServerStamp
  * @property int $ServerStampTime
  * @property int $ParentID
+ * @property int $MessageId
  */
 class XiaomiMIoTDevice extends IPSModule
 {
@@ -33,7 +31,6 @@ class XiaomiMIoTDevice extends IPSModule
     use \XiaomiMiDevice\BufferHelper;
     use \XiaomiMiDevice\AttributeArrayHelper;
     use \XiaomiMiDevice\VariableProfileHelper;
-    use \XiaomiMiDevice\Semaphore;
     use \XiaomiMiDevice\InstanceStatus {
         \XiaomiMiDevice\InstanceStatus::MessageSink as IOMessageSink;
         \XiaomiMiDevice\InstanceStatus::RequestAction as IORequestAction;
@@ -89,9 +86,10 @@ class XiaomiMIoTDevice extends IPSModule
         $this->RegisterAttributeArray(\Xiaomi\Device\Attribute::LockedStateVariables, []);
         $this->RegisterTimer(\Xiaomi\Device\Timer::RefreshState, 0, 'IPS_RequestAction(' . $this->InstanceID . ',"' . \Xiaomi\Device\Timer::RefreshState . '",true);');
         $this->RegisterTimer(\Xiaomi\Device\Timer::Reconnect, 0, 'IPS_RequestAction(' . $this->InstanceID . ',"' . \Xiaomi\Device\Timer::Reconnect . '",true);');
-        $this->Retries = 2;
+        $this->Retries = 0;
         $this->Reconnecting = false;
         $this->ParentID = 0;
+        $this->MessageId = random_int(1, \Xiaomi\Device\LocalProtocol::MaxMessageId);
     }
 
     /**
@@ -102,26 +100,34 @@ class XiaomiMIoTDevice extends IPSModule
      */
     public function Migrate($JSONData)
     {
-        // Prüfe Version diese Modul-Instanz
+        //Never delete this line!
+        parent::Migrate($JSONData);
         $j = json_decode($JSONData);
-        if (!isset($j->attributes)) {
-            // Keine gespeicherten Attribute (neue Instanz): nichts zu migrieren.
-            return $JSONData;
+        $Changed = false;
+        // Die Persistenz enthält auch nicht mehr registrierte Schlüssel und wird vollständig zurückgeschrieben: alte entfernen.
+        foreach (['configuration' => \Xiaomi\Device\ObsoleteKeys::Properties, 'attributes' => \Xiaomi\Device\ObsoleteKeys::Attributes] as $Section => $Keys) {
+            foreach ($Keys as $Key) {
+                if (isset($j->{$Section}) && property_exists($j->{$Section}, $Key)) {
+                    unset($j->{$Section}->{$Key});
+                    $Changed = true;
+                }
+            }
         }
-        $Specs = json_decode((string) ($j->attributes->{\Xiaomi\Device\Attribute::Specs} ?? '[]'), true);
-        // Nur Specs im alten Format (vorhanden, aber ohne 'urn') zurücksetzen.
-        // Leere oder fehlende Specs lädt GetModelData ohnehin, sobald die Instanz aktiv wird.
-        if (!is_array($Specs) || (count($Specs) == 0) || isset($Specs['urn'])) {
-            return $JSONData;
+        // Specs im alten Format (vorhanden, aber ohne 'urn') zurücksetzen, damit Token und Specs neu geladen werden.
+        if (isset($j->attributes)) {
+            $Specs = json_decode((string) ($j->attributes->{\Xiaomi\Device\Attribute::Specs} ?? '[]'), true);
+            if (is_array($Specs) && (count($Specs) > 0) && !isset($Specs['urn'])) {
+                $Token = (string) ($j->attributes->{\Xiaomi\Device\Attribute::Token} ?? '');
+                $j->attributes->{\Xiaomi\Device\Attribute::Token} = '';
+                $j->attributes->{\Xiaomi\Device\Attribute::Specs} = '[]';
+                $Changed = true;
+                if ($Token !== '') {
+                    $this->LogMessage($this->Translate('Device specifications in outdated format, token and specifications will be reloaded'), KL_NOTIFY);
+                }
+            }
         }
-        // Altes Format: Token löschen, damit Token und Specs neu geladen werden.
-        $Token = (string) ($j->attributes->{\Xiaomi\Device\Attribute::Token} ?? '');
-        $j->attributes->{\Xiaomi\Device\Attribute::Token} = '';
-        $j->attributes->{\Xiaomi\Device\Attribute::Specs} = '[]';
-        if ($Token !== '') {
-            $this->LogMessage('Need to reload specs, delete token', KL_NOTIFY);
-        }
-        return json_encode($j);
+        // Leerer String = keine Änderung (SDK)
+        return $Changed ? json_encode($j) : '';
     }
 
     /**
@@ -144,6 +150,7 @@ class XiaomiMIoTDevice extends IPSModule
 
         //Never delete this line!
         parent::ApplyChanges();
+        $this->MessageId = random_int(1, \Xiaomi\Device\LocalProtocol::MaxMessageId);
         $this->RegisterMessage($this->InstanceID, FM_CONNECT);
         $this->RegisterMessage($this->InstanceID, FM_DISCONNECT);
         // Wenn Kernel nicht fertig, dann nix machen und darauf warten
@@ -306,7 +313,16 @@ class XiaomiMIoTDevice extends IPSModule
             $Params = json_encode(['params'=>$Params]);
             $Result = $this->SendCloud(\Xiaomi\Cloud\ApiUrl::GetProperties, $Params);
         } else {
-            $Result = $this->SendLocal(\Xiaomi\Device\ApiMethod::GetProperties, $Params);
+            // Lokal höchstens 10 Eigenschaften je Anfrage, manche Geräte verwerfen größere Anfragen.
+            $Result = [];
+            foreach (array_chunk($Params, \Xiaomi\Device\LocalProtocol::MaxPropertiesPerRequest) as $Chunk) {
+                $Part = $this->SendLocal(\Xiaomi\Device\ApiMethod::GetProperties, $Chunk);
+                if (is_null($Part)) {
+                    $Result = null;
+                    break;
+                }
+                $Result = array_merge($Result, $Part);
+            }
         }
         if (is_null($Result)) {
             return false;
@@ -341,7 +357,7 @@ class XiaomiMIoTDevice extends IPSModule
         if ($this->Reconnecting && ($this->GetStatus() == IS_ACTIVE)) {
             // Erst jetzt gilt die Verbindung als wiederhergestellt (siehe SetStatus)
             $this->Reconnecting = false;
-            $this->Retries = 2;
+            $this->Retries = 0;
             $this->LogMessage($this->Translate('Reconnect successfully'), KL_MESSAGE);
         }
         return true;
@@ -559,7 +575,7 @@ class XiaomiMIoTDevice extends IPSModule
                 // „Wiederverbinden erfolgreich“ meldet RequestState nach der ersten erfolgreichen Abfrage.
                 break;
             case IS_INACTIVE:
-                $this->Retries = 2;
+                $this->Retries = 0;
                 $this->Reconnecting = false;
                 // Nur melden, wenn vorher eine Verbindung bestand (nicht bei jedem ApplyChanges inaktiver Instanzen)
                 if ($this->GetStatus() == IS_ACTIVE) {
@@ -572,16 +588,22 @@ class XiaomiMIoTDevice extends IPSModule
                 if (!$this->ReadPropertyBoolean(\Xiaomi\Device\Property::Active)) { // Zwischen senden und empfangen wurde die Instanz auf inactik gesetzt
                     return;
                 }
-                if ($this->Retries < 3600) {
-                    $this->Retries++;
+                if ($this->GetTimerInterval(\Xiaomi\Device\Timer::Reconnect) > 0) {
+                    // Fehlschlag dieses Versuchs ist bereits gezählt und gemeldet (z.B. Handshake und Anfrage)
+                    break;
                 }
-                // Nur den Verbindungsverlust ins Log, weitere Versuche nur ins Debug (keine Log-Flut bei instabilen Geräten)
-                if ($this->Reconnecting) {
-                    $this->SendDebug('Reconnect', sprintf('failed, next try in %d seconds', $this->Retries), 0);
+                // Abstand: 15 Sekunden, dann verdoppeln bis 32 Minuten (wie Event Control). Jeder Fehlschlag ins Log.
+                $this->Retries = ($this->Retries == 0) ? \Xiaomi\Device\ReconnectDelay::First : min($this->Retries * 2, \Xiaomi\Device\ReconnectDelay::Max);
+                $this->Reconnecting = true;
+                $this->SendDebug('Reconnect', sprintf('failed, next try in %d seconds', $this->Retries), 0);
+                if ($this->Retries < 60) {
+                    $Message = sprintf($this->Translate('Connection failed, next attempt in %d seconds'), $this->Retries);
+                } elseif ($this->Retries < 120) {
+                    $Message = $this->Translate('Connection failed, next attempt in 1 minute');
                 } else {
-                    $this->Reconnecting = true;
-                    $this->LogMessage($this->Translate('Connection failed, trying to reconnect'), KL_MESSAGE);
+                    $Message = sprintf($this->Translate('Connection failed, next attempt in %d minutes'), intdiv($this->Retries, 60));
                 }
+                $this->LogMessage($Message, KL_ERROR);
                 $this->SetTimerInterval(\Xiaomi\Device\Timer::Reconnect, $this->Retries * 1000);
                 break;
         }
@@ -595,7 +617,10 @@ class XiaomiMIoTDevice extends IPSModule
     {
         switch ($State) {
             case IS_ACTIVE:
-                $this->ApplyChanges();
+                // Bereits verbundene Instanzen (z.B. lokal, schon in ApplyChanges verbunden) nicht erneut verbinden.
+                if ($this->GetStatus() != IS_ACTIVE) {
+                    $this->ApplyChanges();
+                }
                 break;
         }
     }
@@ -611,7 +636,7 @@ class XiaomiMIoTDevice extends IPSModule
         $this->SetTimerInterval(\Xiaomi\Device\Timer::Reconnect, 0);
         $this->ServerStamp = 0;
         $this->ServerStampTime = 0;
-        $this->Retries = 2;
+        $this->Retries = 0;
         // Anzeige IP in der INFO Spalte
         $this->SetSummary($this->ReadPropertyString(\Xiaomi\Device\Property::Host));
 
@@ -711,32 +736,101 @@ class XiaomiMIoTDevice extends IPSModule
      */
     private function SendLocal(string $Method, array $Prams = []): ?array
     {
-        $Payload = json_encode(
-            [
-                'id'    => random_int(1, 65535),
-                'method'=> $Method,
-                'params'=> $Prams
-            ]
-        );
-        if ($this->lock(__FUNCTION__)) {
+        $Waited = false;
+        if (!$this->LockLocal($Waited)) {
+            echo $this->Translate('Send blocked') . PHP_EOL;
+            return null;
+        }
+        if ($Waited && ($this->GetStatus() != IS_ACTIVE)) {
+            // Die Anfrage, auf die gewartet wurde, hat die Verbindung verloren: nicht erneut auf den Timeout warten.
+            $this->UnlockLocal();
+            echo $this->Translate('Instance is not active') . PHP_EOL;
+            return null;
+        }
+        $Retry = true;
+        while (true) {
+            $Payload = json_encode(
+                [
+                    'id'    => $this->NextMessageId(),
+                    'method'=> $Method,
+                    'params'=> $Prams
+                ]
+            );
             $this->SendDebug('Send', $Payload, 0);
             $State = IS_ACTIVE;
             $Result = $this->SocketSend($this->EncryptMessage($Payload), $State);
-            if (($State == \Xiaomi\Device\ApiError::ChecksumError) && $this->RefreshToken()) {
+            if ($Retry && ($State == \Xiaomi\Device\ApiError::ChecksumError) && $this->RefreshToken()) {
                 // Token hat sich geändert (z.B. Gerät neu angelernt): einmal mit neuem Token wiederholen
-                $State = IS_ACTIVE;
-                $Result = $this->SocketSend($this->EncryptMessage($Payload), $State);
+                $Retry = false;
+                continue;
             }
-            if ($State == \Xiaomi\Device\InstanceStatus::TimeoutError) {
-                if ($this->ReadPropertyBoolean(\Xiaomi\Device\Property::DeniedCloud)) { // und verboten
-                    $this->SetStatus(\Xiaomi\Device\InstanceStatus::TimeoutError);
-                }
+            if ($Retry && ($State == \Xiaomi\Device\ApiError::DeviceBusy)) {
+                // Gerät beschäftigt: einmal nach kurzer Pause wiederholen
+                $this->SendDebug('Retry', 'device busy', 0);
+                $Retry = false;
+                usleep(\Xiaomi\Device\LocalProtocol::BusyRetryDelay);
+                continue;
             }
-            $this->unlock(__FUNCTION__);
-            return $Result;
+            break;
         }
-        echo $this->Translate('Send blocked') . PHP_EOL;
-        return null;
+        if ($State == \Xiaomi\Device\ApiError::DeviceBusy) {
+            echo sprintf($this->Translate('Device error %d: %s'), \Xiaomi\Device\ApiError::DeviceBusy, $this->GetErrorText(\Xiaomi\Device\ApiError::$CodeToText, \Xiaomi\Device\ApiError::DeviceBusy)) . PHP_EOL;
+            $this->SetStatus(\Xiaomi\Device\InstanceStatus::ApiError);
+        }
+        if ($State == \Xiaomi\Device\InstanceStatus::TimeoutError) {
+            // Eine verspätete Antwort darf nicht zur nächsten Anfrage passen (wie python-miio).
+            $this->MessageId = ($this->MessageId + \Xiaomi\Device\LocalProtocol::MessageIdSkip) % \Xiaomi\Device\LocalProtocol::MaxMessageId;
+            if ($this->ReadPropertyBoolean(\Xiaomi\Device\Property::DeniedCloud)) { // und verboten
+                $this->SetStatus(\Xiaomi\Device\InstanceStatus::TimeoutError);
+            }
+        }
+        $this->UnlockLocal();
+        return $Result;
+    }
+
+    /**
+     * NextMessageId
+     *
+     * Fortlaufende Nachrichten-ID für das lokale Protokoll (1 … MaxMessageId).
+     *
+     * @return int
+     */
+    private function NextMessageId(): int
+    {
+        $Id = $this->MessageId + 1;
+        if ($Id > \Xiaomi\Device\LocalProtocol::MaxMessageId) {
+            $Id = 1;
+        }
+        $this->MessageId = $Id;
+        return $Id;
+    }
+
+    /**
+     * LockLocal
+     *
+     * Nur eine lokale Anfrage je Instanz gleichzeitig. Wartet höchstens LockWait ms auf eine laufende Anfrage.
+     *
+     * @param  bool $Waited true, wenn auf eine laufende Anfrage gewartet wurde
+     * @return bool
+     */
+    private function LockLocal(bool &$Waited): bool
+    {
+        $Name = __CLASS__ . '.' . (string) $this->InstanceID . '.SendLocal';
+        if (IPS_SemaphoreEnter($Name, 1)) {
+            return true;
+        }
+        $Waited = true;
+        return IPS_SemaphoreEnter($Name, \Xiaomi\Device\LocalProtocol::LockWait);
+    }
+
+    /**
+     * UnlockLocal
+     *
+     * @return void
+     */
+    private function UnlockLocal(): void
+    {
+        IPS_SemaphoreLeave(__CLASS__ . '.' . (string) $this->InstanceID . '.SendLocal');
     }
 
     /**
@@ -1093,9 +1187,10 @@ class XiaomiMIoTDevice extends IPSModule
      * @param  string $Data
      * @param  int $State
      * @param  bool $Retry
+     * @param  int $Timeout Antwortzeit in Sekunden
      * @return ?array
      */
-    private function SocketSend(string $Data, int &$State = IS_ACTIVE, bool $Retry = true): ?array
+    private function SocketSend(string $Data, int &$State = IS_ACTIVE, bool $Retry = true, int $Timeout = \Xiaomi\Device\LocalProtocol::ReceiveTimeout): ?array
     {
         if ($this->Socket) {
             $this->SendDebug('Socket', 'already created', 0);
@@ -1111,7 +1206,7 @@ class XiaomiMIoTDevice extends IPSModule
             }
             $this->SendDebug('Socket', 'created', 0);
         }
-        socket_set_option($this->Socket, SOL_SOCKET, SO_RCVTIMEO, ['sec' => 7, 'usec' => 0]);
+        socket_set_option($this->Socket, SOL_SOCKET, SO_RCVTIMEO, ['sec' => $Timeout, 'usec' => 0]);
         if (!(@socket_sendto($this->Socket, $Data, strlen($Data), 0, $this->ReadPropertyString(\Xiaomi\Device\Property::Host), self::PORT_UDP))) {
             $ErrorCode = socket_last_error();
             $ErrorMsg = socket_strerror($ErrorCode);
@@ -1143,6 +1238,11 @@ class XiaomiMIoTDevice extends IPSModule
                 return null;
             }
             if (array_key_exists('error', $Result)) {
+                if ($Result['error']['code'] == \Xiaomi\Device\ApiError::DeviceBusy) {
+                    // Wiederholung und Meldung übernimmt SendLocal
+                    $State = \Xiaomi\Device\ApiError::DeviceBusy;
+                    return null;
+                }
                 if ((($Result['error']['code'] == -32601) || ($Result['error']['code'] == -9999)) && !$this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud)) {
                     if ($this->ReadPropertyBoolean(\Xiaomi\Device\Property::DeniedCloud)) { // und cloud verboten
                         echo sprintf($this->Translate('Device error %d: %s'), (int) $Result['error']['code'], (string) ($Result['error']['message'] ?? '')) . PHP_EOL;
@@ -1287,7 +1387,7 @@ class XiaomiMIoTDevice extends IPSModule
         $Data = hex2bin('21310020ffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
         $this->SendDebug('Send Handshake', $Data, 1);
         $State = IS_ACTIVE;
-        $Result = $this->SocketSend($Data, $State, false);
+        $Result = $this->SocketSend($Data, $State, false, \Xiaomi\Device\LocalProtocol::HandshakeTimeout);
         if (is_null($Result)) {
             if ($State == \Xiaomi\Device\InstanceStatus::DidNotMatch) {
                 $this->SetStatus(\Xiaomi\Device\InstanceStatus::DidNotMatch);

@@ -140,14 +140,22 @@ class XiaomiMIoTCloudIO extends IPSModule
      */
     public function Migrate($JSONData)
     {
+        //Never delete this line!
+        parent::Migrate($JSONData);
         $j = json_decode($JSONData);
-        if (isset($j->configuration->{\Xiaomi\Cloud\Attribute::Username})) {
-            $j->attributes->{\Xiaomi\Cloud\Attribute::Username} = $j->configuration->{\Xiaomi\Cloud\Attribute::Username};
-            $j->attributes->{\Xiaomi\Cloud\Attribute::Password} = $j->configuration->{\Xiaomi\Cloud\Attribute::Password};
-            $j->attributes->{\Xiaomi\Cloud\Attribute::Country} = $j->configuration->{\Xiaomi\Cloud\Attribute::Country};
-            unset($j->configuration->{\Xiaomi\Cloud\Attribute::Username});
-            unset($j->configuration->{\Xiaomi\Cloud\Attribute::Password});
-            unset($j->configuration->{\Xiaomi\Cloud\Attribute::Country});
+        if (!isset($j->configuration->{\Xiaomi\Cloud\Attribute::Username})) {
+            // Leerer String = keine Änderung (SDK)
+            return '';
+        }
+        // Zugangsdaten waren bis 2023 Eigenschaften, jetzt Attribute.
+        if (!isset($j->attributes)) {
+            $j->attributes = new \stdClass();
+        }
+        foreach ([\Xiaomi\Cloud\Attribute::Username, \Xiaomi\Cloud\Attribute::Password, \Xiaomi\Cloud\Attribute::Country] as $Key) {
+            if (property_exists($j->configuration, $Key)) {
+                $j->attributes->{$Key} = $j->configuration->{$Key};
+                unset($j->configuration->{$Key});
+            }
         }
         return json_encode($j);
     }
