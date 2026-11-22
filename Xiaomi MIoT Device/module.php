@@ -312,11 +312,11 @@ class XiaomiMIoTDevice extends IPSModuleStrict
                     switch ($Type) {
                         case \Xiaomi\IdentPrefix::Action:
                             if (array_key_exists($Ident, $this->ReadAttributeArray(\Xiaomi\Device\Attribute::ActionIdents))) {
-                                $this->ExecuteAction((int) $ServiceId, (int) $PropertyOrActionId, []);
+                                $this->SendAction((int) $ServiceId, (int) $PropertyOrActionId, []);
                                 return;
                             }
                             if (array_key_exists($Ident, $this->ReadAttributeArray(\Xiaomi\Device\Attribute::ActionIdentsWithValues))) {
-                                $this->ExecuteAction((int) $ServiceId, (int) $PropertyOrActionId, [$Value]);
+                                $this->SendAction((int) $ServiceId, (int) $PropertyOrActionId, [$Value]);
                                 return;
                             }
                             break;
@@ -477,12 +477,12 @@ class XiaomiMIoTDevice extends IPSModuleStrict
             [
                 'width'     => '400px',
                 'type'      => 'Label',
-                'caption'   => $this->Translate('Names: ') . $this->ReadAttributeString(\Xiaomi\Device\Attribute::ProductName)
+                'caption'   => $this->Translate('Product name: ') . $this->ReadAttributeString(\Xiaomi\Device\Attribute::ProductName)
             ],
             [
                 'type'      => 'Label',
                 'link'      => false,
-                'caption'   => 'Model: ' . (isset($Info['model']) ? $Info['model'] : '')
+                'caption'   => $this->Translate('Model: ') . (isset($Info['model']) ? $Info['model'] : '')
             ],
             [
                 'type'      => 'Label',
@@ -517,7 +517,7 @@ class XiaomiMIoTDevice extends IPSModuleStrict
                 'type'      => 'Label',
                 'bold'      => $this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud),
                 'color'     => ($this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud) ? '0080C0' : ''),
-                'caption'   => $this->Translate('Connection: ') . ($this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud) ? 'Cloud' : 'local')
+                'caption'   => $this->Translate('Connection: ') . ($this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud) ? 'Cloud' : $this->Translate('Local'))
             ]
         ];
         $this->ShowVariableWarning = true;
@@ -565,7 +565,9 @@ class XiaomiMIoTDevice extends IPSModuleStrict
     }
 
     /**
-     * ExecuteAction
+     * CallAction
+     *
+     * Führt eine Aktion des Gerätes aus (ab 2.0, ersetzt ExecuteAction).
      *
      * @param  int $ServiceId
      * @param  int $ActionId
@@ -573,40 +575,30 @@ class XiaomiMIoTDevice extends IPSModuleStrict
      * @return mixed false bei Fehler, sonst die Rückgabewerte der Aktion (out) als Array mit dem Kurztyp der Eigenschaft
      *               als Schlüssel (z.B. 'stream-address'), oder true, wenn das Gerät keine liefert
      */
+    public function CallAction(int $ServiceId, int $ActionId, array $Parameter): mixed
+    {
+        $Out = $this->SendAction($ServiceId, $ActionId, $Parameter);
+        if (!is_array($Out)) {
+            return $Out;
+        }
+        return \Xiaomi\Spec\Normalizer::NamedOutput($this->ReadAttributeArray(\Xiaomi\Device\Attribute::Specs), $ServiceId, $ActionId, $Out);
+    }
+
+    /**
+     * ExecuteAction
+     *
+     * Abgekündigt seit 2.0, entfällt frühestens mit 2.10. Ersatz: CallAction (liefert benannte Rückgabewerte).
+     *
+     * @param  int $ServiceId
+     * @param  int $ActionId
+     * @param  array $Parameter
+     * @return mixed false bei Fehler, sonst die Rückgabewerte der Aktion (out) als Liste ohne Namen (wie bis 1.30),
+     *               oder true, wenn das Gerät keine liefert
+     */
     public function ExecuteAction(int $ServiceId, int $ActionId, array $Parameter): mixed
     {
-        if ($this->GetStatus() != IS_ACTIVE) {
-            echo $this->Translate('Instance is not active') . PHP_EOL;
-            return false;
-        }
-        $Params = [
-            'did'  => $this->ReadPropertyString(\Xiaomi\Device\Property::DeviceId),
-            'siid' => (int) $ServiceId,
-            'aiid' => (int) $ActionId,
-            'in'   => $Parameter
-        ];
-        if ($this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud)) {
-            $Params = json_encode(['params'=>$Params]);
-            $Result = $this->SendCloud(\Xiaomi\Cloud\ApiUrl::ExecuteAction, $Params);
-        } else {
-            $Result = $this->SendLocal(\Xiaomi\Device\ApiMethod::ExecuteAction, $Params);
-        }
-        if (is_null($Result)) {
-            return false;
-        }
-        $this->SendDebug('ActionResult', \Xiaomi\Sensitive::mask($Result), 0);
-        $Code = (int) ($Result['code'] ?? 0);
-        if ($Code < 0) {
-            echo $this->GetErrorText(\Xiaomi\Device\ApiError::$CodeToText, $Code) . PHP_EOL;
-            return false;
-        }
-        // Rückgabewerte (out) mit dem Kurztyp der Eigenschaft als Schlüssel, z.B. ['stream-address' => …] (ab 2.0)
-        if (array_key_exists('out', $Result)) {
-            $this->ScheduleRefresh();
-            return \Xiaomi\Spec\Normalizer::NamedOutput($this->ReadAttributeArray(\Xiaomi\Device\Attribute::Specs), $ServiceId, $ActionId, (array) $Result['out']);
-        }
-        $this->ScheduleRefresh();
-        return true;
+        $this->LogMessage($this->Translate('XIAOMI_ExecuteAction is deprecated and will be removed in version 2.10 at the earliest. Please use XIAOMI_CallAction instead.'), KL_WARNING);
+        return $this->SendAction($ServiceId, $ActionId, $Parameter);
     }
 
     /**
@@ -674,6 +666,50 @@ class XiaomiMIoTDevice extends IPSModuleStrict
                 $this->InitConnection(true);
                 break;
         }
+    }
+
+    /**
+     * SendAction
+     *
+     * Sendet eine Aktion lokal oder über die Cloud und plant danach das Nachlesen der Werte.
+     *
+     * @param  int $ServiceId
+     * @param  int $ActionId
+     * @param  array $Parameter
+     * @return array|bool false bei Fehler, true ohne Rückgabewerte, sonst die Rückgabewerte (out) als Liste
+     */
+    private function SendAction(int $ServiceId, int $ActionId, array $Parameter): array|bool
+    {
+        if ($this->GetStatus() != IS_ACTIVE) {
+            echo $this->Translate('Instance is not active') . PHP_EOL;
+            return false;
+        }
+        $Params = [
+            'did'  => $this->ReadPropertyString(\Xiaomi\Device\Property::DeviceId),
+            'siid' => (int) $ServiceId,
+            'aiid' => (int) $ActionId,
+            'in'   => $Parameter
+        ];
+        if ($this->ReadAttributeBoolean(\Xiaomi\Device\Attribute::useCloud)) {
+            $Params = json_encode(['params'=>$Params]);
+            $Result = $this->SendCloud(\Xiaomi\Cloud\ApiUrl::ExecuteAction, $Params);
+        } else {
+            $Result = $this->SendLocal(\Xiaomi\Device\ApiMethod::ExecuteAction, $Params);
+        }
+        if (is_null($Result)) {
+            return false;
+        }
+        $this->SendDebug('ActionResult', \Xiaomi\Sensitive::mask($Result), 0);
+        $Code = (int) ($Result['code'] ?? 0);
+        if ($Code < 0) {
+            echo $this->GetErrorText(\Xiaomi\Device\ApiError::$CodeToText, $Code) . PHP_EOL;
+            return false;
+        }
+        $this->ScheduleRefresh();
+        if (array_key_exists('out', $Result)) {
+            return (array) $Result['out'];
+        }
+        return true;
     }
 
     /**

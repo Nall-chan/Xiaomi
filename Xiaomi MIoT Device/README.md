@@ -15,15 +15,17 @@
 - [3. Software-Installation](#3-software-installation)
 - [4. Einrichten der Instanzen in Symcon](#4-einrichten-der-instanzen-in-symcon)
   - [Konfigurationsseite (Parameter)](#konfigurationsseite-parameter)
+  - [Lokal oder Cloud](#lokal-oder-cloud)
   - [Konfigurationsseite (Status und Bedienung)](#konfigurationsseite-status-und-bedienung)
-- [5. Statusvariablen und Profile](#5-statusvariablen-und-profile)
-  - [Statusvariablen](#statusvariablen)
-  - [Profile](#profile)
-- [6. WebFront](#6-webfront)
+- [5. Statusvariablen](#5-statusvariablen)
+- [6. Visualisierung](#6-visualisierung)
+  - [Kachel Visualisierung](#kachel-visualisierung)
+  - [WebFront Visualisierung](#webfront-visualisierung)
 - [7. PHP-Befehlsreferenz](#7-php-befehlsreferenz)
   - [Zustandsabfrage](#zustandsabfrage)
   - [Schreiben von Werten](#schreiben-von-werten)
   - [Ausführen einer Aktion](#ausführen-einer-aktion)
+  - [Ausführen einer Aktion (abgekündigt)](#ausführen-einer-aktion-abgekündigt)
 - [8. Aktionen](#8-aktionen)
 - [9. Anhang](#9-anhang)
   - [1. Changelog](#1-changelog)
@@ -32,83 +34,123 @@
 
 ## 1. Funktionsumfang
 
-- Instanz für die Integration eines Xiaomi Gerätes in von Symcon.  
+- Bildet ein Gerät aus der Mi Home App in Symcon ab.  
+- Die Statusvariablen und ihre Darstellungen entstehen automatisch aus der Gerätebeschreibung (MIoT-Spezifikation), die über die [Cloud IO](../Xiaomi%20MIoT%20Cloud%20IO/README.md) geladen wird.  
+- Kommunikation lokal im LAN/WLAN oder über die Xiaomi Cloud, der zuletzt funktionierende Weg wird gemerkt.  
+- Zyklische Statusabfrage, nach jedem Schreiben oder Ausführen einer Aktion wird der Status ca. eine Sekunde später neu gelesen.  
+- Produktname und Produktbild aus dem Katalog der Mi Home App in der Konfiguration.  
 
 ## 2. Voraussetzungen
 
 - Symcon 9.0 oder höher
 - Eingebundene Geräte in der Mi Home App
+- Eine angemeldete [Xiaomi MIoT Cloud IO](../Xiaomi%20MIoT%20Cloud%20IO/README.md) als übergeordnete Instanz
 
 ## 3. Software-Installation
 
-- Dieses Modul ist Bestandteil der [Xiaomi MIoT-Library](../README.md#4-software-installation).  
+- Dieses Modul ist Bestandteil der [Xiaomi MIoT-Library](../README.md#3-software-installation).  
 
 ## 4. Einrichten der Instanzen in Symcon
 
- Unter `Instanz hinzufügen` ist das `Xiaomi MIoT Device`-Modul unter dem Hersteller `Xiaomi` aufgeführt.  
+Unter `Instanz hinzufügen` ist das `Xiaomi MIoT Device`-Modul unter dem Hersteller `Xiaomi` aufgeführt.  
+
 ![Module](../imgs/module.png)  
 
- Es wird empfohlen diese Instanz über die dazugehörige Instanz des [MIoT Configurator-Moduls](../Xiaomi%20MIoT%20Configurator/README.md) anzulegen.  
+> [!TIP]
+> Die Instanz am einfachsten über den [Xiaomi MIoT Configurator](../Xiaomi%20MIoT%20Configurator/README.md) anlegen. Er trägt Geräte-ID, IP-Adresse und die passenden Cloud-Einstellungen selbst ein.
 
 ![Config](imgs/config.png)  
 
 ### Konfigurationsseite (Parameter)  
 
-| Name            | Text                       | Beschreibung                                                               |
-| --------------- | -------------------------- | -------------------------------------------------------------------------- |
-| Open            | Aktiv                      | Verbindung aktiv                                                           |
-| Host            | Host                       | IP-Adresse von dem Gerät                                                   |
-| DeviceId        | Geräte-ID                  | Geräte ID zur eindeutigen Identifizierung                                  |
-| RefreshInterval | Aktualisierungsintervall   | Intervall der Statusaktualisierung                                         |
-| ForceCloud      | Cloud-Verbindung erzwingen | Das Gerät ausschließlich über die Cloud ansprechen                         |
-| DeniedCloud     | Cloud-Verbindung verbieten | Auch im Fehlerfall niemals versuchen das Gerät über die Cloud zu erreichen |
+| Eigenschaft                | Name            | Typ     | Standardwert | Beschreibung                                                                                             |
+| -------------------------- | --------------- | ------- | ------------ | -------------------------------------------------------------------------------------------------------- |
+| Aktiv                      | Open            | boolean | false        | Verbindung zum Gerät aktiv                                                                               |
+| Host                       | Host            | string  |              | IP-Adresse des Gerätes im lokalen Netz. Leer = Gerät nur über die Cloud ansprechen                       |
+| Geräte ID                  | DeviceId        | string  |              | Geräte-ID (`did`) aus der Cloud, eindeutige Kennung des Gerätes im Mi Account                            |
+| Aktualisierungsintervall   | RefreshInterval | integer | 60           | Abstand der Statusabfragen in Sekunden, `0` = keine zyklische Abfrage                                    |
+| Cloud-Verbindung erzwingen | ForceCloud      | boolean | false        | Gerät ausschließlich über die Cloud ansprechen                                                           |
+| Cloud-Verbindung verbieten | DeniedCloud     | boolean | false        | Nie auf die Cloud ausweichen, auch wenn das Gerät lokal nicht antwortet (ohne `Host` nicht einstellbar) |
 
-> [!IMPORTANT]  
-> Da es diverse Geräte gibt, welche keine direkte Kommunikation im lokalen Netzwerk erlauben, versucht die Geräte-Instanz das Gerät dann über die Cloud anzusprechen.  
-  
+Modell, Token und Gerätebeschreibung muss der Nutzer nicht eintragen: Die Instanz lädt sie anhand der Geräte-ID über die Cloud IO.  
+
+Beispiel:  
+
+```php
+IPS_SetProperty(12345, 'RefreshInterval', 30);
+IPS_ApplyChanges(12345);
+```
+
+### Lokal oder Cloud  
+
+Nicht jedes Gerät erlaubt die Kommunikation im lokalen Netzwerk. Antwortet ein Gerät lokal nicht, versucht die Instanz es über die Cloud und merkt sich diesen Weg, bis `Geräteinformationen neu laden` ausgeführt oder eine der beiden Cloud-Einstellungen geändert wird.  
+
 > [!TIP]  
-> Dieses Verhalten **kann** durch die beiden Einstellungen `Cloud-Verbindung erzwingen` bzw. `Cloud-Verbindung verbieten` verändert werden.  
-> Es darf nur einer der beiden Einstellungen aktiv sein.  
-> Bei `erzwingen` wird (nach dem Handshake mit dem Gerät, was immer lokal läuft) die gesamte weitere Kommunikation über die Cloud geführt.  
-> Bei `verbieten` wird niemals automatisch auf die Cloud Verbindung umgeschaltet, wenn das Gerät auf lokale Anfragen nicht reagiert.  
+> Im Normalfall müssen `Cloud-Verbindung erzwingen` und `Cloud-Verbindung verbieten` nicht verändert werden. Es darf nur eine der beiden Einstellungen aktiv sein.  
+> Bei `erzwingen` läuft die gesamte Kommunikation über die Cloud.  
+> Bei `verbieten` wird nie auf die Cloud umgeschaltet, wenn das Gerät auf lokale Anfragen nicht reagiert.  
 
-**Im Normalfall brauchen diese Einstellungen nicht verändert werden!**
+Geräte ohne lokale IP-Adresse in der Cloud (z.B. über ein Gateway oder Bluetooth angebundene Geräte) legt der Konfigurator ohne `Host` und mit `Cloud-Verbindung erzwingen` an.  
+
+Kann ein Gerät nicht erreicht werden, steht ein Fehler mit dem Abstand bis zum nächsten Versuch im Log. Der Abstand beginnt bei 15 Sekunden und verdoppelt sich bis höchstens 32 Minuten. Speichern der Konfiguration setzt ihn zurück.  
 
 ### Konfigurationsseite (Status und Bedienung)  
 
 Über die Schaltfläche `Zustand lesen` kann eine manuelle Statusaktualisierung erfolgen.  
-Die Schaltfläche `Geräteinformationen neu laden` bewirkt das löschen alle abgespeicherten Fähigkeiten und neu laden derselben aus der Cloud. Anschließend werden u.U. die Statusvariablen und Profile um neue Eigenschaften ergänzt.  
 
-Der Bereich `Geräteinformationen` zeigt alle erkannten Eigenschaften von dem Gerät an.  
-Besonders hervorzuheben ist der Punkt `Model`, da eine Änderung vom Model ein automatisches neu laden der Geräteinformationen auslöst.  
-Der Link unter `Spezifikationen` führt zu den MIoT Spezifikationen des Gerätes.  
+Die Schaltfläche `Geräteinformationen neu laden` lädt Gerätedaten, Token, Gerätebeschreibung und Produktinformationen neu aus der Cloud, ohne Zwischenspeicher. Die bisherigen Daten bleiben erhalten, bis die neuen erfolgreich geladen sind. Neue Eigenschaften des Gerätes werden danach als Statusvariablen ergänzt.  
 
-## 5. Statusvariablen und Profile
+Der Bereich `Geräteinformationen` zeigt die Daten des Gerätes, z.B. Modell, URN der Gerätebeschreibung und Firmware. Der Link unter `Spezifikationen` führt zur Übersicht des Gerätes auf [home.miot-spec.com](https://home.miot-spec.com/), dort sind die Nummern der Services, Eigenschaften und Aktionen für die [PHP-Befehle](#7-php-befehlsreferenz) zu finden.  
 
-### Statusvariablen
+Im Bereich `Aktivierte Variablen` können nicht benötigte Statusvariablen abgewählt werden.  
 
-Die Statusvariablen inklusive der Übersetzung werden automatisch auf Basis der Gerätefähigkeiten erzeugt.  
+> [!WARNING]
+> Das Abwählen einer Variable löscht sie sofort. Wird sie wieder angewählt, entsteht eine neue Variable mit neuer Objekt-ID.
 
-Bei fehlenden Übersetzungen in der Cloud, findet keine passende Lokalisierung statt, die Variablen sollten dann selbst umbenannt werden.
+## 5. Statusvariablen
 
-__Beispiel von einem Standlüfter:__
+Die Statusvariablen werden automatisch aus der Gerätebeschreibung erzeugt. Jede Variable erhält eine [Darstellung](https://www.symcon.de/de/service/dokumentation/grundlagen/variablen/variablendarstellung/) passend zur Eigenschaft:  
 
-![Config](imgs/variables.png)  
+| Eigenschaft des Gerätes                     | Bedienbar               | Nur lesbar                     |
+| ------------------------------------------- | ----------------------- | ------------------------------ |
+| An/Aus (bool)                               | Schalter                | Wertanzeige                    |
+| Werteliste (z.B. Modus)                     | Aufzählung              | Wertanzeige mit Texten         |
+| Wertebereich (z.B. Stufe, Temperatur)       | Schieberegler mit Einheit | Wertanzeige mit Einheit      |
+| Zahl oder Text ohne Bereich                 | Werteingabe             | Wertanzeige                    |
+| Farbe (RGB)                                 | Farbe                   | Wertanzeige                    |
+| Farbtemperatur (Kelvin)                     | Schieberegler Farbtemperatur | Wertanzeige               |
+| Aktion ohne Parameter                       | Aufzählung `Ausführen`  |                                |
+| Aktion mit einem Parameter                  | wie die Eigenschaft des Parameters |                     |
+
+Aktionen mit mehreren Parametern erhalten keine Statusvariable, sie sind nur per [`XIAOMI_CallAction`](#ausführen-einer-aktion) erreichbar.  
+
+Namen, Texte der Wertelisten und Einheiten kommen in der Sprache des Systems aus der Gerätebeschreibung und den Begriffen der Mi Home App, sonst in Englisch. Herstellereigene Erweiterungen (z.B. zusätzliche Services von Saugrobotern) sind in keiner Quelle übersetzt, ihre Namen werden lesbar gemacht (z.B. `do-not-disturb` → `Do Not Disturb`) und können umbenannt werden.  
+
+Bestehende Variablen behalten ihren Namen. Die Darstellung wird bei Änderungen der Gerätebeschreibung nachgezogen, eigene Anpassungen an der Variable bleiben erhalten.  
 
 **Ident der Variablen:**  
-Der Erste Buchstabe eines Ident einer Statusvariable gibt Auskunft darüber ob es sich um eine Eigenschaft/Wert vom Gerät (P) oder eine ausführbare Aktion (A) handelt.  
-Während Eigenschaften/Werte den jeweiligen Zustand darstellen und auch abgefragt werden können, so sind Aktion nicht lesbar und können entsprechen keinen Zustand annehmen und darstellen.  
+Der Ident hat das Format `<Typ>_<Service>_<Eigenschaft bzw. Aktion>`, z.B. `P_2_1`. Der Typ `P` steht für eine Eigenschaft (Wert des Gerätes), `A` für eine ausführbare Aktion. Eigenschaften stellen einen Zustand dar und werden abgefragt. Aktionen sind nicht lesbar und zeigen keinen Zustand.  
 
-### Profile
+> [!NOTE]
+> Bis Version 1.30 verwendete das Modul eigene Variablenprofile `XIAOMI.*`. Beim Update erhalten die Variablen Darstellungen, nicht mehr benötigte Profile werden entfernt. Profile, die noch an anderer Stelle verwendet werden, bleiben erhalten; die Cloud IO zeigt sie in den [Experteneinstellungen](../Xiaomi%20MIoT%20Cloud%20IO/README.md#experteneinstellungen) an.
 
-Die Profile inklusive der Übersetzungen, Maßeinheiten usw. werden automatisch auf Basis der Gerätefähigkeiten erzeugt.
-Statusvariablen welche Aktionen abbilden und keine Parameter erwarten, erhalten einheitlich das Profil `XIAOMI.ExecuteAction` mit der einzigen Assoziation `Ausführen`.  
+## 6. Visualisierung
 
-## 6. WebFront
+### Kachel Visualisierung
+
+Die Statusvariablen werden in der Kachel-Visualisierung mit ihren Darstellungen angezeigt und, soweit das Gerät es erlaubt, bedient.  
+
+__Beispiel eines Standlüfters:__
+
+![Kachel](imgs/tile_list.png)  
+
+### WebFront Visualisierung
 
 Die direkte Darstellung im WebFront ist möglich; es wird aber empfohlen mit Links zu arbeiten.  
 
 ## 7. PHP-Befehlsreferenz
+
+Die Nummern von Service (`$ServiceID`), Eigenschaft (`$PropertyID`) und Aktion (`$ActionID`) stammen aus der Gerätebeschreibung. Sie stehen im Ident der Statusvariable (`P_<Service>_<Eigenschaft>`, `A_<Service>_<Aktion>`) und auf der Übersicht unter [`Spezifikationen`](#konfigurationsseite-status-und-bedienung).  
 
 ### Zustandsabfrage  
 
@@ -116,7 +158,8 @@ Die direkte Darstellung im WebFront ist möglich; es wird aber empfohlen mit Lin
 boolean XIAOMI_RequestState(integer $InstanzID);
 ```
 
-Fragt den aktuellen Status ab.
+Fragt alle Eigenschaften des Gerätes ab und aktualisiert die Statusvariablen.  
+Rückgabe: `true` bei Erfolg, sonst `false` mit Fehlermeldung.  
 
 Beispiel:  
 
@@ -131,8 +174,7 @@ XIAOMI_RequestState(12345);
 > [!TIP]  
 > **Es wird empfohlen Schaltaktionen mit dem universellen Befehl [`RequestAction(integer $VariableID, mixed $Value);` (Link zur Doku)](https://www.symcon.de/de/service/dokumentation/befehlsreferenz/variablenzugriff/requestaction/) auszuführen.**  
 
-Sollte es dennoch erforderlich gezielt Werte an bestimme Services zu senden, so stehen folgende Befehle zur Verfügung.  
-Dabei sind `$ServiceID` und `$PropertyID` die nummerischen Indexes der MIoT Spezifikationen des Gerätes, welche in der Konfiguration der Instanz unter [`Spezifikationen`](#konfigurationsseite-status-und-bedienung) verlinkt sind.  
+Sollen gezielt Werte an eine Eigenschaft gesendet werden, stehen je Datentyp folgende Befehle zur Verfügung:  
 
 ```php
 boolean XIAOMI_WriteValueBoolean(integer $InstanzID, integer $ServiceID, integer $PropertyID, boolean $Value);
@@ -141,10 +183,12 @@ boolean XIAOMI_WriteValueFloat(integer $InstanzID, integer $ServiceID, integer $
 boolean XIAOMI_WriteValueString(integer $InstanzID, integer $ServiceID, integer $PropertyID, string $Value);
 ```
 
+Rückgabe: `true`, wenn das Gerät den Wert angenommen hat, sonst `false` mit der Fehlermeldung des Gerätes (z.B. ungültiger Wert).  
+
 Beispiel:  
 
 ```php
-XIAOMI_WriteValueBoolean(12345, 1, 1, true);
+XIAOMI_WriteValueBoolean(12345, 2, 1, true); // Service 2, Eigenschaft 1 (bei vielen Geräten: Einschalten)
 ```  
 
 ---  
@@ -152,28 +196,51 @@ XIAOMI_WriteValueBoolean(12345, 1, 1, true);
 ### Ausführen einer Aktion  
 
 > [!TIP]  
-> **Es wird empfohlen Schaltaktionen mit dem universellen Befehl [`RequestAction(integer $VariableID, mixed $Value);` (Link zur Doku)](https://www.symcon.de/de/service/dokumentation/befehlsreferenz/variablenzugriff/requestaction/) auszuführen.** 
+> **Aktionen ohne Rückgabewerte lassen sich auch mit [`RequestAction(integer $VariableID, mixed $Value);` (Link zur Doku)](https://www.symcon.de/de/service/dokumentation/befehlsreferenz/variablenzugriff/requestaction/) auf die Statusvariable der Aktion ausführen.**  
 
-Verfügbare Werte sind z.B. dem Variablenprofil zu entnehmen, oder bei Aktionen welche keine Parameter erwarten irrelevant.  
-Dabei sind `$ServiceID` und `$ActionID` die nummerischen Indexes der MIoT Spezifikationen des Gerätes, welche in der Konfiguration der Instanz unter [`Spezifikationen`](#konfigurationsseite-status-und-bedienung) verlinkt sind.  
+```php
+mixed XIAOMI_CallAction(integer $InstanzID, integer $ServiceID, integer $ActionID, array $Values);
+```  
+
+Führt eine Aktion des Gerätes aus. `$Values` enthält die Eingabewerte der Aktion in der Reihenfolge der Gerätebeschreibung, bei Aktionen ohne Eingabewerte ein leeres Array.  
+
+Rückgabe:  
+
+- `false` im Fehlerfall,  
+- `true`, wenn das Gerät keine Rückgabewerte liefert,  
+- sonst die Rückgabewerte als Array. Schlüssel ist der Name der Eigenschaft aus der Gerätebeschreibung (z.B. `stream-address`). Kommt eine Eigenschaft mehrfach vor, erhält der Schlüssel die Nummer der Eigenschaft angehängt (`_<Nummer>`). Passt die Anzahl der Werte nicht zur Gerätebeschreibung, bleibt es bei einer Liste ohne Namen.  
+
+Beispiel (Kamera `chuangmi.camera.ipc009`, Service 3, Aktion 3 ohne Eingabewerte):  
+
+```php
+$Result = XIAOMI_CallAction(12345, 3, 3, []);
+var_dump($Result);
+// array(2) {
+//   ["stream-status"]=> int(1)
+//   ["video-attribute"]=> int(0)
+// }
+```
+
+```php
+XIAOMI_CallAction(12345, 5, 3, [4, 2]); // Aktion mit zwei Eingabewerten
+```
+
+---  
+
+### Ausführen einer Aktion (abgekündigt)  
 
 ```php
 mixed XIAOMI_ExecuteAction(integer $InstanzID, integer $ServiceID, integer $ActionID, array $Values);
 ```  
 
-Ausführen einer Aktion.  
-Rückgabe: `false` im Fehlerfall, sonst die Rückgabewerte der Aktion (`out`) als Array oder `true`, wenn das Gerät keine Rückgabewerte liefert.
+> [!WARNING]
+> `XIAOMI_ExecuteAction` ist abgekündigt und entfällt frühestens mit Version 2.10. Jeder Aufruf erzeugt eine Warnung im Log. Bitte auf `XIAOMI_CallAction` umstellen.
 
-Beispiel:  
-
-```php
-XIAOMI_ExecuteAction(12345, 5, 1, []);     //Aktion erfordert keinen Wert
-XIAOMI_ExecuteAction(12345, 5, 3, [4, 2]); //Aktion erfordert zwei Werte
-```
+Wie `XIAOMI_CallAction`, liefert die Rückgabewerte aber wie bis Version 1.30 als Liste ohne Namen (z.B. `[1, 0]`).  
 
 ## 8. Aktionen
 
-Es gibt keine speziellen Aktionen für Instanzen von dieses Modul.  
+**Grundsätzlich können alle bedienbaren Statusvariablen als Ziel einer [`Aktion`](https://www.symcon.de/service/dokumentation/konzepte/automationen/ablaufplaene/aktionen/) mit `Auf Wert schalten` angesteuert werden, so dass hier keine speziellen Aktionen benutzt werden müssen.**
 
 ## 9. Anhang
 
@@ -192,4 +259,4 @@ Die Library ist für die nicht kommerzielle Nutzung kostenlos, Schenkungen als U
 ## 10. Lizenz
 
   Symcon-Modul:  
-  [Custom NC-SA](../LICENSE)  
+  [Custom NC-SA](../LICENSE)

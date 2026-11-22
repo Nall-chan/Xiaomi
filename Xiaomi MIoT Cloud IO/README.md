@@ -14,9 +14,16 @@
 - [2. Voraussetzungen](#2-voraussetzungen)
 - [3. Software-Installation](#3-software-installation)
 - [4. Einrichten der Instanzen in Symcon](#4-einrichten-der-instanzen-in-symcon)
+  - [Anmeldung](#anmeldung)
+  - [Konfigurationsseite](#konfigurationsseite)
+  - [Experteneinstellungen](#experteneinstellungen)
 - [5. Statusvariablen](#5-statusvariablen)
 - [6. Visualisierung](#6-visualisierung)
 - [7. PHP-Befehlsreferenz](#7-php-befehlsreferenz)
+  - [Anmelden](#anmelden)
+  - [Verifizierungscode anfordern](#verifizierungscode-anfordern)
+  - [Verifizierungscode bestätigen](#verifizierungscode-bestätigen)
+  - [Abmelden](#abmelden)
 - [8. Aktionen](#8-aktionen)
 - [9. Anhang](#9-anhang)
   - [1. Changelog](#1-changelog)
@@ -25,39 +32,68 @@
 
 ## 1. Funktionsumfang
 
-- Instanz für die Kommunikation mit der MIoT Cloud.  
+- Anmeldung an der Xiaomi Cloud mit dem Mi Account (Konto der Mi Home App), auch mit Zwei-Faktor-Verifizierung.  
+- Liefert dem [Konfigurator](../Xiaomi%20MIoT%20Configurator/README.md) die Geräte des Kontos, auch Geräte, die andere Konten für dieses Konto freigegeben haben.  
+- Liefert den [Geräte-Instanzen](../Xiaomi%20MIoT%20Device/README.md) Gerätedaten (Modell, Token), die Gerätebeschreibung (MIoT-Spezifikation) mit Übersetzungen, Produktname und -bild sowie Begriffe und Einheiten der Mi Home App.  
+- Leitet Befehle von Geräten, die nur über die Cloud erreichbar sind, an die Cloud weiter.  
+- Hält die geladenen Daten zwischengespeichert: Geräteliste 5 Minuten, Gerätebeschreibungen 24 Stunden, Produktkatalog und Begriffe 7 Tage.  
+- Räumt die Variablenprofile `XIAOMI.*` der Versionen bis 1.30 auf ([Experteneinstellungen](#experteneinstellungen)).  
 
 ## 2. Voraussetzungen
 
 - Symcon 9.0 oder höher
-- Eingebundene Geräte in der Mi Home App
+- Mi Account mit eingebundenen Geräten in der Mi Home App
+- Internetzugang
 
 ## 3. Software-Installation
 
-- Dieses Modul ist Bestandteil der [Xiaomi MIoT-Library](../README.md#4-software-installation).  
+- Dieses Modul ist Bestandteil der [Xiaomi MIoT-Library](../README.md#3-software-installation).  
 
 ## 4. Einrichten der Instanzen in Symcon
 
- Unter `Instanz hinzufügen` ist das `Xiaomi MIoT Cloud IO`-Modul unter dem Hersteller `Xiaomi` aufgeführt.  
+Unter `Instanz hinzufügen` ist das `Xiaomi MIoT Cloud IO`-Modul unter dem Hersteller `Xiaomi` aufgeführt.  
+
 ![Module](../imgs/module.png)  
 
 Diese Instanz wird automatisch mit erzeugt, wenn eine neue Instanz vom [MIoT Configurator-Modul](../Xiaomi%20MIoT%20Configurator/README.md) angelegt wird.  
 
-Besitzt die Instanz keine Verbindung zur Cloud, so wird beim öffnen der Konfiguration automatisch die Anmeldeseite angezeigt.
+> [!IMPORTANT]
+> Jede [Geräte-Instanz](../Xiaomi%20MIoT%20Device/README.md) benötigt eine angemeldete Cloud IO, auch wenn das Gerät lokal kommuniziert: Gerätedaten, Token und Gerätebeschreibung kommen aus der Cloud.
+
+Nutzen mehrere Personen eigene Mi Accounts (z.B. Familienmitglieder), kann je Konto eine eigene Cloud IO angelegt werden. Die Zusammenfassung der Instanz zeigt den angemeldeten Benutzer.  
+
+### Anmeldung
+
+Besitzt die Instanz keine Verbindung zur Cloud, so wird beim Öffnen der Konfiguration automatisch die Anmeldeseite angezeigt.  
+Benötigt werden Benutzername (E-Mail-Adresse, Telefonnummer oder Konto-ID) und Passwort des Mi Accounts sowie die Region, in der die Geräte in der Mi Home App angelernt sind.  
+
 ![Login](imgs/login.png)  
 
 Eventuell muss eine 2FA (Zwei-Faktor-Authentifizierung) einmalig durchlaufen werden, um die Anmeldung abzuschließen.  
-> [!WARNING]
-> Wird die Instanz gelöscht, so muss die Zwei-Faktor-Authentifizierung erneut durchlaufen werden!  
+Hierzu ist zuerst die Schaltfläche `Senden` zu betätigen, um den Code an die hinterlegte E-Mail-Adresse oder Telefonnummer zu senden.  
+Anschließend ist der erhaltene Code in das Feld `Verifizierungscode` einzutragen und mit `Absenden` abzuschicken.  
 
 ![2FA](imgs/2fa.png)  
 
-Hierzu ist zuerst die Schaltfläche 'Senden' zu betätigen, um den Code an die hinterlegte E-Mail-Adresse oder Telefonnummer zu senden.  
-Anschließend ist der erhaltene Code in das Feld `Verifizierungscode` einzutragen und mit 'Absenden' abzuschicken.
+> [!WARNING]
+> Wird die Instanz gelöscht, so muss die Zwei-Faktor-Authentifizierung erneut durchlaufen werden!  
 
-> [!IMPORTANT]
-> Da es diverse Geräte gibt, welche keine direkte Kommunikation im lokalen Netzwerk erlauben, versucht die `Xiaomi MIoT Geräte`-Instanz das Gerät dann über die Cloud anzusprechen.  
-> Dazu muss zwingend eine `Xiaomi MIoT Cloud IO`-Instanz als Gateway verbunden sein.  
+### Konfigurationsseite
+
+![Config](imgs/config.png)  
+
+Die Instanz hat keine Eigenschaften, die per `IPS_SetProperty` gesetzt werden. Zugangsdaten werden über die Anmeldung bzw. die [PHP-Befehle](#7-php-befehlsreferenz) verwaltet.  
+Über `Abmelden` werden die gespeicherten Zugangsdaten gelöscht.  
+
+### Experteneinstellungen
+
+Bis Version 1.30 legten die Geräte-Instanzen eigene Variablenprofile `XIAOMI.*` an. Seit Version 2.0 nutzen die Variablen Darstellungen; die Geräte-Instanzen entfernen ihre alten Profile selbst, sobald sie nirgends mehr verwendet werden.  
+
+- `Nicht mehr verwendete Xiaomi-Profile löschen (n)` löscht nach einer Rückfrage alle Profile `XIAOMI.*`, die von keiner Variable im System mehr genutzt werden (z.B. Reste älterer Versionen oder gelöschter Instanzen). In Klammern steht die Anzahl.  
+- `Welche Variablen nutzen noch Xiaomi-Profile?` zeigt eine Liste der Variablen mit Instanz, Name und Profil. Eine Zeile auswählen und `Variable öffnen` öffnet die Variable, um z.B. das Profil durch eine Darstellung zu ersetzen.  
+
+> [!NOTE]
+> Inaktive Geräte-Instanzen stellen ihre Variablen erst um, wenn sie wieder aktiv werden. Bis dahin behalten sie ihre Profile.
 
 ## 5. Statusvariablen
 
@@ -70,7 +106,7 @@ Dieses Modul ist nicht für die Visualisierung geeignet.
 ## 7. PHP-Befehlsreferenz
 
 > [!TIP]
-> Die Anmeldung erfolgt am einfachsten über die Konfiguration der Instanz (siehe [Einrichten der Instanzen](#4-einrichten-der-instanzen-in-symcon)). Die folgenden Funktionen werden von diesem Formular verwendet und können auch in Skripten genutzt werden.
+> Die Anmeldung erfolgt am einfachsten über die Konfiguration der Instanz (siehe [Anmeldung](#anmeldung)). Die folgenden Funktionen werden von diesem Formular verwendet und können auch in Skripten genutzt werden.
 
 ### Anmelden  
 
@@ -82,16 +118,16 @@ Meldet die Instanz mit den Zugangsdaten des Mi Accounts (Konto der Mi Home App) 
 `$Username` ist die E-Mail-Adresse, Telefonnummer oder Konto-ID des Mi Accounts, `$Password` das zugehörige Passwort.  
 `$Country` ist der Server bzw. die Region, in welcher die Geräte in der Mi Home App angelernt sind:  
 
-| Wert | Region                   |
-| ---- | ------------------------ |
-| `cn` | China                    |
-| `de` | Deutschland (Europa)     |
-| `ru` | Russland                 |
-| `us` | Amerika                  |
-| `tw` | Taiwan                   |
-| `sg` | Singapur                 |
-| `in` | Indien                   |
-| `i2` | Indien (zweiter Server)  |
+| Wert | Region                  |
+| ---- | ----------------------- |
+| `cn` | China                   |
+| `de` | Deutschland (Europa)    |
+| `ru` | Russland                |
+| `us` | Amerika                 |
+| `tw` | Taiwan                  |
+| `sg` | Singapur                |
+| `in` | Indien                  |
+| `i2` | Indien (zweiter Server) |
 
 Rückgabe: Ein leerer String, wenn die Anmeldung erfolgreich war oder eine Zwei-Faktor-Verifizierung gestartet wurde. Andernfalls die Fehlermeldung (z.B. `Nicht autorisiert`).  
 Ist eine Zwei-Faktor-Verifizierung erforderlich, bleibt die Instanz inaktiv, bis der Code mit `XIAOMI_SubmitVerificationCode` bestätigt wurde.  
@@ -148,13 +184,14 @@ echo XIAOMI_SubmitVerificationCode(12345, '123456');
 void XIAOMI_Logout(integer $InstanzID);
 ```
 
-Löscht die gespeicherten Zugangsdaten und Token der Instanz. Die Instanz wird inaktiv, verbundene Geräte-Instanzen können anschließend nicht mehr über die Cloud kommunizieren.  
+Löscht die gespeicherten Zugangsdaten und Token der Instanz. Die Instanz wird inaktiv, verbundene Geräte-Instanzen können anschließend keine Daten mehr aus der Cloud laden und nicht mehr über die Cloud kommunizieren.  
 
 Beispiel:  
 
 ```php
 XIAOMI_Logout(12345);
 ```
+
 ## 8. Aktionen
 
 Es gibt keine speziellen Aktionen für dieses Modul.  
@@ -176,4 +213,4 @@ Die Library ist für die nicht kommerzielle Nutzung kostenlos, Schenkungen als U
 ## 10. Lizenz
 
   Symcon-Modul:  
-  [Custom NC-SA](../LICENSE)  
+  [Custom NC-SA](../LICENSE)

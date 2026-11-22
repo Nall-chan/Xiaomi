@@ -14,6 +14,9 @@
 - [2. Voraussetzungen](#2-voraussetzungen)
 - [3. Software-Installation](#3-software-installation)
 - [4. Einrichten der Instanzen in Symcon](#4-einrichten-der-instanzen-in-symcon)
+  - [Konfigurationsseite](#konfigurationsseite)
+  - [Geräte mit eigener Library](#geräte-mit-eigener-library)
+  - [Mehrere Mi Accounts](#mehrere-mi-accounts)
 - [5. Statusvariablen](#5-statusvariablen)
 - [6. Visualisierung](#6-visualisierung)
 - [7. PHP-Befehlsreferenz](#7-php-befehlsreferenz)
@@ -25,29 +28,64 @@
 
 ## 1. Funktionsumfang
 
-- Instanz zum einfachen anlegen von Geräte Instanzen in Symcon.  
+- Listet alle Geräte des Mi Accounts der verbundenen [Cloud IO](../Xiaomi%20MIoT%20Cloud%20IO/README.md), auch Geräte, die andere Konten für dieses Konto freigegeben haben.  
+- Legt [Geräte-Instanzen](../Xiaomi%20MIoT%20Device/README.md) mit Geräte-ID, IP-Adresse und passenden Cloud-Einstellungen an.  
+- Zeigt, ob ein Gerät online ist, und gleicht die Liste mit vorhandenen Instanzen ab.  
 
 ## 2. Voraussetzungen
 
 - Symcon 9.0 oder höher
 - Eingebundene Geräte in der Mi Home App
+- Eine angemeldete [Xiaomi MIoT Cloud IO](../Xiaomi%20MIoT%20Cloud%20IO/README.md)
 
 ## 3. Software-Installation
 
-- Dieses Modul ist Bestandteil der [Xiaomi MIoT-Library](../README.md#4-software-installation).  
+- Dieses Modul ist Bestandteil der [Xiaomi MIoT-Library](../README.md#3-software-installation).  
 
 ## 4. Einrichten der Instanzen in Symcon
 
 Unter `Instanz hinzufügen` ist das `Xiaomi MIoT Configurator`-Modul unter dem Hersteller `Xiaomi` aufgeführt.  
+
 ![Module](../imgs/module.png)  
 
-### Konfigurationsseite <!-- omit in toc -->  
+Beim Anlegen wird automatisch eine neue [Cloud IO](../Xiaomi%20MIoT%20Cloud%20IO/README.md) erzeugt, alternativ kann eine vorhandene gewählt werden. Der Konfigurator hat keine eigenen Eigenschaften.  
 
-![Module-Store](../imgs/install5.png)  
+### Konfigurationsseite
 
-Der Konfigurator kann nur Geräte erkennen, sofern die [Xiaomi MIoT Cloud IO Instanz](../Xiaomi%20MIoT%20Cloud%20IO/README.md) korrekt verbunden ist.
+![Config](imgs/config.png)  
 
-Über den Schalter `Zeige offline Geräte` können Geräte welche aktuell in der Cloud als offline markiert sind eingeblendet werden.  
+Ist keine angemeldete Cloud IO verbunden, zeigt der Konfigurator einen Hinweis und die Schaltfläche `Cloud IO öffnen`, um die Anmeldung nachzuholen. Wechselt die Cloud IO oder ihr Status, lädt die Liste neu.  
+
+| Spalte     | Inhalt                                                                                         |
+| ---------- | ---------------------------------------------------------------------------------------------- |
+| Modell     | Modell des Gerätes, z.B. `xiaomi.fan.p76`                                                      |
+| IP-Adresse | Lokale IP-Adresse laut Cloud, `Nur Cloud` bei Geräten ohne lokale Adresse                      |
+| Status     | `Online` bzw. `Offline` laut Cloud                                                             |
+| Herkunft   | `Eigenes Konto` oder `Freigegeben von <Konto>` bei Geräten, die ein anderes Konto freigegeben hat |
+| Name       | Name der vorhandenen Instanz, sonst der Name aus der Mi Home App                                |
+
+Beim Anlegen einer Instanz:  
+
+- Geräte ohne lokale IP-Adresse werden ohne `Host` und mit `Cloud-Verbindung erzwingen` angelegt.  
+- Offline-Geräte werden inaktiv angelegt.  
+- Gateways werden nicht angezeigt.  
+
+Instanzen, die an dieser Cloud IO hängen, deren Gerät aber (aktuell) nicht in der Cloud gefunden wird, erscheinen ohne Modell und Status in der Liste.  
+
+### Geräte mit eigener Library
+
+Für einige Geräte gibt es eigene Libraries im Module Store:  
+
+| Geräte                                         | Library                              |
+| ---------------------------------------------- | ------------------------------------ |
+| Yeelight-Leuchten (`yeelink.light.*`)          | Yeelight                             |
+| Roborock-Sauger (`roborock.vacuum.*`, `rockrobo.vacuum.*`) | Roborock                 |
+
+Ist die Library nicht installiert und die Cloud liefert ein passendes Gerät, zeigt der Konfigurator einen Hinweis mit der Schaltfläche `Installieren`. Nach einer Rückfrage wird die Library aus dem Module Store installiert (stabiler Kanal, sonst Beta). Dafür müssen die Bedingungen des Module Store bestätigt sein, sonst ist die Schaltfläche gesperrt. Bis zur Installation bietet der Konfigurator die Geräte weiter zum Anlegen an. Ist sie installiert, werden diese Geräte ausgeblendet und sind über die jeweilige Library einzurichten. Bereits vorhandene Instanzen dieses Moduls an der eigenen Cloud IO bleiben sichtbar.  
+
+### Mehrere Mi Accounts
+
+Hat jedes Familienmitglied ein eigenes Konto mit eigener Cloud IO und eigenem Konfigurator, zeigt jeder Konfigurator nur die Geräte, die noch keine Instanz haben oder deren Instanz an seiner Cloud IO hängt. Ein Gerät, das bereits über ein anderes Konto eingerichtet ist (z.B. ein freigegebenes Gerät), wird ausgeblendet. Die Zusammenfassung des Konfigurators zeigt den Namen der verbundenen Cloud IO.  
 
 ## 5. Statusvariablen
 
@@ -82,4 +120,4 @@ Die Library ist für die nicht kommerzielle Nutzung kostenlos, Schenkungen als U
 ## 10. Lizenz
 
   Symcon-Modul:  
-  [Custom NC-SA](../LICENSE)  
+  [Custom NC-SA](../LICENSE)

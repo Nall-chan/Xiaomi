@@ -118,6 +118,12 @@ class XiaomiMIoTConfigurator extends IPSModuleStrict
         if ($this->IORequestAction($Ident, $Value)) {
             return;
         }
+        if ($Ident == 'InstallPartnerLibrary') {
+            if ($this->InstallPartnerLibrary((string) $Value)) {
+                $this->ReloadForm();
+            }
+            return;
+        }
         echo $this->Translate('Invalid Ident') . PHP_EOL;
     }
 
@@ -144,6 +150,8 @@ class XiaomiMIoTConfigurator extends IPSModuleStrict
         $Instances = $this->GetInstanceList();
         $Devices = $IOActive ? $this->GetDevices() : [];
         $DeviceValues = [];
+        // Partner-Libraries, die nicht installiert sind, aber zu gefundenen Geräten passen: Name => Hinweistext
+        $PartnerHints = [];
         foreach ($Devices as $Device) {
             //we skip all Gateways...
             if (strpos($Device[\Xiaomi\Cloud\DeviceKey::Urn], \Xiaomi\SpecTypes::Gateway) === 0) {
@@ -156,6 +164,17 @@ class XiaomiMIoTConfigurator extends IPSModuleStrict
             if (($InstanceIdDevice !== false) && ($Instances[$InstanceIdDevice]['io'] != $IOId)) {
                 unset($Instances[$InstanceIdDevice]);
                 continue;
+            }
+            // Modell wird von einer eigenen Library unterstützt: installiert → ausblenden (außer es gibt hier schon eine Instanz), sonst Hinweis
+            $Partner = \Xiaomi\Configurator\PartnerLibrary::ForModel($Device[\Xiaomi\Cloud\DeviceKey::Model]);
+            if ($Partner !== null) {
+                if (IPS_ModuleExists($Partner[\Xiaomi\Configurator\PartnerLibrary::ModuleId])) {
+                    if ($InstanceIdDevice === false) {
+                        continue;
+                    }
+                } else {
+                    $PartnerHints[$Partner[\Xiaomi\Configurator\PartnerLibrary::BundleId]] = $Partner;
+                }
             }
             $Online = $Device[\Xiaomi\Cloud\DeviceKey::Online];
             $AddDevice = [
@@ -198,7 +217,9 @@ class XiaomiMIoTConfigurator extends IPSModuleStrict
                 'name'       => IPS_GetName($InstanceIdDevice)
             ];
         }
-        $Form['actions'][2]['values'] = $DeviceValues;
+        $Form['actions'][2]['visible'] = count($PartnerHints) > 0;
+        $Form['actions'][2]['items'] = $this->GetPartnerHintItems($PartnerHints);
+        $Form['actions'][3]['values'] = $DeviceValues;
         $this->SendDebug('FORM', \Xiaomi\Sensitive::mask(json_encode($Form)), 0);
         $this->SendDebug('FORM', json_last_error_msg(), 0);
         return json_encode($Form);
@@ -229,6 +250,114 @@ class XiaomiMIoTConfigurator extends IPSModuleStrict
     {
         $IOId = IPS_GetInstance($this->InstanceID)['ConnectionID'];
         $this->SetSummary(($IOId > 1) ? IPS_GetName($IOId) : '');
+    }
+
+    /**
+     * GetStoreControlId
+     *
+     * @return int Store-Control-Instanz, 0 wenn nicht vorhanden oder die Store-Bedingungen nicht bestätigt sind
+     */
+    private function GetStoreControlId(): int
+    {
+        $Ids = IPS_GetInstanceListByModuleID(\Xiaomi\Configurator\Store::ControlModuleId);
+        if (!count($Ids)) {
+            return 0;
+        }
+        if (SC_GetLastConfirmedStoreConditions($Ids[0]) < \Xiaomi\Configurator\Store::ConditionsConfirmed) {
+            return 0;
+        }
+        return $Ids[0];
+    }
+
+    /**
+     * GetPartnerHintItems
+     *
+     * Je fehlender Partner-Library eine Zeile mit Hinweis und Knopf „Installieren“.
+     *
+     * @param  array $Partners Einträge aus PartnerLibrary::List
+     * @return array Formular-Elemente
+     */
+    private function GetPartnerHintItems(array $Partners): array
+    {
+        $StoreAvailable = count($Partners) && ($this->GetStoreControlId() > 0);
+        $Items = [];
+        foreach ($Partners as $Partner) {
+            $Name = $Partner[\Xiaomi\Configurator\PartnerLibrary::Name];
+            $Items[] = [
+                'type'  => 'RowLayout',
+                'items' => [
+                    [
+                        'type'    => 'Label',
+                        'caption' => sprintf(
+                            $this->Translate('%1$s devices are supported by the library "%2$s" from the Module Store. Once it is installed, these devices are hidden here.'),
+                            $Partner[\Xiaomi\Configurator\PartnerLibrary::Devices],
+                            $Name
+                        )
+                    ],
+                    [
+                        'type'    => 'Button',
+                        'caption' => $StoreAvailable ? 'Install' : 'Module Store not available',
+                        'enabled' => $StoreAvailable,
+                        'confirm' => sprintf($this->Translate('Install the library "%s" from the Module Store?'), $Name),
+                        'onClick' => 'IPS_RequestAction($id, "InstallPartnerLibrary", "' . $Partner[\Xiaomi\Configurator\PartnerLibrary::BundleId] . '");'
+                    ]
+                ]
+            ];
+        }
+        return $Items;
+    }
+
+    /**
+     * InstallPartnerLibrary
+     *
+     * Installiert eine Partner-Library über die Store-Control-Instanz, bevorzugt den stabilen Kanal, sonst Beta.
+     *
+     * @param  string $BundleId Bundle-ID aus PartnerLibrary::List
+     * @return bool
+     */
+    private function InstallPartnerLibrary(string $BundleId): bool
+    {
+        $Partner = \Xiaomi\Configurator\PartnerLibrary::ForBundle($BundleId);
+        if ($Partner === null) {
+            echo $this->Translate('Unknown library') . PHP_EOL;
+            return false;
+        }
+        $StoreId = $this->GetStoreControlId();
+        if ($StoreId == 0) {
+            echo $this->Translate('Module Store not available') . PHP_EOL;
+            return false;
+        }
+        $Compatibility = json_encode(['version' => IPS_GetKernelVersion(), 'date' => time()]);
+        $Url = sprintf(\Xiaomi\Configurator\Store::ModulesUrl, urlencode($Partner[\Xiaomi\Configurator\PartnerLibrary::Name]), urlencode($Compatibility));
+        $Context = stream_context_create(['http' => [
+            'method'  => 'GET',
+            'header'  => "User-Agent: Symcon\r\n",
+            'timeout' => \Xiaomi\Configurator\Store::Timeout
+        ]]);
+        $Response = @file_get_contents($Url, false, $Context);
+        $Modules = is_string($Response) ? json_decode($Response, true) : null;
+        if (!is_array($Modules)) {
+            echo $this->Translate('Module Store not reachable, please try again later.') . PHP_EOL;
+            return false;
+        }
+        $Releases = [];
+        foreach ($Modules as $Module) {
+            if (($Module['bundle'] ?? '') === $BundleId) {
+                $Releases[$Module['channel'] ?? ''] = (int) ($Module['release'] ?? 0);
+            }
+        }
+        $this->SendDebug(__FUNCTION__, $BundleId . ' ' . json_encode($Releases), 0);
+        foreach (\Xiaomi\Configurator\Store::Channels as $Channel => $ChannelId) {
+            if (!empty($Releases[$Channel])) {
+                if (!SC_InstallModule($StoreId, $BundleId, $ChannelId, $Releases[$Channel])) {
+                    echo sprintf($this->Translate('The library "%s" could not be installed.'), $Partner[\Xiaomi\Configurator\PartnerLibrary::Name]) . PHP_EOL;
+                    return false;
+                }
+                return true;
+            }
+        }
+        echo sprintf($this->Translate('The library "%s" was not found in the Module Store.'), $Partner[\Xiaomi\Configurator\PartnerLibrary::Name]) . PHP_EOL;
+        return false;
     }
 
     /**

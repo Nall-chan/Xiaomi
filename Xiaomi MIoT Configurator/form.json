@@ -15,6 +15,12 @@
             "visible": false
         },
         {
+            "type": "ColumnLayout",
+            "name": "PartnerHints",
+            "visible": false,
+            "items": []
+        },
+        {
             "type": "Configurator",
             "name": "Devices",
             "discoveryInterval": 900,

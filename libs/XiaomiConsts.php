@@ -791,4 +791,89 @@ namespace Xiaomi\Configurator{
         public const Online = 'cloud-done';
         public const Offline = 'cloud-off';
     }
+
+    /**
+     * PartnerLibrary
+     *
+     * Libraries aus dem Module Store mit eigener Unterstützung für bestimmte Modelle.
+     * Ist die Library installiert (Modul-GUID vorhanden), blendet der Konfigurator diese Geräte aus,
+     * außer sie haben bereits eine Instanz an der eigenen Cloud IO. Sonst zeigt er einen Hinweis.
+     */
+    class PartnerLibrary
+    {
+        public const Name = 'name';
+        public const Devices = 'devices';
+        public const ModuleId = 'moduleID';
+        public const ModelPrefixes = 'prefixes';
+        public const BundleId = 'bundle';
+
+        public const List = [
+            [
+                self::Name          => 'Yeelight',
+                self::Devices       => 'Yeelight',
+                self::ModuleId      => '{BF5D53BB-EB4E-45C0-8632-5DB4EF49FA9F}', // YeelightDevice (Nall-chan/Yeelight)
+                self::ModelPrefixes => ['yeelink.light.'],
+                self::BundleId      => 'de.nall.chan.yeelight'
+            ],
+            [
+                self::Name          => 'Roborock',
+                self::Devices       => 'Roborock',
+                self::ModuleId      => '{E65614FB-B37A-219A-4876-E5676C948C33}', // Roborock Robot (Fonzo, CodeKing, bumaas)
+                self::ModelPrefixes => ['roborock.vacuum.', 'rockrobo.vacuum.'],
+                self::BundleId      => 'fonzo.ipsymconroborock'
+            ]
+        ];
+
+        /**
+         * ForModel
+         *
+         * @param  string $Model Modell aus der Cloud, z.B. yeelink.light.color1
+         * @return array|null Eintrag aus List oder null
+         */
+        public static function ForModel(string $Model): ?array
+        {
+            foreach (self::List as $Library) {
+                foreach ($Library[self::ModelPrefixes] as $Prefix) {
+                    if (str_starts_with($Model, $Prefix)) {
+                        return $Library;
+                    }
+                }
+            }
+            return null;
+        }
+
+        /**
+         * ForBundle
+         *
+         * @param  string $BundleId Bundle-ID im Module Store
+         * @return array|null Eintrag aus List oder null
+         */
+        public static function ForBundle(string $BundleId): ?array
+        {
+            foreach (self::List as $Library) {
+                if ($Library[self::BundleId] === $BundleId) {
+                    return $Library;
+                }
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Store
+     *
+     * Installation von Partner-Libraries über die Store-Control-Instanz (SC_InstallModule, wie bis 1.21).
+     */
+    class Store
+    {
+        /** Modul-GUID der Store-Control-Instanz (Kern) */
+        public const ControlModuleId = '{F45B5D1F-56AE-4C61-9AB2-C87C63149EC3}';
+        /** Öffentliche Liste der Module mit Release-IDs je Kanal */
+        public const ModulesUrl = 'https://api.symcon.de/store/modules?language=de&search=%s&compatibility=%s';
+        /** Mindestwert von SC_GetLastConfirmedStoreConditions, ab dem der Store genutzt werden darf (bestätigte Bedingungen) */
+        public const ConditionsConfirmed = 3;
+        /** Kanäle für SC_InstallModule (live: installierte Beta meldet Channel 1) */
+        public const Channels = ['stable' => 0, 'beta' => 1];
+        public const Timeout = 10;
+    }
 }

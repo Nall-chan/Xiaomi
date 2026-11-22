@@ -2,6 +2,7 @@
     "translations": {
         "de": {
             "Devices": "Geräte",
+            "Model": "Modell",
             "IP-Address": "IP-Adresse",
             "Origin": "Herkunft",
             "State": "Status",
@@ -11,6 +12,14 @@
             "Shared by %s": "Freigegeben von %s",
             "Cloud only": "Nur Cloud",
             "Open Cloud IO": "Cloud IO öffnen",
+            "Install": "Installieren",
+            "Module Store not available": "Module Store nicht verfügbar",
+            "Install the library \"%s\" from the Module Store?": "Die Library „%s“ aus dem Module Store installieren?",
+            "Unknown library": "Unbekannte Library",
+            "Module Store not reachable, please try again later.": "Module Store nicht erreichbar, bitte später erneut versuchen.",
+            "The library \"%s\" could not be installed.": "Die Library „%s“ konnte nicht installiert werden.",
+            "The library \"%s\" was not found in the Module Store.": "Die Library „%s“ wurde im Module Store nicht gefunden.",
+            "%1$s devices are supported by the library \"%2$s\" from the Module Store. Once it is installed, these devices are hidden here.": "Für %1$s-Geräte gibt es die Library „%2$s“ im Module Store. Ist sie installiert, werden diese Geräte hier ausgeblendet.",
             "Invalid Ident": "Ungültiger Ident",
             "The Xiaomi MIoT Cloud IO is not connected or not logged in. Please open the gateway configuration and log in.": "Die Xiaomi MIoT Cloud IO ist nicht verbunden oder nicht angemeldet. Bitte die Konfiguration des Gateways öffnen und anmelden.",
             "This module is free for non-commercial use,\r\nDonations in support of the author are accepted here:": "Dieses Modul ist für die nicht kommerzielle Nutzung kostenlos,\r\nSchenkungen als Unterstützung für den Autor werden hier akzeptiert:"
